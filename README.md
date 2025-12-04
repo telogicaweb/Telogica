@@ -1,8 +1,52 @@
 # Telogica E-Commerce Platform
 
-A full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with a sophisticated quote-based ordering system supporting multiple user roles.
+A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with warranty management, automated invoice generation, product unit tracking, retailer inventory management, and comprehensive email notifications.
 
-## 🚀 Features
+## 🚀 Key Features
+
+### Complete Warranty Management System
+- **User Warranty Registration**: Register products with serial numbers
+- **Automatic Validation**: Serial number verification against product database
+- **Flexible Purchase Types**: Support for online, offline, and retailer purchases
+- **Admin Approval Workflow**: Review and approve/reject warranty claims
+- **Email Notifications**: Automated emails at each warranty lifecycle stage
+- **Retailer Integration**: Automatic warranty transfer when retailers sell to customers
+
+### Automated Invoice Generation
+- **Auto-generation**: Invoices created automatically after payment completion
+- **Unique Invoice Numbers**: Sequential numbering (INV-YYYYMM-XXXXX format)
+- **Serial Number Tracking**: All assigned serial numbers included in invoice
+- **Email Delivery**: Invoices automatically emailed to customers
+- **Admin Management**: View, download, and resend invoices
+
+### Product Unit Management
+- **Individual Tracking**: Each product unit tracked with unique serial/model number
+- **Stock Management**: Separate online and offline stock tracking
+- **Unit Assignment**: Automatic assignment to orders upon payment
+- **Manufacturing Details**: Track warranty period and manufacturing dates
+- **Status Tracking**: Monitor unit lifecycle (available, sold, reserved, etc.)
+
+### Retailer Inventory System
+- **Inventory Dashboard**: Retailers manage purchased stock
+- **Customer Sales**: Record sales to end customers with full details
+- **Automatic Warranty Transfer**: Creates warranty registration for final customer
+- **Email Notifications**: Customers and admin notified of retailer sales
+- **Invoice Requirements**: Customer invoice upload mandatory
+
+### Comprehensive Email System
+- **12 Email Types**: Complete notification coverage for all user actions
+- **Email Logging**: All emails logged with status tracking
+- **Failed Email Tracking**: Monitor and retry failed deliveries
+- **Admin Resend**: Ability to resend any email
+- **Audit Trail**: Complete history of all communications
+
+### Analytics Dashboard
+- **Sales Metrics**: Total, direct, and quote-based sales tracking
+- **User Analytics**: Breakdown by user type (regular vs retailer)
+- **Quote Conversion**: Track quote acceptance and conversion rates
+- **Inventory Levels**: Real-time stock monitoring
+- **Warranty Statistics**: Pending, approved, and rejected warranties
+- **Recent Activity**: Latest orders, quotes, and warranty registrations
 
 ### Three User Roles
 
@@ -11,7 +55,11 @@ A full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with a 
 - User management (approve/reject retailers)
 - Quote request management
 - Custom pricing and discount capabilities
-- Order oversight
+- Warranty approval/rejection
+- Product unit management (add serial numbers)
+- Invoice management and resending
+- Email log monitoring
+- Comprehensive analytics
 
 #### 2. Regular User
 - Browse and purchase products
@@ -19,11 +67,16 @@ A full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with a 
 - **Bulk Orders**: Request quotes for orders with more than 3 items
 - Quote acceptance/rejection
 - Order history tracking
+- **Warranty Registration**: Register purchased products
+- **Invoice Access**: Download invoices for all orders
 
 #### 3. Retailer
 - Requires admin approval before access
 - Bulk ordering capabilities without item restrictions
 - Special wholesale/bulk pricing through quotes
+- **Inventory Management**: Track purchased stock
+- **Customer Sales**: Sell products to end customers
+- **Warranty Transfer**: Automatic warranty registration for customers
 - Order history tracking
 
 ### Quote-Based Ordering System
@@ -37,34 +90,68 @@ A full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with a 
 ### Security Features
 
 - ✅ JWT-based authentication
-- ✅ Role-based access control
+- ✅ Role-based access control (admin, user, retailer)
 - ✅ Password hashing with bcrypt
 - ✅ XSS prevention in email templates
 - ✅ Input validation and sanitization
 - ✅ Quote abuse prevention (one quote = one order)
 - ✅ Configurable purchase limits
+- ✅ Serial number uniqueness enforcement
+- ✅ Ownership verification for all resources
+- ✅ Audit logging for all emails
 
 ## 📁 Project Structure
 
 ```
 Telogica/
 ├── Backend/
-│   ├── controllers/      # Business logic
-│   ├── models/          # MongoDB schemas
-│   ├── routes/          # API endpoints
-│   ├── middleware/      # Authentication & authorization
-│   ├── utils/           # Email & utilities
-│   ├── config/          # Database configuration
-│   └── server.js        # Entry point
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── productController.js
+│   │   ├── quoteController.js
+│   │   ├── orderController.js
+│   │   ├── warrantyController.js         # NEW
+│   │   ├── invoiceController.js          # NEW
+│   │   ├── productUnitController.js      # NEW
+│   │   ├── retailerInventoryController.js # NEW
+│   │   └── analyticsController.js        # NEW
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Product.js
+│   │   ├── Quote.js
+│   │   ├── Order.js
+│   │   ├── Warranty.js                   # NEW
+│   │   ├── Invoice.js                    # NEW
+│   │   ├── ProductUnit.js                # NEW
+│   │   ├── RetailerInventory.js          # NEW
+│   │   └── EmailLog.js                   # NEW
+│   ├── routes/                 # API endpoints
+│   ├── middleware/             # Authentication & authorization
+│   ├── utils/                  # Email & utilities (enhanced)
+│   ├── config/                 # Database configuration
+│   └── server.js               # Entry point
 ├── Frontend/
 │   ├── src/
-│   │   ├── pages/       # React pages
-│   │   ├── components/  # Reusable components
-│   │   └── context/     # React context providers
+│   │   ├── pages/
+│   │   │   ├── Home.tsx
+│   │   │   ├── Login.tsx
+│   │   │   ├── Register.tsx
+│   │   │   ├── ProductDetails.tsx
+│   │   │   ├── Cart.tsx
+│   │   │   ├── Quote.tsx
+│   │   │   ├── UserDashboard.tsx
+│   │   │   ├── AdminDashboard.tsx
+│   │   │   ├── WarrantyRegistration.tsx  # NEW
+│   │   │   └── RetailerInventory.tsx     # NEW
+│   │   ├── components/         # Reusable components
+│   │   └── context/            # React context providers
 │   └── package.json
-├── IMPLEMENTATION_GUIDE.md  # Detailed feature documentation
-├── SECURITY_SUMMARY.md      # Security analysis
-└── TESTING_GUIDE.md         # Testing procedures
+├── API_DOCUMENTATION.md        # NEW - Complete API reference
+├── FEATURE_SUMMARY.md          # NEW - Feature documentation
+├── SECURITY_REVIEW.md          # NEW - Security analysis
+├── IMPLEMENTATION_GUIDE.md     # Detailed feature documentation
+├── SECURITY_SUMMARY.md         # Security analysis
+└── TESTING_GUIDE.md            # Testing procedures
 ```
 
 ## 🛠️ Setup Instructions
@@ -93,10 +180,11 @@ Telogica/
    MONGO_URI=your_mongodb_connection_string
    JWT_SECRET=your_jwt_secret
    
-   # Email Configuration
+   # Email Configuration (Required for notifications)
    EMAIL_SERVICE=gmail
    EMAIL_USER=your_email@gmail.com
    EMAIL_PASS=your_app_password
+   ADMIN_EMAIL=admin@telogica.com
    
    # Payment Gateway (Razorpay)
    RAZORPAY_KEY_ID=your_key
@@ -139,9 +227,12 @@ Telogica/
 ## 📖 Documentation
 
 ### For Developers
-- **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Complete feature documentation, workflows, and technical details
-- **[SECURITY_SUMMARY.md](./SECURITY_SUMMARY.md)** - Security measures, vulnerabilities analysis, and recommendations
-- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - Comprehensive testing procedures and scenarios
+- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Complete API reference with examples
+- **[FEATURE_SUMMARY.md](./FEATURE_SUMMARY.md)** - Comprehensive feature documentation
+- **[SECURITY_REVIEW.md](./SECURITY_REVIEW.md)** - Security analysis and recommendations
+- **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Implementation workflows and technical details
+- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - Testing procedures and scenarios
+- **[SECURITY_SUMMARY.md](./SECURITY_SUMMARY.md)** - Additional security measures
 
 ### Quick Links
 - [User Workflows](#user-workflows)
@@ -155,7 +246,9 @@ Telogica/
 2. Add 1-3 items to cart
 3. Checkout directly
 4. Complete payment
-5. Order confirmed
+5. **Invoice auto-generated and emailed**
+6. **Product units (serial numbers) assigned**
+7. Can register warranty for purchased products
 
 ### Regular User Buying >3 Items
 1. Add 4+ items to cart
@@ -164,15 +257,38 @@ Telogica/
 4. Wait for admin response (email notification)
 5. Accept/reject quote
 6. If accepted, checkout with discounted price
+7. **Invoice generated and units assigned**
+8. Register warranty for products
 
 ### Retailer Bulk Order
 1. Register as retailer
 2. Wait for admin approval (email notification)
 3. Login after approval
-4. Add any quantity of items
+4. Add any quantity of items (from offline stock)
 5. Request quote for bulk pricing
 6. Admin responds with wholesale discount
 7. Accept quote and checkout
+8. **Items added to retailer inventory**
+9. **Can sell to customers with warranty transfer**
+
+### Warranty Registration (User)
+1. Navigate to warranty registration page
+2. Enter product details and serial number
+3. **Serial number automatically validated**
+4. Upload invoice (if offline/retailer purchase)
+5. Submit warranty registration
+6. **Email sent to user and admin**
+7. Admin reviews and approves/rejects
+8. **Email notification of decision**
+
+### Retailer Selling to Customer
+1. Access retailer inventory panel
+2. Select in-stock item
+3. Enter customer details (name, email, phone, address)
+4. Upload customer invoice
+5. Confirm sale
+6. **System creates warranty registration for customer**
+7. **Emails sent to customer and admin**
 
 ## 🔌 API Endpoints
 
@@ -187,6 +303,15 @@ Telogica/
 - `GET /api/products` - Get all products
 - `GET /api/products/:id` - Get product by ID
 - `POST /api/products` - Create product (Admin only)
+- `PUT /api/products/:id` - Update product (Admin only)
+- `DELETE /api/products/:id` - Delete product (Admin only)
+
+### Product Units (NEW)
+- `POST /api/product-units/add` - Add product units with serial numbers (Admin only)
+- `GET /api/product-units/product/:productId` - Get units for product (Admin only)
+- `GET /api/product-units/available/:productId` - Get available units (Protected)
+- `GET /api/product-units/serial/:serialNumber` - Get unit by serial (Protected)
+- `PUT /api/product-units/:id` - Update unit (Admin only)
 
 ### Quotes
 - `POST /api/quotes` - Create quote (Protected)
@@ -201,6 +326,37 @@ Telogica/
 - `GET /api/orders/myorders` - Get user's orders (Protected)
 - `GET /api/orders` - Get all orders (Admin only)
 
+### Warranties (NEW)
+- `POST /api/warranties` - Register warranty (Protected)
+- `GET /api/warranties/my-warranties` - Get user warranties (Protected)
+- `GET /api/warranties` - Get all warranties (Admin only)
+- `PUT /api/warranties/:id/approve` - Approve warranty (Admin only)
+- `PUT /api/warranties/:id/reject` - Reject warranty (Admin only)
+- `GET /api/warranties/check-serial` - Validate serial number (Protected)
+
+### Invoices (NEW)
+- `POST /api/invoices/generate` - Generate invoice (Admin only)
+- `GET /api/invoices/:id` - Get invoice (Protected)
+- `GET /api/invoices/order/:orderId` - Get invoice by order (Protected)
+- `GET /api/invoices/my-invoices` - Get user invoices (Protected)
+- `POST /api/invoices/:id/resend` - Resend invoice (Admin only)
+
+### Retailer Inventory (NEW)
+- `GET /api/retailer-inventory/my-inventory` - Get retailer inventory (Retailer only)
+- `POST /api/retailer-inventory/:inventoryId/sell` - Mark as sold (Retailer only)
+- `GET /api/retailer-inventory` - Get all inventories (Admin only)
+
+### Analytics (NEW)
+- `GET /api/analytics/dashboard` - Dashboard analytics (Admin only)
+- `GET /api/analytics/sales-report` - Sales report (Admin only)
+- `GET /api/analytics/top-products` - Top products (Admin only)
+
+### Email Logs (NEW)
+- `GET /api/email-logs` - Get email logs (Admin only)
+- `POST /api/email-logs/:id/resend` - Resend email (Admin only)
+
+**For complete API documentation, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)**
+
 ## 🗄️ Database Schema
 
 ### User Model
@@ -213,6 +369,137 @@ Telogica/
   isApproved: Boolean,
   phone: String,
   address: String
+}
+```
+
+### Product Model (Enhanced)
+```javascript
+{
+  name: String,
+  description: String,
+  images: [String],
+  price: Number,                    // Optional - if missing, requiresQuote = true
+  retailerPrice: Number,            // NEW - Special pricing for retailers
+  category: String,
+  stock: Number,
+  offlineStock: Number,             // NEW - Stock for offline/retailer sales
+  isRecommended: Boolean,
+  requiresQuote: Boolean,           // NEW - Auto-set if no price
+  specifications: Map,              // NEW - Product specs
+  warrantyPeriodMonths: Number      // NEW - Default warranty period
+}
+```
+
+### ProductUnit Model (NEW)
+```javascript
+{
+  product: ObjectId (ref: Product),
+  serialNumber: String (unique),
+  modelNumber: String,
+  warrantyPeriodMonths: Number,
+  manufacturingDate: Date,
+  status: 'available' | 'sold' | 'reserved' | 'defective' | 'returned',
+  stockType: 'online' | 'offline' | 'both',
+  currentOwner: ObjectId (ref: User),
+  order: ObjectId (ref: Order),
+  soldDate: Date,
+  retailer: ObjectId (ref: User),
+  retailerPurchaseDate: Date,
+  finalCustomerSaleDate: Date
+}
+```
+
+### Warranty Model (NEW)
+```javascript
+{
+  user: ObjectId (ref: User),
+  product: ObjectId (ref: Product),
+  productUnit: ObjectId (ref: ProductUnit),
+  productName: String,
+  modelNumber: String,
+  serialNumber: String,
+  purchaseDate: Date,
+  purchaseType: 'telogica_online' | 'telogica_offline' | 'retailer',
+  invoice: String,
+  status: 'pending' | 'approved' | 'rejected',
+  warrantyStartDate: Date,
+  warrantyEndDate: Date,
+  warrantyPeriodMonths: Number,
+  adminNotes: String,
+  rejectionReason: String,
+  isRetailerSale: Boolean,
+  retailer: ObjectId (ref: User),
+  finalCustomer: {
+    name: String,
+    email: String,
+    phone: String,
+    address: String
+  }
+}
+```
+
+### Invoice Model (NEW)
+```javascript
+{
+  invoiceNumber: String (unique, auto-generated),
+  user: ObjectId (ref: User),
+  order: ObjectId (ref: Order),
+  products: [{
+    product: ObjectId (ref: Product),
+    productName: String,
+    quantity: Number,
+    price: Number,
+    serialNumbers: [String]
+  }],
+  subtotal: Number,
+  discount: Number,
+  tax: Number,
+  totalAmount: Number,
+  shippingAddress: String,
+  paymentStatus: 'pending' | 'completed' | 'failed',
+  invoiceDate: Date,
+  paidDate: Date
+}
+```
+
+### RetailerInventory Model (NEW)
+```javascript
+{
+  retailer: ObjectId (ref: User),
+  productUnit: ObjectId (ref: ProductUnit),
+  product: ObjectId (ref: Product),
+  purchaseOrder: ObjectId (ref: Order),
+  purchaseDate: Date,
+  purchasePrice: Number,
+  status: 'in_stock' | 'sold' | 'returned' | 'damaged',
+  soldTo: {
+    name: String,
+    email: String,
+    phone: String,
+    address: String
+  },
+  soldDate: Date,
+  sellingPrice: Number,
+  customerInvoice: String,
+  warrantyRegistration: ObjectId (ref: Warranty)
+}
+```
+
+### EmailLog Model (NEW)
+```javascript
+{
+  recipient: String,
+  recipientType: 'user' | 'admin' | 'retailer',
+  subject: String,
+  body: String,
+  emailType: String,  // 12 types supported
+  status: 'sent' | 'failed' | 'pending',
+  errorMessage: String,
+  relatedEntity: {
+    entityType: String,
+    entityId: ObjectId
+  },
+  sentAt: Date
 }
 ```
 
