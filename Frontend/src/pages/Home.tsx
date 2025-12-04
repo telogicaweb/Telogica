@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import Hero from '../components/Hero';
@@ -23,7 +23,7 @@ const Home = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/products');
+        const { data } = await api.get('/api/products');
         setProducts(data);
       } catch (error) {
         console.error("Error fetching products", error);
