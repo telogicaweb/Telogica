@@ -217,7 +217,7 @@ const AdminDashboard: React.FC = () => {
 
   const loadProductUnits = async (productId: string) => {
     try {
-      const response = await api.get(`/admin/product-units/${productId}`);
+      const response = await api.get(`/api/product-units/product/${productId}`);
       setProductUnits(response.data);
     } catch (error) {
       console.error('Error loading product units:', error);
@@ -316,20 +316,32 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
+      // Step 1: Create the product
       const productData = {
-        ...productForm,
-        normalPrice: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
-        retailerPrice: productForm.retailerPrice
-          ? Number(productForm.retailerPrice)
-          : undefined,
-        stockQuantity: productForm.quantity,
-        requiresQuote:
-          productForm.requiresQuote || !productForm.normalPrice,
+        name: productForm.name,
+        description: productForm.description,
+        category: productForm.category,
+        price: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
+        retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
+        images: productForm.imageUrl ? [productForm.imageUrl] : [],
+        stock: 0, // Will be updated after adding units
+        offlineStock: 0,
+        requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
+        warrantyPeriodMonths: 12,
       };
 
-      const response = await api.post('/admin/products', {
-        product: productData,
-        units: productUnitsForm,
+      const productResponse = await api.post('/api/products', productData);
+      const createdProduct = productResponse.data;
+
+      // Step 2: Add product units
+      await api.post('/api/product-units/add', {
+        productId: createdProduct._id,
+        units: productUnitsForm.map(unit => ({
+          serialNumber: unit.serialNumber,
+          modelNumber: unit.modelNumber,
+          warrantyPeriodMonths: unit.warrantyPeriod || 12,
+          stockType: 'both'
+        }))
       });
 
       alert('Product created successfully with all units');
@@ -1361,6 +1373,118 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  // Render Content Management Tab
+  const renderContentManagement = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800">Content Management</h2>
+      
+      <div className="grid md:grid-cols-3 gap-6">
+        {/* Blog Posts */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Blog Posts</h3>
+            <Edit size={20} className="text-blue-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Manage blog articles and publications</p>
+          <button 
+            onClick={() => window.location.href = '/admin/blog-management'}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Manage Blogs
+          </button>
+        </div>
+
+        {/* Team Members */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Team Members</h3>
+            <Users size={20} className="text-green-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Manage leadership and team profiles</p>
+          <button 
+            onClick={() => window.location.href = '/admin/team-management'}
+            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Manage Team
+          </button>
+        </div>
+
+        {/* Events */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Events</h3>
+            <Clock size={20} className="text-purple-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Manage investor events and webinars</p>
+          <button 
+            onClick={() => window.location.href = '/admin/event-management'}
+            className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Manage Events
+          </button>
+        </div>
+
+        {/* Reports */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Reports</h3>
+            <FileText size={20} className="text-orange-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Manage financial and investor reports</p>
+          <button 
+            onClick={() => window.location.href = '/admin/report-management'}
+            className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            Manage Reports
+          </button>
+        </div>
+
+        {/* Page Content */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Page Content</h3>
+            <FileText size={20} className="text-indigo-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Edit About, Mission, Vision, etc.</p>
+          <button 
+            onClick={() => window.location.href = '/admin/page-content'}
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Edit Content
+          </button>
+        </div>
+
+        {/* Home Stats */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Home Stats</h3>
+            <TrendingUp size={20} className="text-red-600" />
+          </div>
+          <p className="text-gray-600 mb-4">Update homepage statistics</p>
+          <button 
+            onClick={() => window.location.href = '/admin/stats-management'}
+            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Update Stats
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
+        <div className="flex items-start">
+          <AlertCircle className="text-blue-600 mt-1" size={20} />
+          <div className="ml-3">
+            <h4 className="text-sm font-medium text-blue-900">Content Management System</h4>
+            <p className="text-sm text-blue-700 mt-1">
+              Use these tools to dynamically manage all website content. Changes will be reflected immediately on the live site.
+              All content sections support rich text editing, images, and multimedia.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'products', name: 'Products', icon: Package },
@@ -1368,6 +1492,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'quotes', name: 'Quotes', icon: FileText },
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'warranties', name: 'Warranties', icon: Shield },
+    { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
   ];
 
@@ -1431,6 +1556,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'warranties' && renderWarranties()}
+            {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
           </>
         )}

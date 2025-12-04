@@ -55,7 +55,7 @@ export default function Header() {
 
             {/* Logo */}
             <Link to="/" className="absolute left-1/2 transform -translate-x-1/2 cursor-pointer hover:opacity-80 transition-opacity">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">TELOGICA</h1>
+              <img src="/telogica_logo.png" alt="Telogica" className="h-12 md:h-16 w-auto" />
             </Link>
 
             {/* Icons */}
