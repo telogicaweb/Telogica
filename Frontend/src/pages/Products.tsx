@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useCallback } from 'react';
 import api from '../api';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
@@ -30,23 +30,7 @@ const Products = () => {
     fetchProducts();
   }, []);
 
-  useEffect(() => {
-    filterProducts();
-  }, [products, activeCategory, searchQuery, showQuoteOnly]);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.get('/api/products');
-      setProducts(data);
-    } catch (error) {
-      console.error("Error fetching products", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterProducts = () => {
+  const filterProducts = useCallback(() => {
     let filtered = products;
 
     // Filter by category
@@ -68,6 +52,22 @@ const Products = () => {
     }
 
     setFilteredProducts(filtered);
+  }, [products, activeCategory, searchQuery, showQuoteOnly]);
+
+  useEffect(() => {
+    filterProducts();
+  }, [filterProducts]);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/api/products');
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddToCart = (product: Product) => {
