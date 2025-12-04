@@ -81,14 +81,27 @@ const respondToQuote = async (req, res) => {
 
       // Notify User with detailed email
       const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: $${totalPrice}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
+      
+      // HTML escape function to prevent XSS
+      const escapeHtml = (text) => {
+        const map = {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+      };
+      
       const emailHtml = `
         <h2>Quote Response</h2>
-        <p>Dear ${quote.user.name},</p>
+        <p>Dear ${escapeHtml(quote.user.name)},</p>
         <p>Your quote request has been reviewed.</p>
         <ul>
-          <li><strong>Discount offered:</strong> ${discountPercentage}%</li>
-          <li><strong>Total Price:</strong> $${totalPrice}</li>
-          <li><strong>Message:</strong> ${message}</li>
+          <li><strong>Discount offered:</strong> ${escapeHtml(String(discountPercentage))}%</li>
+          <li><strong>Total Price:</strong> $${escapeHtml(String(totalPrice))}</li>
+          <li><strong>Message:</strong> ${escapeHtml(message)}</li>
         </ul>
         <p>Please login to your account to accept or reject this quote.</p>
         <p>Thank you!</p>

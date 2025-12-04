@@ -71,12 +71,26 @@ const UserDashboard = () => {
   const proceedToCheckout = async (quote: any) => {
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/orders', {
-        products: quote.products.map((item: any) => ({
+      // Calculate price per item based on individual product prices if available
+      const products = quote.products.map((item: any) => {
+        const itemOriginalPrice = item.originalPrice || 0;
+        const totalOriginalPrice = quote.products.reduce((sum: number, p: any) => 
+          sum + (p.originalPrice || 0) * p.quantity, 0
+        );
+        
+        // Calculate proportional discount for each product
+        const discountRatio = totalOriginalPrice > 0 ? quote.adminResponse.totalPrice / totalOriginalPrice : 1;
+        const discountedPrice = itemOriginalPrice * discountRatio;
+        
+        return {
           product: item.product._id,
           quantity: item.quantity,
-          price: quote.adminResponse.totalPrice / quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0)
-        })),
+          price: discountedPrice
+        };
+      });
+
+      await axios.post('http://localhost:5000/api/orders', {
+        products,
         totalAmount: quote.adminResponse.totalPrice,
         shippingAddress: user?.address || 'Default Address',
         quoteId: quote._id

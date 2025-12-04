@@ -8,6 +8,8 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
+const MAX_DIRECT_PURCHASE = parseInt(process.env.MAX_DIRECT_PURCHASE_ITEMS) || 3;
+
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
@@ -19,10 +21,10 @@ const createOrder = async (req, res) => {
   }
 
   try {
-    // Check if user is a regular user and has more than 3 items without a quote
-    if (req.user.role === 'user' && !quoteId && products.length > 3) {
+    // Check if user is a regular user and has more than allowed items without a quote
+    if (req.user.role === 'user' && !quoteId && products.length > MAX_DIRECT_PURCHASE) {
       return res.status(400).json({ 
-        message: 'Regular users can only purchase up to 3 items directly. Please request a quote for larger orders.',
+        message: `Regular users can only purchase up to ${MAX_DIRECT_PURCHASE} items directly. Please request a quote for larger orders.`,
         requiresQuote: true
       });
     }
