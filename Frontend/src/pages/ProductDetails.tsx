@@ -54,7 +54,7 @@ const ProductDetails = () => {
             
             <div className="mt-6">
               {product.price ? (
-                <p className="text-3xl font-bold text-gray-900">${product.price}</p>
+                <p className="text-3xl font-bold text-gray-900">₹{product.price}</p>
               ) : (
                 <p className="text-3xl font-bold text-blue-600">Price on Request</p>
               )}

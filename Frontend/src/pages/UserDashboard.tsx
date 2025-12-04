@@ -221,7 +221,7 @@ const UserDashboard = () => {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Total Amount</p>
-                            <p className="font-medium text-gray-900">${order.totalAmount}</p>
+                            <p className="font-medium text-gray-900">₹{order.totalAmount}</p>
                           </div>
                           {order.isQuoteBased && (
                             <div>
@@ -246,7 +246,7 @@ const UserDashboard = () => {
                                     <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
                                   </div>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900">${p.price}</p>
+                                <p className="text-sm font-medium text-gray-900">₹{p.price}</p>
                               </li>
                             ))}
                           </ul>
@@ -301,7 +301,7 @@ const UserDashboard = () => {
                             <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm text-indigo-700">Offered Price:</span>
-                              <span className="text-lg font-bold text-indigo-900">${quote.adminResponse.totalPrice}</span>
+                              <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
                             </div>
                             {quote.adminResponse.discountPercentage > 0 && (
                               <div className="flex justify-between items-center mb-2">
