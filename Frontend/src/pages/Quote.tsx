@@ -134,7 +134,7 @@ const Quote = () => {
                       <h3 className="text-lg font-medium text-gray-900">{item.product.name}</h3>
                       <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                       {item.product.price && (
-                        <p className="text-sm text-gray-600">Regular Price: ${item.product.price} each</p>
+                        <p className="text-sm text-gray-600">Regular Price: ₹{item.product.price} each</p>
                       )}
                     </div>
                   </div>

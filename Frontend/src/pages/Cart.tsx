@@ -31,7 +31,7 @@ const Cart = () => {
     }
 
     try {
-      await api.post('/orders', {
+      await api.post('/api/orders', {
         products: cart.map(item => ({
           productId: item.product._id,
           quantity: item.quantity,
@@ -118,7 +118,7 @@ const Cart = () => {
                           <h3>
                             <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
                           </h3>
-                          <p className="ml-4">${(item.product.price || 0) * item.quantity}</p>
+                          <p className="ml-4">₹{(item.product.price || 0) * item.quantity}</p>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
                       </div>
@@ -152,11 +152,11 @@ const Cart = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <dt className="text-sm text-gray-600">Subtotal</dt>
-                  <dd className="text-sm font-medium text-gray-900">${subtotal.toFixed(2)}</dd>
+                  <dd className="text-sm font-medium text-gray-900">₹{subtotal.toFixed(2)}</dd>
                 </div>
                 <div className="flex items-center justify-between border-t border-gray-200 pt-4">
                   <dt className="text-base font-medium text-gray-900">Order Total</dt>
-                  <dd className="text-base font-medium text-gray-900">${total.toFixed(2)}</dd>
+                  <dd className="text-base font-medium text-gray-900">₹{total.toFixed(2)}</dd>
                 </div>
               </dl>
 
