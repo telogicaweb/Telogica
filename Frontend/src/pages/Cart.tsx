@@ -3,7 +3,7 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+import { Trash2, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
 
 const Cart = () => {
   const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
@@ -14,9 +14,19 @@ const Cart = () => {
   const shipping = 0; // Free shipping for now
   const total = subtotal + shipping;
 
+  // Check if user needs to request a quote (regular user with >3 items)
+  const requiresQuote = user?.role === 'user' && cart.length > 3;
+
   const handleCheckout = async () => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+
+    // If user is a regular user with more than 3 items, redirect to quote
+    if (requiresQuote) {
+      alert('You have more than 3 items in your cart. Please request a quote for bulk orders.');
+      navigate('/quote');
       return;
     }
 
@@ -47,9 +57,14 @@ const Cart = () => {
 
       clearCart();
       navigate('/user-dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Checkout Failed');
+      if (error.response?.data?.requiresQuote) {
+        alert(error.response.data.message);
+        navigate('/quote');
+      } else {
+        alert('Checkout Failed');
+      }
     }
   };
 
@@ -78,6 +93,23 @@ const Cart = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
         
+        {/* Warning for users with more than 3 items */}
+        {requiresQuote && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  You have more than 3 items in your cart. As a regular user, you need to request a quote for bulk orders. 
+                  Click "Request Quote" below instead of checkout.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
           <div className="lg:col-span-7">
             <div className="bg-white shadow-sm rounded-lg overflow-hidden">
@@ -86,7 +118,7 @@ const Cart = () => {
                   <li key={item.product._id} className="p-6 flex">
                     <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden">
                       <img
-                        src={item.product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
+                        src={item.product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
                         alt={item.product.name}
                         className="w-full h-full object-center object-cover"
                       />
@@ -127,6 +159,10 @@ const Cart = () => {
               
               <dl className="space-y-4">
                 <div className="flex items-center justify-between">
+                  <dt className="text-sm text-gray-600">Items in cart</dt>
+                  <dd className="text-sm font-medium text-gray-900">{cart.length}</dd>
+                </div>
+                <div className="flex items-center justify-between">
                   <dt className="text-sm text-gray-600">Subtotal</dt>
                   <dd className="text-sm font-medium text-gray-900">${subtotal.toFixed(2)}</dd>
                 </div>
@@ -136,14 +172,29 @@ const Cart = () => {
                 </div>
               </dl>
 
-              <div className="mt-6">
-                <button
-                  onClick={handleCheckout}
-                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                >
-                  Checkout
-                  <ArrowRight size={18} className="ml-2" />
-                </button>
+              <div className="mt-6 space-y-3">
+                {requiresQuote ? (
+                  <>
+                    <button
+                      onClick={() => navigate('/quote')}
+                      className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    >
+                      Request Quote
+                      <ArrowRight size={18} className="ml-2" />
+                    </button>
+                    <p className="text-xs text-center text-gray-500">
+                      Bulk orders require admin approval for discounted pricing
+                    </p>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleCheckout}
+                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                  >
+                    Checkout
+                    <ArrowRight size={18} className="ml-2" />
+                  </button>
+                )}
               </div>
               
               <div className="mt-4 text-center text-sm text-gray-500">
