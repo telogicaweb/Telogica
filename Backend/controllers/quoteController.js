@@ -1,6 +1,6 @@
 const Quote = require('../models/Quote');
 const Product = require('../models/Product');
-const sendEmail = require('../utils/mailer');
+const { sendEmail } = require('../utils/mailer');
 
 // @desc    Create a new quote
 // @route   POST /api/quotes
@@ -34,7 +34,14 @@ const createQuote = async (req, res) => {
     const createdQuote = await quote.save();
     
     // Notify Admin
-    // await sendEmail(process.env.ADMIN_EMAIL, 'New Quote Request', `User ${req.user.name} requested a quote.`);
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
+    await sendEmail(
+      adminEmail,
+      'New Quote Request',
+      `User ${req.user.name} (${req.user.email}) requested a quote with ${products.length} products.`,
+      'quote_request',
+      { entityType: 'quote', entityId: createdQuote._id }
+    );
 
     res.status(201).json(createdQuote);
   } catch (error) {
@@ -106,7 +113,14 @@ const respondToQuote = async (req, res) => {
         <p>Please login to your account to accept or reject this quote.</p>
         <p>Thank you!</p>
       `;
-      await sendEmail(quote.user.email, 'Quote Response - Action Required', emailText, emailHtml);
+      await sendEmail(
+        quote.user.email,
+        'Quote Response - Action Required',
+        emailText,
+        'quote_approval',
+        { entityType: 'quote', entityId: quote._id },
+        emailHtml
+      );
 
       res.json(updatedQuote);
     } else {
