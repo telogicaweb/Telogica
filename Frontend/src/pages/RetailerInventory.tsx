@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { AuthContext } from '../context/AuthContext';
-import { Package, DollarSign, User, Upload, Calendar } from 'lucide-react';
+import { Package, DollarSign, User, Upload, Calendar, Info } from 'lucide-react';
 
 const RetailerInventory = () => {
   const authContext = useContext(AuthContext);
@@ -29,9 +29,7 @@ const RetailerInventory = () => {
   const fetchInventory = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/retailer-inventory/my-inventory', {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      const res = await api.get('/retailer-inventory/my-inventory');
       setInventory(res.data);
     } catch (error) {
       console.error('Error fetching inventory:', error);
@@ -64,14 +62,11 @@ const RetailerInventory = () => {
 
     setLoading(true);
     try {
-      await axios.post(
-        `http://localhost:5000/api/retailer-inventory/${selectedItem._id}/sell`,
-        sellFormData,
-        {
-          headers: { Authorization: `Bearer ${user?.token}` }
-        }
+      await api.post(
+        `/retailer-inventory/${selectedItem._id}/sell`,
+        sellFormData
       );
-      alert('Product marked as sold successfully! Warranty registration has been initiated for the customer.');
+      alert('Product marked as sold successfully! Warranty has been registered for the customer and both you and the customer will receive email notifications.');
       setShowSellModal(false);
       fetchInventory();
     } catch (error: any) {
@@ -117,6 +112,26 @@ const RetailerInventory = () => {
             My Inventory
           </h1>
           <p className="text-gray-600 mt-2">Manage your product inventory</p>
+        </div>
+
+        {/* Info Box */}
+        <div className="bg-indigo-50 border-l-4 border-indigo-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <Info className="h-5 w-5 text-indigo-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-indigo-800">Retailer Information</h3>
+              <div className="mt-2 text-sm text-indigo-700">
+                <ul className="list-disc list-inside space-y-1">
+                  <li>You see different pricing from regular users</li>
+                  <li>All purchases must be made through quote requests</li>
+                  <li>When you sell a product to a customer, warranty is automatically registered</li>
+                  <li>Both you and your customer will receive email notifications</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats */}

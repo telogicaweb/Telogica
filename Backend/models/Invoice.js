@@ -30,7 +30,7 @@ const invoiceSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-generate invoice number
-invoiceSchema.pre('save', async function(next) {
+invoiceSchema.pre('save', async function() {
   if (!this.invoiceNumber) {
     const count = await mongoose.model('Invoice').countDocuments();
     const date = new Date();
@@ -38,7 +38,6 @@ invoiceSchema.pre('save', async function(next) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     this.invoiceNumber = `INV-${year}${month}-${String(count + 1).padStart(5, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

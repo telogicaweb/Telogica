@@ -16,11 +16,10 @@ const productSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-set requiresQuote if price is not provided
-productSchema.pre('save', function(next) {
+productSchema.pre('save', function() {
   if (!this.price) {
     this.requiresQuote = true;
   }
-  next();
 });
 
 module.exports = mongoose.model('Product', productSchema);

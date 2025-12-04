@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
 
@@ -31,30 +31,18 @@ const Cart = () => {
     }
 
     try {
-      const { data } = await axios.post('http://localhost:5000/api/orders', {
+      const { data } = await api.post('/orders', {
         products: cart.map(item => ({
-          product: item.product._id,
+          productId: item.product._id,
           quantity: item.quantity,
           price: item.product.price
         })),
-        totalAmount: total,
-        shippingAddress: user.address || 'Default Address'
-      }, {
-        headers: { Authorization: `Bearer ${user.token}` }
+        totalAmount: total
       });
 
       // Here you would integrate Razorpay checkout using data.razorpayOrder
-      alert('Order Created! Proceed to Payment (Mock)');
+      alert('Order Created! Proceed to Payment');
       
-      // Mock Payment Verification
-      await axios.post('http://localhost:5000/api/orders/verify', {
-        orderId: data.order._id,
-        razorpayPaymentId: 'mock_payment_id',
-        razorpaySignature: 'mock_signature' // This will fail on backend due to signature check, but flow is there
-      }, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-
       clearCart();
       navigate('/user-dashboard');
     } catch (error: any) {
@@ -63,7 +51,7 @@ const Cart = () => {
         alert(error.response.data.message);
         navigate('/quote');
       } else {
-        alert('Checkout Failed');
+        alert('Checkout Failed: ' + (error.response?.data?.message || error.message));
       }
     }
   };

@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import Hero from '../components/Hero';
 import Footer from '../components/Footer';
+import { ShoppingCart, FileText, Eye, TrendingUp, Award, Users, Package } from 'lucide-react';
 
 interface Product {
   _id: string;
@@ -23,7 +24,7 @@ const Home = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { data } = await api.get('/api/products');
+        const { data } = await api.get('/products');
         setProducts(data);
       } catch (error) {
         console.error("Error fetching products", error);
@@ -57,24 +58,64 @@ const Home = () => {
     <div className="bg-gray-50 min-h-screen">
       <Hero />
       
+      {/* Stats Section */}
+      <section className="py-16 bg-white border-y border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                <Package className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-1">500+</h3>
+              <p className="text-gray-600 text-sm">Products Delivered</p>
+            </div>
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-1">200+</h3>
+              <p className="text-gray-600 text-sm">Happy Clients</p>
+            </div>
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-4">
+                <Award className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-1">15+</h3>
+              <p className="text-gray-600 text-sm">Years Experience</p>
+            </div>
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4">
+                <TrendingUp className="w-6 h-6 text-yellow-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-1">98%</h3>
+              <p className="text-gray-600 text-sm">Customer Satisfaction</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Products Section */}
       <section id="products" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
-            Our Products
-          </h2>
-          <p className="text-center text-gray-600 mb-12 text-lg">
-            Innovative solutions across multiple industries
-          </p>
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Our Products
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Innovative solutions across Telecom, Defence, and Railway industries
+            </p>
+          </div>
 
-          <div className="flex justify-center gap-4 mb-12 flex-wrap">
+          {/* Category Filter */}
+          <div className="flex justify-center gap-3 mb-12 flex-wrap">
             {categories.map((category) => (
               <button
                 key={category.value}
                 onClick={() => setActiveCategory(category.value)}
-                className={`px-8 py-3 rounded font-semibold transition-all ${
+                className={`px-6 py-2.5 rounded-lg font-semibold transition-all text-sm ${
                   activeCategory === category.value
-                    ? 'bg-gray-900 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-indigo-300'
                 }`}
               >
                 {category.label}
@@ -82,58 +123,123 @@ const Home = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {filteredProducts.map(product => (
-              <div key={product._id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-shadow group flex flex-col">
-                <div className="relative h-64 overflow-hidden">
-                  <img 
-                    src={product.images[0] || 'https://via.placeholder.com/300'} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                  />
-                </div>
-                <div className="p-6 flex-grow flex flex-col">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
-                  <p className="text-gray-600 mb-4 flex-grow">{product.description.substring(0, 100)}...</p>
-                  
-                  <div className="mt-auto">
-                    {product.price ? (
-                      <p className="text-lg font-bold mb-4 text-gray-900">${product.price}</p>
-                    ) : (
-                      <p className="text-lg font-bold mb-4 text-blue-600">Price on Request</p>
+          {/* Product Grid */}
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-20">
+              <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500 text-lg">No products found in this category.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map(product => (
+                <div 
+                  key={product._id} 
+                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col border border-gray-200"
+                >
+                  {/* Product Image */}
+                  <div className="relative h-56 overflow-hidden bg-gray-100">
+                    <img 
+                      src={product.images[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                    />
+                    {!product.price && (
+                      <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                        Quote Only
+                      </div>
                     )}
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="p-5 flex-grow flex flex-col">
+                    <div className="mb-2">
+                      <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                        {product.category}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-3">
+                      {product.description}
+                    </p>
                     
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
+                    {/* Price */}
+                    <div className="mb-4">
+                      {product.price ? (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
+                          <span className="text-sm text-gray-500">+ GST</span>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-semibold text-blue-600">Price on Request</p>
+                      )}
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <Link 
+                        to={`/product/${product._id}`} 
+                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                      </Link>
+                      <div className="grid grid-cols-2 gap-2">
                         {product.price && (
                           <button 
                             onClick={() => handleAddToCart(product)} 
-                            className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors text-sm font-medium"
+                            className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
                           >
-                            Add to Cart
+                            <ShoppingCart className="w-4 h-4" />
+                            Cart
                           </button>
                         )}
                         <button 
                           onClick={() => handleAddToQuote(product)} 
-                          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm font-medium"
+                          className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${!product.price ? 'col-span-2' : ''}`}
                         >
+                          <FileText className="w-4 h-4" />
                           Quote
                         </button>
                       </div>
-                      <Link 
-                        to={`/product/${product._id}`} 
-                        className="block text-center bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 transition-colors text-sm font-medium"
-                      >
-                        View Details
-                      </Link>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-br from-indigo-600 to-indigo-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Need a Custom Solution?
+          </h2>
+          <p className="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
+            Our team is ready to help you find the perfect products for your needs
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              to="/quote"
+              className="inline-flex items-center justify-center gap-2 bg-white text-indigo-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
+            >
+              <FileText className="w-5 h-5" />
+              Request a Quote
+            </Link>
+            <a
+              href="#products"
+              className="inline-flex items-center justify-center gap-2 bg-indigo-700 text-white px-8 py-3 rounded-lg hover:bg-indigo-800 transition-colors font-semibold border-2 border-white"
+            >
+              <Package className="w-5 h-5" />
+              Browse Products
+            </a>
           </div>
         </div>
       </section>
+
       <Footer />
     </div>
   );

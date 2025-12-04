@@ -23,7 +23,8 @@ const emailLogSchema = new mongoose.Schema({
       'user_registration',
       'retailer_approval',
       'retailer_sale_notification',
-      'invoice_generated'
+      'invoice_generated',
+      'general'
     ],
     required: true 
   },

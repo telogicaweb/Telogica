@@ -27,7 +27,6 @@ const productUnitSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Index for quick lookup
-productUnitSchema.index({ serialNumber: 1 });
 productUnitSchema.index({ product: 1, status: 1 });
 
 module.exports = mongoose.model('ProductUnit', productUnitSchema);

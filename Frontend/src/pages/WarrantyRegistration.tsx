@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Upload, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info } from 'lucide-react';
 
 const WarrantyRegistration = () => {
   const authContext = useContext(AuthContext);
@@ -30,9 +30,7 @@ const WarrantyRegistration = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/orders/myorders', {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      const res = await api.get('/orders/myorders');
       setOrders(res.data.filter((order: any) => order.paymentStatus === 'completed'));
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -41,22 +39,18 @@ const WarrantyRegistration = () => {
 
   const fetchWarranties = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/warranties/my-warranties', {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      const res = await api.get('/warranties/my-warranties');
       setWarranties(res.data);
     } catch (error) {
       console.error('Error fetching warranties:', error);
     }
   };
 
-  const checkSerialNumber = async (serialNumber: string, productId: string) => {
-    if (!serialNumber || !productId) return;
+  const checkSerialNumber = async (serialNumber: string) => {
+    if (!serialNumber) return;
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/warranties/check-serial?serialNumber=${serialNumber}&productId=${productId}`, {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      const res = await api.get(`/warranties/check-serial?serialNumber=${serialNumber}`);
       setSerialValid(res.data.valid && !res.data.alreadyRegistered);
       if (res.data.alreadyRegistered) {
         alert('This serial number is already registered for warranty.');
@@ -67,8 +61,8 @@ const WarrantyRegistration = () => {
   };
 
   const handleSerialBlur = () => {
-    if (formData.serialNumber && formData.productId) {
-      checkSerialNumber(formData.serialNumber, formData.productId);
+    if (formData.serialNumber) {
+      checkSerialNumber(formData.serialNumber);
     }
   };
 
@@ -82,10 +76,8 @@ const WarrantyRegistration = () => {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/warranties', formData, {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
-      alert('Warranty registered successfully! We will review it shortly.');
+      await api.post('/warranties', formData);
+      alert('Warranty registered successfully! You will receive an email notification once admin reviews it.');
       setFormData({
         productId: '',
         productName: '',
@@ -166,7 +158,28 @@ const WarrantyRegistration = () => {
         </div>
 
         {activeTab === 'register' ? (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div>
+            {/* Info Box */}
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <Info className="h-5 w-5 text-blue-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">Warranty Registration Information</h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Online purchases: Invoice upload is NOT required (we have your data)</li>
+                      <li>Offline/Retailer purchases: Invoice upload is REQUIRED</li>
+                      <li>Serial number will be validated against our records</li>
+                      <li>You will receive email notifications about warranty status</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
@@ -289,6 +302,7 @@ const WarrantyRegistration = () => {
                 </button>
               </div>
             </form>
+          </div>
           </div>
         ) : (
           <div className="space-y-4">

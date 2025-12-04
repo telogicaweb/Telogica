@@ -1,28 +1,32 @@
 import { useEffect, useState, useContext } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye } from 'lucide-react';
 
 const UserDashboard = () => {
   const { user } = useContext(AuthContext)!;
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'orders' | 'quotes'>('orders');
+  const [warranties, setWarranties] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'orders' | 'quotes' | 'warranties' | 'invoices'>('orders');
   const [loading, setLoading] = useState(false);
 
   const fetchData = async () => {
     try {
-      const ordersRes = await axios.get('http://localhost:5000/api/orders/myorders', {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      const [ordersRes, quotesRes, warrantiesRes, invoicesRes] = await Promise.all([
+        api.get('/orders/myorders'),
+        api.get('/quotes'),
+        api.get('/warranties/my-warranties'),
+        api.get('/invoices/my-invoices')
+      ]);
+      
       setOrders(ordersRes.data);
-
-      const quotesRes = await axios.get('http://localhost:5000/api/quotes', {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
       setQuotes(quotesRes.data);
+      setWarranties(warrantiesRes.data);
+      setInvoices(invoicesRes.data);
     } catch (error) {
       console.error("Error fetching dashboard data", error);
     }
@@ -37,9 +41,7 @@ const UserDashboard = () => {
     
     setLoading(true);
     try {
-      await axios.put(`http://localhost:5000/api/quotes/${quoteId}/accept`, {}, {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      await api.put(`/quotes/${quoteId}/accept`);
       alert('Quote accepted! You can now proceed to checkout with this quote.');
       fetchData();
     } catch (error: any) {
@@ -55,9 +57,7 @@ const UserDashboard = () => {
     
     setLoading(true);
     try {
-      await axios.put(`http://localhost:5000/api/quotes/${quoteId}/reject`, {}, {
-        headers: { Authorization: `Bearer ${user?.token}` }
-      });
+      await api.put(`/quotes/${quoteId}/reject`);
       alert('Quote rejected.');
       fetchData();
     } catch (error: any) {
@@ -71,35 +71,19 @@ const UserDashboard = () => {
   const proceedToCheckout = async (quote: any) => {
     setLoading(true);
     try {
-      // Calculate price per item based on individual product prices if available
-      const products = quote.products.map((item: any) => {
-        const itemOriginalPrice = item.originalPrice || 0;
-        const totalOriginalPrice = quote.products.reduce((sum: number, p: any) => 
-          sum + (p.originalPrice || 0) * p.quantity, 0
-        );
-        
-        // Calculate proportional discount for each product
-        const discountRatio = totalOriginalPrice > 0 ? quote.adminResponse.totalPrice / totalOriginalPrice : 1;
-        const discountedPrice = itemOriginalPrice * discountRatio;
-        
-        return {
-          product: item.product._id,
-          quantity: item.quantity,
-          price: discountedPrice
-        };
-      });
+      const products = quote.products.map((item: any) => ({
+        productId: item.productId._id,
+        quantity: item.quantity,
+        price: quote.quotedPrice / quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0)
+      }));
 
-      await axios.post('http://localhost:5000/api/orders', {
+      await api.post('/orders', {
         products,
-        totalAmount: quote.adminResponse.totalPrice,
-        shippingAddress: user?.address || 'Default Address',
+        totalAmount: quote.quotedPrice,
         quoteId: quote._id
-      }, {
-        headers: { Authorization: `Bearer ${user?.token}` }
       });
 
-      alert('Order created with quote pricing! Proceed to payment.');
-      // Here you would integrate Razorpay
+      alert('Order created successfully! Proceed to payment.');
       navigate('/user-dashboard');
       fetchData();
     } catch (error: any) {
@@ -107,6 +91,25 @@ const UserDashboard = () => {
       alert(error.response?.data?.message || 'Failed to create order');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadInvoice = async (invoiceId: string) => {
+    try {
+      const response = await api.get(`/invoices/${invoiceId}/download`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${invoiceId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error('Error downloading invoice', error);
+      alert('Failed to download invoice');
     }
   };
 
@@ -144,28 +147,50 @@ const UserDashboard = () => {
 
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+            <nav className="flex -mb-px overflow-x-auto">
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 ${
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'orders'
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Package size={18} />
-                Order History
+                Orders
               </button>
               <button
                 onClick={() => setActiveTab('quotes')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 ${
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'quotes'
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <FileText size={18} />
-                My Quotes
+                Quotes
+              </button>
+              <button
+                onClick={() => setActiveTab('warranties')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'warranties'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Shield size={18} />
+                Warranties
+              </button>
+              <button
+                onClick={() => setActiveTab('invoices')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'invoices'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Download size={18} />
+                Invoices
               </button>
             </nav>
           </div>
@@ -306,7 +331,7 @@ const UserDashboard = () => {
                           </div>
                         )}
 
-                        {quote.status === 'accepted' && !quote.orderId && (
+                        {quote.status === 'approved' && (
                           <button
                             onClick={() => proceedToCheckout(quote)}
                             disabled={loading}
@@ -315,14 +340,187 @@ const UserDashboard = () => {
                             Proceed to Checkout
                           </button>
                         )}
-
-                        {quote.orderId && (
-                          <div className="mt-4 text-center text-sm text-green-600 font-medium">
-                            ✓ Order placed successfully
-                          </div>
-                        )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'warranties' && (
+              <div>
+                {warranties.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Shield size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500 mb-4">No warranties registered.</p>
+                    <button
+                      onClick={() => navigate('/warranty-registration')}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    >
+                      Register Warranty
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="mb-4 flex justify-end">
+                      <button
+                        onClick={() => navigate('/warranty-registration')}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                      >
+                        Register New Warranty
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      {warranties.map((warranty: any) => (
+                        <div
+                          key={warranty._id}
+                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h3 className="font-semibold text-lg text-gray-900">
+                                {warranty.productName}
+                              </h3>
+                              <p className="text-sm text-gray-500">
+                                Registered: {new Date(warranty.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                warranty.status
+                              )}`}
+                            >
+                              {getStatusIcon(warranty.status)}
+                              {warranty.status}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div>
+                              <p className="text-xs text-gray-500">Serial Number</p>
+                              <p className="font-medium text-gray-900">{warranty.serialNumber}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Model Number</p>
+                              <p className="font-medium text-gray-900">{warranty.modelNumber}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Purchase Date</p>
+                              <p className="font-medium text-gray-900">
+                                {new Date(warranty.purchaseDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Purchase Type</p>
+                              <p className="font-medium text-gray-900 capitalize">
+                                {warranty.purchaseType}
+                              </p>
+                            </div>
+                          </div>
+
+                          {warranty.warrantyStartDate && warranty.warrantyEndDate && (
+                            <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <p className="text-xs text-green-700">Warranty Period</p>
+                                  <p className="text-sm font-medium text-green-900">
+                                    {new Date(warranty.warrantyStartDate).toLocaleDateString()} -{' '}
+                                    {new Date(warranty.warrantyEndDate).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <CheckCircle className="text-green-600" size={20} />
+                              </div>
+                            </div>
+                          )}
+
+                          {warranty.invoiceUrl && (
+                            <div className="flex gap-2">
+                              <a
+                                href={warranty.invoiceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
+                              >
+                                <Eye size={16} />
+                                View Invoice
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'invoices' && (
+              <div>
+                {invoices.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Download size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500">No invoices found.</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Invoice ID
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Order ID
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {invoices.map((invoice: any) => (
+                            <tr key={invoice._id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 text-sm font-mono text-gray-900">
+                                #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-mono text-gray-900">
+                                #{invoice.orderId?._id?.slice(-8).toUpperCase() || 'N/A'}
+                              </td>
+                              <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                                ₹{invoice.totalAmount?.toLocaleString()}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {new Date(invoice.createdAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Paid
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <button
+                                  onClick={() => downloadInvoice(invoice._id)}
+                                  className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                >
+                                  <Download size={16} />
+                                  Download
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
