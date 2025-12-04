@@ -17,10 +17,10 @@ const UserDashboard = () => {
   const fetchData = async () => {
     try {
       const [ordersRes, quotesRes, warrantiesRes, invoicesRes] = await Promise.all([
-        api.get('/orders/myorders'),
-        api.get('/quotes'),
-        api.get('/warranties/my-warranties'),
-        api.get('/invoices/my-invoices')
+        api.get('/api/orders/myorders'),
+        api.get('/api/quotes'),
+        api.get('/api/warranties/my-warranties'),
+        api.get('/api/invoices/my-invoices')
       ]);
       
       setOrders(ordersRes.data);
@@ -41,7 +41,7 @@ const UserDashboard = () => {
     
     setLoading(true);
     try {
-      await api.put(`/quotes/${quoteId}/accept`);
+      await api.put(`/api/quotes/${quoteId}/accept`);
       alert('Quote accepted! You can now proceed to checkout with this quote.');
       fetchData();
     } catch (error: any) {
@@ -57,7 +57,7 @@ const UserDashboard = () => {
     
     setLoading(true);
     try {
-      await api.put(`/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`);
       alert('Quote rejected.');
       fetchData();
     } catch (error: any) {
@@ -71,15 +71,18 @@ const UserDashboard = () => {
   const proceedToCheckout = async (quote: any) => {
     setLoading(true);
     try {
+      const totalQty = quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0);
+      const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
+
       const products = quote.products.map((item: any) => ({
-        productId: item.productId._id,
+        productId: item.product._id,
         quantity: item.quantity,
-        price: quote.quotedPrice / quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0)
+        price: totalQty > 0 ? totalPrice / totalQty : 0
       }));
 
-      await api.post('/orders', {
+      await api.post('/api/orders', {
         products,
-        totalAmount: quote.quotedPrice,
+        totalAmount: totalPrice,
         quoteId: quote._id
       });
 

@@ -39,9 +39,9 @@ const Quote = () => {
     }
 
     try {
-      await api.post('/quotes', {
+      await api.post('/api/quotes', {
         products: itemsToQuote.map(item => ({
-          productId: item.product._id,
+          product: item.product._id,
           quantity: item.quantity
         })),
         message

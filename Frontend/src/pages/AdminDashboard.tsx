@@ -58,13 +58,21 @@ interface ProductUnit {
 
 interface Quote {
   _id: string;
-  userId: { _id: string; name: string; email: string };
-  products: Array<{ productId: { _id: string; name: string }; quantity: number }>;
-  message: string;
-  status: string;
-  adminResponse?: string;
+  // backend may populate as `user` or older shape `userId`
+  userId?: { _id: string; name: string; email: string };
+  user?: { _id: string; name: string; email: string };
+  // products may be under `productId` or `product` when populated
+  products: Array<{
+    productId?: { _id: string; name: string };
+    product?: { _id: string; name: string };
+    quantity: number;
+  }>;
+  message?: string;
+  status?: string;
+  // adminResponse can be a string (legacy) or an object with details
+  adminResponse?: any;
   quotedPrice?: number;
-  createdAt: string;
+  createdAt?: string;
 }
 
 interface Order {
@@ -120,6 +128,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // State for different sections
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
@@ -165,8 +174,10 @@ const AdminDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      await Promise.all([
+      // Load all data without failing if individual endpoints fail
+      await Promise.allSettled([
         loadAnalytics(),
         loadUsers(),
         loadProducts(),
@@ -175,8 +186,9 @@ const AdminDashboard: React.FC = () => {
         loadWarranties(),
         loadEmailLogs(),
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading dashboard data:', error);
+      // Don't set error state, allow dashboard to render with available data
     } finally {
       setLoading(false);
     }
@@ -184,28 +196,43 @@ const AdminDashboard: React.FC = () => {
 
   const loadAnalytics = async () => {
     try {
-      const response = await api.get('/admin/analytics');
+      const response = await api.get('/api/analytics');
       setAnalytics(response.data);
     } catch (error) {
       console.error('Error loading analytics:', error);
+      // Set default analytics if endpoint fails
+      setAnalytics({
+        totalSales: 0,
+        directSales: 0,
+        quoteSales: 0,
+        totalOrders: 0,
+        pendingQuotes: 0,
+        pendingWarranties: 0,
+        totalUsers: 0,
+        totalRetailers: 0,
+        totalProducts: 0,
+        lowStock: 0
+      });
     }
   };
 
   const loadUsers = async () => {
     try {
-      const response = await api.get('/admin/users');
+      const response = await api.get('/api/auth/users');
       setUsers(response.data);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
     }
   };
 
   const loadProducts = async () => {
     try {
-      const response = await api.get('/products');
+      const response = await api.get('/api/products');
       setProducts(response.data);
     } catch (error) {
       console.error('Error loading products:', error);
+      setProducts([]);
     }
   };
 
@@ -220,44 +247,48 @@ const AdminDashboard: React.FC = () => {
 
   const loadQuotes = async () => {
     try {
-      const response = await api.get('/admin/quotes');
+      const response = await api.get('/api/quotes');
       setQuotes(response.data);
     } catch (error) {
       console.error('Error loading quotes:', error);
+      setQuotes([]);
     }
   };
 
   const loadOrders = async () => {
     try {
-      const response = await api.get('/admin/orders');
+      const response = await api.get('/api/orders');
       setOrders(response.data);
     } catch (error) {
       console.error('Error loading orders:', error);
+      setOrders([]);
     }
   };
 
   const loadWarranties = async () => {
     try {
-      const response = await api.get('/admin/warranties');
+      const response = await api.get('/api/warranties');
       setWarranties(response.data);
     } catch (error) {
       console.error('Error loading warranties:', error);
+      setWarranties([]);
     }
   };
 
   const loadEmailLogs = async () => {
     try {
-      const response = await api.get('/admin/email-logs');
+      const response = await api.get('/api/email-logs');
       setEmailLogs(response.data);
     } catch (error) {
       console.error('Error loading email logs:', error);
+      setEmailLogs([]);
     }
   };
 
   // User Management
   const handleApproveRetailer = async (userId: string) => {
     try {
-      await api.post(`/admin/users/${userId}/approve`);
+      await api.put(`/api/auth/approve/${userId}`);
       alert('Retailer approved successfully');
       loadUsers();
     } catch (error: any) {
@@ -268,7 +299,7 @@ const AdminDashboard: React.FC = () => {
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      await api.delete(`/admin/users/${userId}`);
+      await api.delete(`/api/auth/users/${userId}`);
       alert('User deleted successfully');
       loadUsers();
     } catch (error: any) {
@@ -360,7 +391,7 @@ const AdminDashboard: React.FC = () => {
   const handleDeleteProduct = async (productId: string) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
     try {
-      await api.delete(`/admin/products/${productId}`);
+      await api.delete(`/api/products/${productId}`);
       alert('Product deleted successfully');
       loadProducts();
     } catch (error: any) {
@@ -375,10 +406,12 @@ const AdminDashboard: React.FC = () => {
       return;
     }
     try {
-      await api.post(`/admin/quotes/${quoteId}/respond`, {
-        adminResponse: quoteResponse.response,
-        quotedPrice: Number(quoteResponse.price),
-        status: 'approved',
+      // Compute discountPercentage if original total is available in quote.products
+      // Send to backend using the /respond endpoint
+      await api.put(`/api/quotes/${quoteId}/respond`, {
+        totalPrice: Number(quoteResponse.price),
+        discountPercentage: 0,
+        message: quoteResponse.response,
       });
       alert('Quote response sent successfully');
       setQuoteResponse({ id: '', response: '', price: '' });
@@ -392,10 +425,8 @@ const AdminDashboard: React.FC = () => {
     const reason = window.prompt('Enter rejection reason:');
     if (!reason) return;
     try {
-      await api.post(`/admin/quotes/${quoteId}/respond`, {
-        adminResponse: reason,
-        status: 'rejected',
-      });
+      await api.put(`/api/quotes/${quoteId}/reject`);
+      // Optionally you could send reason via another endpoint or email log
       alert('Quote rejected successfully');
       loadQuotes();
     } catch (error: any) {
@@ -406,7 +437,7 @@ const AdminDashboard: React.FC = () => {
   // Order Management
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
     try {
-      await api.patch(`/admin/orders/${orderId}`, { status });
+      await api.put(`/api/orders/${orderId}`, { status });
       alert('Order status updated successfully');
       loadOrders();
     } catch (error: any) {
@@ -417,7 +448,7 @@ const AdminDashboard: React.FC = () => {
   // Warranty Management
   const handleWarrantyAction = async (warrantyId: string, action: string) => {
     try {
-      await api.patch(`/admin/warranties/${warrantyId}`, { status: action });
+      await api.put(`/api/warranties/${warrantyId}`, { status: action });
       alert(`Warranty ${action} successfully`);
       loadWarranties();
     } catch (error: any) {
@@ -426,11 +457,11 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Email Logs
-  const handleResendEmail = async (logId: string) => {
+  const handleResendEmail = async (_logId: string) => {
     try {
-      await api.post(`/admin/email-logs/${logId}/resend`);
-      alert('Email resent successfully');
-      loadEmailLogs();
+      // await api.post(`/api/email-logs/${logId}/resend`);
+      alert('Email resend feature not yet implemented');
+      // loadEmailLogs();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to resend email');
     }
@@ -986,11 +1017,11 @@ const AdminDashboard: React.FC = () => {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-semibold text-lg">
-                  {quote.userId?.name || 'Unknown User'}
+                  {quote.user?.name || quote.userId?.name || 'Unknown User'}
                 </h3>
-                <p className="text-sm text-gray-600">{quote.userId?.email}</p>
+                <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {new Date(quote.createdAt).toLocaleString()}
+                  {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
                 </p>
               </div>
               <span
@@ -1011,7 +1042,7 @@ const AdminDashboard: React.FC = () => {
               <ul className="space-y-1">
                 {quote.products.map((item, idx) => (
                   <li key={idx} className="text-sm text-gray-600">
-                    • {item.productId?.name || 'Unknown Product'} (Qty: {item.quantity})
+                    • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
                   </li>
                 ))}
               </ul>
@@ -1026,17 +1057,17 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {quote.adminResponse && (
+            {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
               <div className="mb-4">
                 <h4 className="font-medium text-sm text-gray-700 mb-1">
                   Admin Response:
                 </h4>
                 <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                  {quote.adminResponse}
+                  {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
                 </p>
-                {quote.quotedPrice && (
+                {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
                   <p className="text-sm font-semibold text-gray-800 mt-2">
-                    Quoted Price: ₹{quote.quotedPrice}
+                    Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
                   </p>
                 )}
               </div>
@@ -1370,7 +1401,17 @@ const AdminDashboard: React.FC = () => {
   // Render Content Management Tab
   const renderContentManagement = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Content Management</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Content Management</h2>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/admin/blog-management')} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">📝 Blogs</button>
+          <button onClick={() => navigate('/admin/team-management')} className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">👥 Team</button>
+          <button onClick={() => navigate('/admin/event-management')} className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">📅 Events</button>
+          <button onClick={() => navigate('/admin/report-management')} className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700">📊 Reports</button>
+          <button onClick={() => navigate('/admin/page-content')} className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">📄 Pages</button>
+          <button onClick={() => navigate('/admin/stats-management')} className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">📈 Stats</button>
+        </div>
+      </div>
       
       <div className="grid md:grid-cols-3 gap-6">
         {/* Blog Posts */}
@@ -1381,7 +1422,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Manage blog articles and publications</p>
           <button 
-            onClick={() => window.location.href = '/admin/blog-management'}
+            onClick={() => navigate('/admin/blog-management')}
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Manage Blogs
@@ -1396,7 +1437,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Manage leadership and team profiles</p>
           <button 
-            onClick={() => window.location.href = '/admin/team-management'}
+            onClick={() => navigate('/admin/team-management')}
             className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             Manage Team
@@ -1411,7 +1452,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Manage investor events and webinars</p>
           <button 
-            onClick={() => window.location.href = '/admin/event-management'}
+            onClick={() => navigate('/admin/event-management')}
             className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
           >
             Manage Events
@@ -1426,7 +1467,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Manage financial and investor reports</p>
           <button 
-            onClick={() => window.location.href = '/admin/report-management'}
+            onClick={() => navigate('/admin/report-management')}
             className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors"
           >
             Manage Reports
@@ -1441,7 +1482,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Edit About, Mission, Vision, etc.</p>
           <button 
-            onClick={() => window.location.href = '/admin/page-content'}
+            onClick={() => navigate('/admin/page-content')}
             className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
           >
             Edit Content
@@ -1456,7 +1497,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <p className="text-gray-600 mb-4">Update homepage statistics</p>
           <button 
-            onClick={() => window.location.href = '/admin/stats-management'}
+            onClick={() => navigate('/admin/stats-management')}
             className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
           >
             Update Stats
@@ -1491,12 +1532,12 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 pt-28 md:pt-32">
       {/* Header */}
-      <div className="bg-white shadow">
+      <div className="bg-white shadow fixed top-0 left-0 right-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Admin Dashboard</h1>
             <button
               onClick={() => {
                 localStorage.removeItem('token');
@@ -1511,24 +1552,70 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* QUICK NAVIGATION - Content Management Pages */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg fixed top-16 md:top-20 left-0 right-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
+          <h2 className="text-white font-bold mb-2 md:mb-3 text-sm md:text-lg">🚀 Quick Access - Content Management</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            <button
+              onClick={() => navigate('/admin/blog-management')}
+              className="bg-white hover:bg-blue-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              📝 Blogs
+            </button>
+            <button
+              onClick={() => navigate('/admin/team-management')}
+              className="bg-white hover:bg-green-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              👥 Team
+            </button>
+            <button
+              onClick={() => navigate('/admin/event-management')}
+              className="bg-white hover:bg-purple-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              📅 Events
+            </button>
+            <button
+              onClick={() => navigate('/admin/report-management')}
+              className="bg-white hover:bg-orange-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              📊 Reports
+            </button>
+            <button
+              onClick={() => navigate('/admin/page-content')}
+              className="bg-white hover:bg-indigo-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              📄 Pages
+            </button>
+            <button
+              onClick={() => navigate('/admin/stats-management')}
+              className="bg-white hover:bg-red-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
+            >
+              📈 Stats
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto">
+      <div className="bg-white shadow sticky top-[200px] md:top-[220px] z-20">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {tab.name}
+                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">{tab.name}</span>
+                  <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
                 </button>
               );
             })}
@@ -1537,8 +1624,37 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {loading ? (
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 md:py-8">
+        {error ? (
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
+            <div className="flex items-start">
+              <AlertCircle className="text-red-500 mt-1 flex-shrink-0" size={24} />
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Dashboard</h3>
+                <p className="text-red-700 mb-4">{error}</p>
+                <div className="space-y-2 text-sm text-red-600">
+                  <p><strong>Troubleshooting steps:</strong></p>
+                  <ol className="list-decimal ml-5 space-y-1">
+                    <li>Make sure the backend server is running on port 5000</li>
+                    <li>Check if MongoDB is connected</li>
+                    <li>Verify your .env file has correct configuration</li>
+                    <li>Check browser console for detailed errors</li>
+                  </ol>
+                </div>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    loadDashboardData();
+                  }}
+                  className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                >
+                  <RefreshCw size={16} />
+                  Retry Loading
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>

@@ -16,6 +16,12 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
 import WarrantyRegistration from './pages/WarrantyRegistration';
 import RetailerInventory from './pages/RetailerInventory';
+import BlogManagement from './pages/admin/BlogManagement';
+import TeamManagement from './pages/admin/TeamManagement';
+import EventManagement from './pages/admin/EventManagement';
+import ReportManagement from './pages/admin/ReportManagement';
+import PageContent from './pages/admin/PageContent';
+import StatsManagement from './pages/admin/StatsManagement';
 
 function App() {
   return (
@@ -35,6 +41,12 @@ function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/quote" element={<Quote />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/blog-management" element={<BlogManagement />} />
+            <Route path="/admin/team-management" element={<TeamManagement />} />
+            <Route path="/admin/event-management" element={<EventManagement />} />
+            <Route path="/admin/report-management" element={<ReportManagement />} />
+            <Route path="/admin/page-content" element={<PageContent />} />
+            <Route path="/admin/stats-management" element={<StatsManagement />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/warranty" element={<WarrantyRegistration />} />
             <Route path="/retailer-inventory" element={<RetailerInventory />} />

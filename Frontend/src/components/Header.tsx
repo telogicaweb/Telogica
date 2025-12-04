@@ -16,7 +16,8 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
       <div className="border-b border-gray-200 hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-end items-center h-10 text-sm">
@@ -55,7 +56,7 @@ export default function Header() {
 
             {/* Logo */}
             <Link to="/" className="absolute left-1/2 transform -translate-x-1/2 cursor-pointer hover:opacity-80 transition-opacity">
-              <img src="/telogica_logo.png" alt="Telogica" className="h-12 md:h-16 w-auto" />
+              <img src="../telogica_logo.png" alt="Telogica" className="h-20 md:h-16 w-auto" />
             </Link>
 
             {/* Icons */}
@@ -109,6 +110,13 @@ export default function Header() {
           </div>
         </div>
       )}
-    </header>
+      </header>
+
+      {/* Spacer to offset the fixed header so page content does not sit underneath it.
+          Mobile: header height = h-20 (80px)
+          Desktop (md+): top strip (h-10) + main (h-20) = 120px -> md:h-[120px]
+          Using a spacer here avoids adding <br/> to every page and centralizes the layout fix. */}
+      <div className="h-20 md:h-[120px] w-full" aria-hidden="true" />
+    </>
   );
 }
