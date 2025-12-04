@@ -9,7 +9,35 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+// CORS Configuration for production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // If CORS_ORIGINS is set to '*', allow all origins
+    if (process.env.CORS_ORIGINS === '*') {
+      return callback(null, true);
+    }
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://telogica-p7tf.vercel.app',
+      'https://telogica.onrender.com'
+    ];
+    
+    // Allow requests with no origin (like mobile apps, curl requests, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const authRoutes = require('./routes/authRoutes');

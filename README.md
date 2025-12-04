@@ -2,6 +2,11 @@
 
 A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) e-commerce platform with warranty management, automated invoice generation, product unit tracking, retailer inventory management, and comprehensive email notifications.
 
+## 🌐 Live Deployments
+
+- **Frontend (Vercel)**: https://telogica-p7tf.vercel.app/
+- **Backend API (Render)**: https://telogica.onrender.com
+
 ## 🚀 Key Features
 
 ### Complete Warranty Management System
@@ -156,6 +161,8 @@ Telogica/
 
 ## 🛠️ Setup Instructions
 
+> **📘 For production deployment instructions, see [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**
+
 ### Prerequisites
 
 - Node.js (v14 or higher)
@@ -174,7 +181,12 @@ Telogica/
    npm install
    ```
 
-3. Create `.env` file with the following variables:
+3. Copy `.env.example` to `.env` and configure:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration:
    ```env
    PORT=5000
    MONGO_URI=your_mongodb_connection_string
@@ -193,6 +205,7 @@ Telogica/
    # Configuration
    MAX_DIRECT_PURCHASE_ITEMS=3
    FRONTEND_URL=http://localhost:5173
+   CORS_ORIGINS=*
    ```
 
 4. Start the server:
@@ -214,12 +227,22 @@ Telogica/
    npm install
    ```
 
-3. Start development server:
+3. Copy `.env.example` to `.env` and configure:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration:
+   ```env
+   VITE_API_URL=http://localhost:5000
+   ```
+
+4. Start development server:
    ```bash
    npm run dev
    ```
 
-4. Build for production:
+5. Build for production:
    ```bash
    npm run build
    ```
@@ -227,6 +250,7 @@ Telogica/
 ## 📖 Documentation
 
 ### For Developers
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Production deployment instructions for Vercel and Render
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Complete API reference with examples
 - **[FEATURE_SUMMARY.md](./FEATURE_SUMMARY.md)** - Comprehensive feature documentation
 - **[SECURITY_REVIEW.md](./SECURITY_REVIEW.md)** - Security analysis and recommendations
