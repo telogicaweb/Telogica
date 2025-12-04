@@ -11,6 +11,8 @@ import Cart from './pages/Cart';
 import Quote from './pages/Quote';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
+import WarrantyRegistration from './pages/WarrantyRegistration';
+import RetailerInventory from './pages/RetailerInventory';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
             <Route path="/quote" element={<Quote />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
+            <Route path="/warranty" element={<WarrantyRegistration />} />
+            <Route path="/retailer-inventory" element={<RetailerInventory />} />
           </Routes>
         </Router>
       </CartProvider>

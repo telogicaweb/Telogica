@@ -1,7 +1,11 @@
 const Order = require('../models/Order');
 const Quote = require('../models/Quote');
+const ProductUnit = require('../models/ProductUnit');
+const Invoice = require('../models/Invoice');
+const RetailerInventory = require('../models/RetailerInventory');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const { sendEmail } = require('../utils/mailer');
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -85,6 +89,15 @@ const createOrder = async (req, res) => {
       await Quote.findByIdAndUpdate(quoteId, { orderId: createdOrder._id });
     }
 
+    // Send order confirmation email
+    await sendEmail(
+      req.user.email,
+      'Order Created - Telogica',
+      `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
+      'order_confirmation',
+      { entityType: 'order', entityId: createdOrder._id }
+    );
+
     res.status(201).json({ order: createdOrder, razorpayOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -112,6 +125,123 @@ const verifyPayment = async (req, res) => {
       order.razorpayPaymentId = razorpayPaymentId;
       order.razorpaySignature = razorpaySignature;
       await order.save();
+
+      await order.populate('user products.product');
+
+      // Assign product units to the order
+      const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
+      for (const item of order.products) {
+        try {
+          // Assign units to order
+          const filter = { 
+            product: item.product._id, 
+            status: 'available' 
+          };
+
+          if (stockType === 'offline') {
+            filter.stockType = { $in: ['offline', 'both'] };
+          } else {
+            filter.stockType = { $in: ['online', 'both'] };
+          }
+
+          const units = await ProductUnit.find(filter).limit(item.quantity);
+
+          await Promise.all(
+            units.map(unit => 
+              ProductUnit.findByIdAndUpdate(
+                unit._id,
+                {
+                  status: 'sold',
+                  currentOwner: order.user._id,
+                  order: order._id,
+                  soldDate: new Date(),
+                  retailer: order.user.role === 'retailer' ? order.user._id : null,
+                  retailerPurchaseDate: order.user.role === 'retailer' ? new Date() : null
+                }
+              )
+            )
+          );
+
+          // If retailer purchase, add to retailer inventory
+          if (order.user.role === 'retailer') {
+            await Promise.all(
+              units.map(unit => 
+                RetailerInventory.create({
+                  retailer: order.user._id,
+                  productUnit: unit._id,
+                  product: item.product._id,
+                  purchaseOrder: order._id,
+                  purchaseDate: new Date(),
+                  purchasePrice: item.price,
+                  status: 'in_stock'
+                })
+              )
+            );
+          }
+        } catch (error) {
+          console.error('Error assigning units:', error);
+        }
+      }
+
+      // Generate invoice
+      try {
+        const productsWithSerials = await Promise.all(
+          order.products.map(async (item) => {
+            const units = await ProductUnit.find({
+              order: order._id,
+              product: item.product._id
+            }).limit(item.quantity);
+
+            return {
+              product: item.product._id,
+              productName: item.product.name,
+              quantity: item.quantity,
+              price: item.price,
+              serialNumbers: units.map(u => u.serialNumber)
+            };
+          })
+        );
+
+        const subtotal = order.products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        await Invoice.create({
+          user: order.user._id,
+          order: order._id,
+          products: productsWithSerials,
+          subtotal,
+          discount: order.discountApplied || 0,
+          tax: 0,
+          totalAmount: order.totalAmount,
+          shippingAddress: order.shippingAddress,
+          billingAddress: order.shippingAddress,
+          paymentMethod: 'Razorpay',
+          paymentStatus: 'completed',
+          invoiceDate: new Date(),
+          paidDate: new Date()
+        });
+      } catch (error) {
+        console.error('Error generating invoice:', error);
+      }
+
+      // Send payment confirmation email
+      await sendEmail(
+        order.user.email,
+        'Payment Successful - Telogica',
+        `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}. Your invoice has been generated.`,
+        'payment_confirmation',
+        { entityType: 'order', entityId: order._id }
+      );
+
+      // Notify admin
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
+      await sendEmail(
+        adminEmail,
+        'New Order Placed',
+        `New order from ${order.user.name} (${order.user.role}). Order ID: ${order._id}. Amount: ₹${order.totalAmount}`,
+        'order_confirmation',
+        { entityType: 'order', entityId: order._id }
+      );
+
       res.json({ message: 'Payment verified successfully' });
     } else {
       order.paymentStatus = 'failed';

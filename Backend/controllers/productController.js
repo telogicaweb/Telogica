@@ -33,7 +33,20 @@ const getProductById = async (req, res) => {
 // @route   POST /api/products
 // @access  Private/Admin
 const createProduct = async (req, res) => {
-  const { name, description, images, price, category, stock, isRecommended } = req.body;
+  const { 
+    name, 
+    description, 
+    images, 
+    price, 
+    retailerPrice,
+    category, 
+    stock, 
+    offlineStock,
+    isRecommended,
+    specifications,
+    warrantyPeriodMonths,
+    requiresQuote
+  } = req.body;
 
   try {
     const product = new Product({
@@ -41,9 +54,14 @@ const createProduct = async (req, res) => {
       description,
       images,
       price,
+      retailerPrice,
       category,
-      stock,
-      isRecommended
+      stock: stock || 0,
+      offlineStock: offlineStock || 0,
+      isRecommended,
+      specifications,
+      warrantyPeriodMonths: warrantyPeriodMonths || 12,
+      requiresQuote: requiresQuote || !price // Auto-set if price missing
     });
 
     const createdProduct = await product.save();
@@ -57,7 +75,20 @@ const createProduct = async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Private/Admin
 const updateProduct = async (req, res) => {
-  const { name, description, images, price, category, stock, isRecommended } = req.body;
+  const { 
+    name, 
+    description, 
+    images, 
+    price, 
+    retailerPrice,
+    category, 
+    stock, 
+    offlineStock,
+    isRecommended,
+    specifications,
+    warrantyPeriodMonths,
+    requiresQuote
+  } = req.body;
 
   try {
     const product = await Product.findById(req.params.id);
@@ -67,9 +98,14 @@ const updateProduct = async (req, res) => {
       product.description = description || product.description;
       product.images = images || product.images;
       product.price = price !== undefined ? price : product.price;
+      product.retailerPrice = retailerPrice !== undefined ? retailerPrice : product.retailerPrice;
       product.category = category || product.category;
       product.stock = stock !== undefined ? stock : product.stock;
+      product.offlineStock = offlineStock !== undefined ? offlineStock : product.offlineStock;
       product.isRecommended = isRecommended !== undefined ? isRecommended : product.isRecommended;
+      product.specifications = specifications || product.specifications;
+      product.warrantyPeriodMonths = warrantyPeriodMonths || product.warrantyPeriodMonths;
+      product.requiresQuote = requiresQuote !== undefined ? requiresQuote : (!product.price);
 
       const updatedProduct = await product.save();
       res.json(updatedProduct);
