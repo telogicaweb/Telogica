@@ -208,7 +208,17 @@ Telogica/
    CORS_ORIGINS=*
    ```
 
-4. Start the server:
+4. Create initial admin user:
+   ```bash
+   npm run seed:admin
+   ```
+   
+   This will create an admin user with:
+   - Email: admin@telogica.com
+   - Password: Admin@123
+   - **⚠️ Change this password after first login!**
+
+5. Start the server:
    ```bash
    npm start
    # or for development

@@ -1,12 +1,9 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../api';
-import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info } from 'lucide-react';
 
 const WarrantyRegistration = () => {
-  const authContext = useContext(AuthContext);
-  const user = authContext?.user;
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     productId: '',
@@ -17,25 +14,14 @@ const WarrantyRegistration = () => {
     purchaseType: 'telogica_online',
     invoice: ''
   });
-  const [orders, setOrders] = useState<any[]>([]);
   const [warranties, setWarranties] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [serialValid, setSerialValid] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
 
   useEffect(() => {
-    fetchOrders();
     fetchWarranties();
   }, []);
-
-  const fetchOrders = async () => {
-    try {
-      const res = await api.get('/orders/myorders');
-      setOrders(res.data.filter((order: any) => order.paymentStatus === 'completed'));
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    }
-  };
 
   const fetchWarranties = async () => {
     try {

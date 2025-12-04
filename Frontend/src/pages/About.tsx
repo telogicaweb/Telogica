@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Building2, Users, Award, Globe, Target, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, Award, Globe, Target, Zap } from 'lucide-react';
 import api from '../api';
 
 interface TeamMember {

@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
-import { Package, DollarSign, User, Upload, Calendar, Info } from 'lucide-react';
+import { Package, DollarSign, Upload, Info } from 'lucide-react';
 
 const RetailerInventory = () => {
   const authContext = useContext(AuthContext);
