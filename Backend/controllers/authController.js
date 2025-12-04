@@ -13,6 +13,11 @@ const registerUser = async (req, res) => {
   const { name, email, password, role, phone, address } = req.body;
 
   try {
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Please provide name, email, and password' });
+    }
+
     const userExists = await User.findOne({ email });
 
     if (userExists) {
@@ -31,23 +36,33 @@ const registerUser = async (req, res) => {
     if (user) {
       // Notify admin of new registration
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
-      await sendEmail(
-        adminEmail,
-        'New User Registration',
-        `New user registered: ${name} (${email}) - Role: ${role || 'user'}`,
-        'user_registration',
-        { entityType: 'user', entityId: user._id }
-      );
-
-      // Notify admin if retailer registers
-      if (role === 'retailer') {
+      try {
         await sendEmail(
           adminEmail,
-          'New Retailer Registration - Approval Required',
-          `Retailer ${name} (${email}) has registered and needs approval before they can login.`,
+          'New User Registration',
+          `New user registered: ${name} (${email}) - Role: ${role || 'user'}`,
           'user_registration',
           { entityType: 'user', entityId: user._id }
         );
+      } catch (emailError) {
+        console.error('Failed to send admin notification email:', emailError.message);
+        // Don't fail registration if email fails
+      }
+
+      // Notify admin if retailer registers
+      if (role === 'retailer') {
+        try {
+          await sendEmail(
+            adminEmail,
+            'New Retailer Registration - Approval Required',
+            `Retailer ${name} (${email}) has registered and needs approval before they can login.`,
+            'user_registration',
+            { entityType: 'user', entityId: user._id }
+          );
+        } catch (emailError) {
+          console.error('Failed to send retailer notification email:', emailError.message);
+          // Don't fail registration if email fails
+        }
       }
 
       res.status(201).json({
@@ -62,7 +77,8 @@ const registerUser = async (req, res) => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error);
+    res.status(500).json({ message: error.message || 'Registration failed' });
   }
 };
 
@@ -73,11 +89,16 @@ const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Validate required fields
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
+
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
       if (!user.isApproved) {
-        return res.status(403).json({ message: 'Account not approved yet' });
+        return res.status(403).json({ message: 'Account not approved yet. Please wait for admin approval.' });
       }
 
       res.json({
@@ -91,7 +112,8 @@ const loginUser = async (req, res) => {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({ message: error.message || 'Login failed' });
   }
 };
 
