@@ -39,11 +39,18 @@ const createAdminUser = async () => {
       return;
     }
 
+    // Get password from environment variable or use default
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+    
+    if (!process.env.ADMIN_PASSWORD) {
+      console.log('⚠ WARNING: Using default password. Set ADMIN_PASSWORD environment variable for production.');
+    }
+
     // Create new admin user
     const adminUser = await User.create({
       name: 'Admin',
       email: 'admin@telogica.com',
-      password: 'Admin@123', // This will be hashed automatically by the User model pre-save hook
+      password: adminPassword, // This will be hashed automatically by the User model pre-save hook
       role: 'admin',
       isApproved: true,
       phone: '+91-1234567890',
@@ -55,7 +62,7 @@ const createAdminUser = async () => {
     console.log('Admin Login Credentials:');
     console.log('=================================');
     console.log('Email:', adminUser.email);
-    console.log('Password: Admin@123');
+    console.log('Password:', adminPassword === 'Admin@123' ? 'Admin@123 (default)' : '****** (from ADMIN_PASSWORD env var)');
     console.log('Role:', adminUser.role);
     console.log('=================================');
     console.log('\n⚠ IMPORTANT: Change the password after first login!');

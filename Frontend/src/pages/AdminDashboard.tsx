@@ -148,9 +148,6 @@ const AdminDashboard: React.FC = () => {
   >([]);
 
   const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
-  // const [warrantyAction, setWarrantyAction] = useState({ id: '', action: '' });
-  // const [searchTerm, setSearchTerm] = useState('');
-  // const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     const user = localStorage.getItem('user');
