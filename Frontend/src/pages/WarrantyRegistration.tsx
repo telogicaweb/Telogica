@@ -25,7 +25,7 @@ const WarrantyRegistration = () => {
 
   const fetchWarranties = async () => {
     try {
-      const res = await api.get('/warranties/my-warranties');
+      const res = await api.get('/api/warranties/my-warranties');
       setWarranties(res.data);
     } catch (error) {
       console.error('Error fetching warranties:', error);
@@ -36,7 +36,7 @@ const WarrantyRegistration = () => {
     if (!serialNumber) return;
 
     try {
-      const res = await api.get(`/warranties/check-serial?serialNumber=${serialNumber}`);
+      const res = await api.get(`/api/warranties/check-serial?serialNumber=${serialNumber}`);
       setSerialValid(res.data.valid && !res.data.alreadyRegistered);
       if (res.data.alreadyRegistered) {
         alert('This serial number is already registered for warranty.');
@@ -62,7 +62,7 @@ const WarrantyRegistration = () => {
 
     setLoading(true);
     try {
-      await api.post('/warranties', formData);
+      await api.post('/api/warranties', formData);
       alert('Warranty registered successfully! You will receive an email notification once admin reviews it.');
       setFormData({
         productId: '',

@@ -29,7 +29,7 @@ const RetailerInventory = () => {
   const fetchInventory = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/retailer-inventory/my-inventory');
+      const res = await api.get('/api/retailer-inventory/my-inventory');
       setInventory(res.data);
     } catch (error) {
       console.error('Error fetching inventory:', error);
@@ -63,7 +63,7 @@ const RetailerInventory = () => {
     setLoading(true);
     try {
       await api.post(
-        `/retailer-inventory/${selectedItem._id}/sell`,
+        `/api/retailer-inventory/${selectedItem._id}/sell`,
         sellFormData
       );
       alert('Product marked as sold successfully! Warranty has been registered for the customer and both you and the customer will receive email notifications.');
