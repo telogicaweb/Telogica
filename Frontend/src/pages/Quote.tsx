@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
@@ -14,10 +14,8 @@ const Quote = () => {
   // Auto-populate quote items from cart if user has more than 3 items
   useEffect(() => {
     if (user?.role === 'user' && cart.length > 3 && quoteItems.length === 0) {
-      // Move all cart items to quote
-      cart.forEach(item => {
-        // This would ideally be handled by the context, but for now we'll just show them
-      });
+      // Items are already in cart, no need to duplicate them
+      // The UI will show cart items if quote items are empty
     }
   }, [cart, user, quoteItems]);
 

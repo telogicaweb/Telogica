@@ -1,10 +1,12 @@
-import React, { createContext, useState, ReactNode } from 'react';
+import { createContext, useState, ReactNode } from 'react';
 
 interface Product {
   _id: string;
   name: string;
   price?: number;
   images: string[];
+  category?: string;
+  description?: string;
 }
 
 interface CartItem {

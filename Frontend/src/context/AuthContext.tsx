@@ -1,5 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import { createContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
   _id: string;
@@ -7,6 +6,8 @@ interface User {
   email: string;
   role: 'admin' | 'user' | 'retailer';
   token: string;
+  address?: string;
+  phone?: string;
 }
 
 interface AuthContextType {

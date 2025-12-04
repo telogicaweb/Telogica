@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -71,7 +71,7 @@ const UserDashboard = () => {
   const proceedToCheckout = async (quote: any) => {
     setLoading(true);
     try {
-      const { data } = await axios.post('http://localhost:5000/api/orders', {
+      await axios.post('http://localhost:5000/api/orders', {
         products: quote.products.map((item: any) => ({
           product: item.product._id,
           quantity: item.quantity,
