@@ -1,0 +1,165 @@
+import React, { useContext } from 'react';
+import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
+import axios from 'axios';
+import { useNavigate, Link } from 'react-router-dom';
+import { Trash2, ArrowRight, ShoppingBag } from 'lucide-react';
+
+const Cart = () => {
+  const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
+  const { user } = useContext(AuthContext)!;
+  const navigate = useNavigate();
+
+  const subtotal = cart.reduce((acc, item) => acc + (item.product.price || 0) * item.quantity, 0);
+  const shipping = 0; // Free shipping for now
+  const total = subtotal + shipping;
+
+  const handleCheckout = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/orders', {
+        products: cart.map(item => ({
+          product: item.product._id,
+          quantity: item.quantity,
+          price: item.product.price
+        })),
+        totalAmount: total,
+        shippingAddress: user.address || 'Default Address'
+      }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+
+      // Here you would integrate Razorpay checkout using data.razorpayOrder
+      alert('Order Created! Proceed to Payment (Mock)');
+      
+      // Mock Payment Verification
+      await axios.post('http://localhost:5000/api/orders/verify', {
+        orderId: data.order._id,
+        razorpayPaymentId: 'mock_payment_id',
+        razorpaySignature: 'mock_signature' // This will fail on backend due to signature check, but flow is there
+      }, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+
+      clearCart();
+      navigate('/user-dashboard');
+    } catch (error) {
+      console.error(error);
+      alert('Checkout Failed');
+    }
+  };
+
+  if (cart.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-24 pb-12 flex flex-col items-center justify-center">
+        <div className="text-center">
+          <div className="bg-white p-6 rounded-full shadow-sm inline-block mb-4">
+            <ShoppingBag size={48} className="text-gray-300" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
+          <p className="text-gray-500 mb-8">Looks like you haven't added anything to your cart yet.</p>
+          <Link 
+            to="/" 
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+          >
+            Start Shopping
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
+        
+        <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
+          <div className="lg:col-span-7">
+            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+              <ul className="divide-y divide-gray-200">
+                {cart.map((item) => (
+                  <li key={item.product._id} className="p-6 flex">
+                    <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden">
+                      <img
+                        src={item.product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
+                        alt={item.product.name}
+                        className="w-full h-full object-center object-cover"
+                      />
+                    </div>
+
+                    <div className="ml-4 flex-1 flex flex-col">
+                      <div>
+                        <div className="flex justify-between text-base font-medium text-gray-900">
+                          <h3>
+                            <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
+                          </h3>
+                          <p className="ml-4">${(item.product.price || 0) * item.quantity}</p>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
+                      </div>
+                      <div className="flex-1 flex items-end justify-between text-sm">
+                        <p className="text-gray-500">Qty {item.quantity}</p>
+
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.product._id)}
+                          className="font-medium text-red-600 hover:text-red-500 flex items-center gap-1"
+                        >
+                          <Trash2 size={16} />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 mt-8 lg:mt-0">
+            <div className="bg-white shadow-sm rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
+              
+              <dl className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <dt className="text-sm text-gray-600">Subtotal</dt>
+                  <dd className="text-sm font-medium text-gray-900">${subtotal.toFixed(2)}</dd>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                  <dt className="text-base font-medium text-gray-900">Order Total</dt>
+                  <dd className="text-base font-medium text-gray-900">${total.toFixed(2)}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-6">
+                <button
+                  onClick={handleCheckout}
+                  className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                >
+                  Checkout
+                  <ArrowRight size={18} className="ml-2" />
+                </button>
+              </div>
+              
+              <div className="mt-4 text-center text-sm text-gray-500">
+                <p>
+                  or{' '}
+                  <Link to="/" className="text-indigo-600 font-medium hover:text-indigo-500">
+                    Continue Shopping
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Cart;
