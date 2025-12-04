@@ -150,6 +150,9 @@ const AdminDashboard: React.FC = () => {
     retailerPrice: '',
     quantity: 1,
     imageUrl: '',
+    additionalImages: '',
+    warrantyPeriodMonths: 12,
+    isRecommended: false,
     requiresQuote: false,
   });
   const [productUnitsForm, setProductUnitsForm] = useState<
@@ -348,11 +351,15 @@ const AdminDashboard: React.FC = () => {
         category: productForm.category,
         price: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
         retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
-        images: productForm.imageUrl ? [productForm.imageUrl] : [],
+        images: [
+          productForm.imageUrl,
+          ...(productForm.additionalImages ? productForm.additionalImages.split(',').map(url => url.trim()).filter(url => url) : [])
+        ].filter(url => url),
         stock: 0, // Will be updated after adding units
         offlineStock: 0,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
-        warrantyPeriodMonths: 12,
+        warrantyPeriodMonths: productForm.warrantyPeriodMonths || 12,
+        isRecommended: productForm.isRecommended || false,
       };
 
       const productResponse = await api.post('/api/products', productData);
@@ -669,8 +676,40 @@ const AdminDashboard: React.FC = () => {
                     setProductForm({ ...productForm, imageUrl: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Main product image URL"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warranty Period (months)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={productForm.warrantyPeriodMonths}
+                  onChange={(e) =>
+                    setProductForm({ ...productForm, warrantyPeriodMonths: Number(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Image URLs (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={productForm.additionalImages}
+                onChange={(e) =>
+                  setProductForm({ ...productForm, additionalImages: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+              />
+              <p className="text-xs text-gray-500 mt-1">Enter additional product image URLs separated by commas</p>
             </div>
 
             <div>
@@ -687,19 +726,36 @@ const AdminDashboard: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="requiresQuote"
-                checked={productForm.requiresQuote}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, requiresQuote: e.target.checked })
-                }
-                className="w-4 h-4"
-              />
-              <label htmlFor="requiresQuote" className="text-sm text-gray-700">
-                Requires Quote (Quote-only product)
-              </label>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requiresQuote"
+                  checked={productForm.requiresQuote}
+                  onChange={(e) =>
+                    setProductForm({ ...productForm, requiresQuote: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                />
+                <label htmlFor="requiresQuote" className="text-sm text-gray-700">
+                  Requires Quote (Quote-only product)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isRecommended"
+                  checked={productForm.isRecommended}
+                  onChange={(e) =>
+                    setProductForm({ ...productForm, isRecommended: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                />
+                <label htmlFor="isRecommended" className="text-sm text-gray-700">
+                  Recommended Product
+                </label>
+              </div>
             </div>
 
             {/* Serial Numbers and Model Numbers for each unit */}
@@ -798,6 +854,9 @@ const AdminDashboard: React.FC = () => {
                     retailerPrice: '',
                     quantity: 1,
                     imageUrl: '',
+                    additionalImages: '',
+                    warrantyPeriodMonths: 12,
+                    isRecommended: false,
                     requiresQuote: false,
                   });
                   setProductUnitsForm([]);

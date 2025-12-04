@@ -334,7 +334,7 @@ const UserDashboard = () => {
                           </div>
                         )}
 
-                        {quote.status === 'approved' && (
+                        {quote.status === 'accepted' && (
                           <button
                             onClick={() => proceedToCheckout(quote)}
                             disabled={loading}
