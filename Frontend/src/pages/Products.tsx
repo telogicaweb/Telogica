@@ -2,6 +2,7 @@ import { useEffect, useState, useContext, useCallback } from 'react';
 import api from '../api';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
 import { ShoppingCart, FileText, Eye, Package, Search, Filter } from 'lucide-react';
 
 interface Product {
@@ -25,6 +26,7 @@ const Products = () => {
   const [showQuoteOnly, setShowQuoteOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const { addToCart, addToQuote } = useContext(CartContext)!;
+  const { user } = useContext(AuthContext)!;
 
   useEffect(() => {
     fetchProducts();
@@ -230,13 +232,29 @@ const Products = () => {
                   
                   {/* Price */}
                   <div className="mb-4">
-                    {product.price && !product.requiresQuote ? (
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
-                        <span className="text-sm text-gray-500">+ GST</span>
-                      </div>
+                    {user?.role === 'retailer' ? (
+                      // Retailer-specific pricing
+                      product.retailerPrice ? (
+                        <div>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-gray-900">₹{product.retailerPrice.toLocaleString()}</span>
+                            <span className="text-sm text-gray-500">+ GST</span>
+                          </div>
+                          <p className="text-xs text-indigo-600 mt-1">Retailer Price</p>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-semibold text-blue-600">Request Quote</p>
+                      )
                     ) : (
-                      <p className="text-lg font-semibold text-blue-600">Price on Request</p>
+                      // Regular user pricing
+                      product.price && !product.requiresQuote ? (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
+                          <span className="text-sm text-gray-500">+ GST</span>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-semibold text-blue-600">Price on Request</p>
+                      )
                     )}
                   </div>
                   
@@ -250,22 +268,35 @@ const Products = () => {
                       View Details
                     </Link>
                     <div className="grid grid-cols-2 gap-2">
-                      {product.price && !product.requiresQuote && (
+                      {user?.role === 'retailer' ? (
+                        // Retailers must request quote for all purchases
                         <button 
-                          onClick={() => handleAddToCart(product)} 
-                          className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
+                          onClick={() => handleAddToQuote(product)} 
+                          className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
                         >
-                          <ShoppingCart className="w-4 h-4" />
-                          Cart
+                          <FileText className="w-4 h-4" />
+                          Request Quote
                         </button>
+                      ) : (
+                        <>
+                          {product.price && !product.requiresQuote && (
+                            <button 
+                              onClick={() => handleAddToCart(product)} 
+                              className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                              Cart
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => handleAddToQuote(product)} 
+                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(!product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Quote
+                          </button>
+                        </>
                       )}
-                      <button 
-                        onClick={() => handleAddToQuote(product)} 
-                        className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(!product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        Quote
-                      </button>
                     </div>
                   </div>
                 </div>

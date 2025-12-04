@@ -41,7 +41,7 @@ export default function Hero() {
   };
 
   return (
-    <div className="relative h-screen overflow-hidden mt-[120px]">
+    <div className="relative h-screen overflow-hidden">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
