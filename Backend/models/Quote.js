@@ -4,7 +4,8 @@ const quoteSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   products: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { type: Number, required: true }
+    quantity: { type: Number, required: true },
+    originalPrice: { type: Number } // Store original price for reference
   }],
   message: { type: String },
   status: { 
@@ -13,9 +14,13 @@ const quoteSchema = new mongoose.Schema({
     default: 'pending' 
   },
   adminResponse: {
-    price: { type: Number },
-    message: { type: String }
-  }
+    totalPrice: { type: Number }, // Total discounted price for all products
+    discountPercentage: { type: Number }, // Discount percentage offered
+    message: { type: String },
+    respondedAt: { type: Date }
+  },
+  acceptedAt: { type: Date }, // When user accepted the quote
+  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' } // Link to order if quote is converted
 }, { timestamps: true });
 
 module.exports = mongoose.model('Quote', quoteSchema);

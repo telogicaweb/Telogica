@@ -21,7 +21,10 @@ const orderSchema = new mongoose.Schema({
   },
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
-  razorpaySignature: { type: String }
+  razorpaySignature: { type: String },
+  quoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }, // Reference to quote if order is from quote
+  isQuoteBased: { type: Boolean, default: false }, // Flag to indicate if order is based on a quote
+  discountApplied: { type: Number, default: 0 } // Discount amount/percentage applied
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);
