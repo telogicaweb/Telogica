@@ -50,7 +50,7 @@ export default function Header() {
                 <Home size={20} />
                 <span className="font-medium">Home</span>
               </Link>
-              <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">PRODUCTS</Link>
+              <Link to="/products" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">PRODUCTS</Link>
               <Link to="/contact" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">CONTACT</Link>
             </nav>
 
@@ -102,7 +102,7 @@ export default function Header() {
         <div className="md:hidden bg-white border-t border-gray-200">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</Link>
-            <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Products</Link>
+            <Link to="/products" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Products</Link>
             <Link to="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Contact</Link>
             <Link to="/quote" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
               Quote Request ({quoteItems.length})
