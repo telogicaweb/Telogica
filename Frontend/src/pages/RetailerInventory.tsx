@@ -4,7 +4,8 @@ import { AuthContext } from '../context/AuthContext';
 import { Package, DollarSign, User, Upload, Calendar } from 'lucide-react';
 
 const RetailerInventory = () => {
-  const { user } = useContext(AuthContext)!;
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);

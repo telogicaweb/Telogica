@@ -90,7 +90,6 @@ const createOrder = async (req, res) => {
     }
 
     // Send order confirmation email
-    const user = await req.user.populate('_id name email');
     await sendEmail(
       req.user.email,
       'Order Created - Telogica',

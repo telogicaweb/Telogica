@@ -2,7 +2,7 @@ const Warranty = require('../models/Warranty');
 const ProductUnit = require('../models/ProductUnit');
 const User = require('../models/User');
 const Product = require('../models/Product');
-const { sendEmail, logEmail } = require('../utils/mailer');
+const { sendEmail } = require('../utils/mailer');
 
 // Register warranty
 exports.registerWarranty = async (req, res) => {

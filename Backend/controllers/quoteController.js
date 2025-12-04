@@ -87,7 +87,7 @@ const respondToQuote = async (req, res) => {
       const updatedQuote = await quote.save();
 
       // Notify User with detailed email
-      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: $${totalPrice}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
+      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: ₹${totalPrice}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
       
       // HTML escape function to prevent XSS
       const escapeHtml = (text) => {
@@ -107,7 +107,7 @@ const respondToQuote = async (req, res) => {
         <p>Your quote request has been reviewed.</p>
         <ul>
           <li><strong>Discount offered:</strong> ${escapeHtml(String(discountPercentage))}%</li>
-          <li><strong>Total Price:</strong> $${escapeHtml(String(totalPrice))}</li>
+          <li><strong>Total Price:</strong> ₹${escapeHtml(String(totalPrice))}</li>
           <li><strong>Message:</strong> ${escapeHtml(message)}</li>
         </ul>
         <p>Please login to your account to accept or reject this quote.</p>

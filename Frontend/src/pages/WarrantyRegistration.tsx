@@ -1,11 +1,12 @@
-import { useState, useContext, useEffect } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Upload, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
 const WarrantyRegistration = () => {
-  const { user } = useContext(AuthContext)!;
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     productId: '',
