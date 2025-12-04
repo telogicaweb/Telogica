@@ -1,4 +1,5 @@
 const Quote = require('../models/Quote');
+const Product = require('../models/Product');
 const sendEmail = require('../utils/mailer');
 
 // @desc    Create a new quote
@@ -12,9 +13,21 @@ const createQuote = async (req, res) => {
   }
 
   try {
+    // Fetch product details to store original prices
+    const enrichedProducts = await Promise.all(
+      products.map(async (item) => {
+        const product = await Product.findById(item.product);
+        return {
+          product: item.product,
+          quantity: item.quantity,
+          originalPrice: product.price || 0
+        };
+      })
+    );
+
     const quote = new Quote({
       user: req.user._id,
-      products,
+      products: enrichedProducts,
       message
     });
 
@@ -36,7 +49,7 @@ const getQuotes = async (req, res) => {
   try {
     let quotes;
     if (req.user.role === 'admin') {
-      quotes = await Quote.find({}).populate('user', 'name email').populate('products.product');
+      quotes = await Quote.find({}).populate('user', 'name email role').populate('products.product');
     } else {
       quotes = await Quote.find({ user: req.user._id }).populate('products.product');
     }
@@ -50,19 +63,37 @@ const getQuotes = async (req, res) => {
 // @route   PUT /api/quotes/:id/respond
 // @access  Private/Admin
 const respondToQuote = async (req, res) => {
-  const { price, message } = req.body;
+  const { totalPrice, discountPercentage, message } = req.body;
 
   try {
     const quote = await Quote.findById(req.params.id).populate('user', 'email name');
 
     if (quote) {
-      quote.adminResponse = { price, message };
+      quote.adminResponse = { 
+        totalPrice, 
+        discountPercentage,
+        message,
+        respondedAt: new Date()
+      };
       quote.status = 'responded';
       
       const updatedQuote = await quote.save();
 
-      // Notify User
-      await sendEmail(quote.user.email, 'Quote Response', `Admin has responded to your quote. Price: ${price}. Message: ${message}`);
+      // Notify User with detailed email
+      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: $${totalPrice}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
+      const emailHtml = `
+        <h2>Quote Response</h2>
+        <p>Dear ${quote.user.name},</p>
+        <p>Your quote request has been reviewed.</p>
+        <ul>
+          <li><strong>Discount offered:</strong> ${discountPercentage}%</li>
+          <li><strong>Total Price:</strong> $${totalPrice}</li>
+          <li><strong>Message:</strong> ${message}</li>
+        </ul>
+        <p>Please login to your account to accept or reject this quote.</p>
+        <p>Thank you!</p>
+      `;
+      await sendEmail(quote.user.email, 'Quote Response - Action Required', emailText, emailHtml);
 
       res.json(updatedQuote);
     } else {
@@ -73,4 +104,63 @@ const respondToQuote = async (req, res) => {
   }
 };
 
-module.exports = { createQuote, getQuotes, respondToQuote };
+// @desc    Accept quote (User/Retailer)
+// @route   PUT /api/quotes/:id/accept
+// @access  Private
+const acceptQuote = async (req, res) => {
+  try {
+    const quote = await Quote.findById(req.params.id);
+
+    if (!quote) {
+      return res.status(404).json({ message: 'Quote not found' });
+    }
+
+    // Verify the quote belongs to the user
+    if (quote.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to accept this quote' });
+    }
+
+    if (quote.status !== 'responded') {
+      return res.status(400).json({ message: 'Quote has not been responded to yet' });
+    }
+
+    quote.status = 'accepted';
+    quote.acceptedAt = new Date();
+    
+    const updatedQuote = await quote.save();
+    res.json(updatedQuote);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reject quote (User/Retailer)
+// @route   PUT /api/quotes/:id/reject
+// @access  Private
+const rejectQuote = async (req, res) => {
+  try {
+    const quote = await Quote.findById(req.params.id);
+
+    if (!quote) {
+      return res.status(404).json({ message: 'Quote not found' });
+    }
+
+    // Verify the quote belongs to the user
+    if (quote.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to reject this quote' });
+    }
+
+    if (quote.status !== 'responded') {
+      return res.status(400).json({ message: 'Quote has not been responded to yet' });
+    }
+
+    quote.status = 'rejected';
+    
+    const updatedQuote = await quote.save();
+    res.json(updatedQuote);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createQuote, getQuotes, respondToQuote, acceptQuote, rejectQuote };

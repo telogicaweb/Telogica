@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const Quote = require('../models/Quote');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
@@ -11,16 +12,53 @@ const razorpay = new Razorpay({
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
-  const { products, totalAmount, shippingAddress } = req.body;
+  const { products, totalAmount, shippingAddress, quoteId } = req.body;
 
   if (products && products.length === 0) {
     return res.status(400).json({ message: 'No order items' });
   }
 
   try {
+    // Check if user is a regular user and has more than 3 items without a quote
+    if (req.user.role === 'user' && !quoteId && products.length > 3) {
+      return res.status(400).json({ 
+        message: 'Regular users can only purchase up to 3 items directly. Please request a quote for larger orders.',
+        requiresQuote: true
+      });
+    }
+
+    let isQuoteBased = false;
+    let discountApplied = 0;
+    let finalAmount = totalAmount;
+
+    // If order is based on a quote, verify and use quote price
+    if (quoteId) {
+      const quote = await Quote.findById(quoteId);
+      
+      if (!quote) {
+        return res.status(404).json({ message: 'Quote not found' });
+      }
+
+      if (quote.user.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to use this quote' });
+      }
+
+      if (quote.status !== 'accepted') {
+        return res.status(400).json({ message: 'Quote must be accepted before creating an order' });
+      }
+
+      if (quote.orderId) {
+        return res.status(400).json({ message: 'Quote has already been used for an order' });
+      }
+
+      isQuoteBased = true;
+      finalAmount = quote.adminResponse.totalPrice;
+      discountApplied = quote.adminResponse.discountPercentage || 0;
+    }
+
     // Create Razorpay Order
     const options = {
-      amount: totalAmount * 100, // amount in smallest currency unit
+      amount: finalAmount * 100, // amount in smallest currency unit
       currency: "INR",
       receipt: `receipt_order_${Date.now()}`
     };
@@ -30,12 +68,21 @@ const createOrder = async (req, res) => {
     const order = new Order({
       user: req.user._id,
       products,
-      totalAmount,
+      totalAmount: finalAmount,
       shippingAddress,
-      razorpayOrderId: razorpayOrder.id
+      razorpayOrderId: razorpayOrder.id,
+      quoteId: quoteId || null,
+      isQuoteBased,
+      discountApplied
     });
 
     const createdOrder = await order.save();
+
+    // Update quote with order reference
+    if (quoteId) {
+      await Quote.findByIdAndUpdate(quoteId, { orderId: createdOrder._id });
+    }
+
     res.status(201).json({ order: createdOrder, razorpayOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
