@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, User, Tag, ArrowRight } from 'lucide-react';
 import api from '../api';
 
@@ -15,66 +15,78 @@ interface BlogPost {
   isFeatured: boolean;
 }
 
-const mockPosts = [
+const mockPosts: BlogPost[] = [
   {
-    id: 1,
+    _id: '1',
     title: '5G Revolution in Indian Railways: A Game Changer',
     excerpt: 'Exploring how 5G technology is transforming railway operations, passenger experience, and safety protocols across Indian railway networks.',
+    content: '',
     author: 'Dr. Vikram Singh',
-    date: 'December 1, 2024',
+    publishDate: '2024-12-01',
     category: 'Railway',
     image: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800',
-    readTime: '5 min read'
+    readTime: '5 min read',
+    isFeatured: true
   },
   {
-    id: 2,
+    _id: '2',
     title: 'Cybersecurity in Defense Communications',
     excerpt: 'Understanding the critical importance of encrypted communication systems in modern defense operations and how Telogica is leading the charge.',
+    content: '',
     author: 'Col. Rajesh Kumar (Retd.)',
-    date: 'November 28, 2024',
+    publishDate: '2024-11-28',
     category: 'Defence',
     image: 'https://images.unsplash.com/photo-1580584126903-c17d41830450?w=800',
-    readTime: '7 min read'
+    readTime: '7 min read',
+    isFeatured: false
   },
   {
-    id: 3,
+    _id: '3',
     title: 'The Future of Smart Cities: Telecom Infrastructure',
     excerpt: 'How advanced telecom infrastructure is becoming the backbone of smart city initiatives across India, enabling IoT and connected services.',
+    content: '',
     author: 'Priya Sharma',
-    date: 'November 25, 2024',
+    publishDate: '2024-11-25',
     category: 'Telecom',
     image: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800',
-    readTime: '6 min read'
+    readTime: '6 min read',
+    isFeatured: false
   },
   {
-    id: 4,
+    _id: '4',
     title: 'AI-Powered Predictive Maintenance in Railways',
     excerpt: 'Leveraging artificial intelligence and machine learning to predict equipment failures and optimize maintenance schedules in railway operations.',
+    content: '',
     author: 'Arjun Patel',
-    date: 'November 20, 2024',
+    publishDate: '2024-11-20',
     category: 'Railway',
     image: 'https://images.unsplash.com/photo-1527684651001-731c474bbb5a?w=800',
-    readTime: '8 min read'
+    readTime: '8 min read',
+    isFeatured: false
   },
   {
-    id: 5,
+    _id: '5',
     title: 'Edge Computing in Tactical Defense Systems',
     excerpt: 'Exploring the role of edge computing in enabling real-time decision making for tactical defense applications in challenging environments.',
+    content: '',
     author: 'Maj. Ananya Reddy',
-    date: 'November 15, 2024',
+    publishDate: '2024-11-15',
     category: 'Defence',
     image: 'https://images.unsplash.com/photo-1563770660941-20978e870e26?w=800',
-    readTime: '6 min read'
+    readTime: '6 min read',
+    isFeatured: false
   },
   {
-    id: 6,
+    _id: '6',
     title: 'Building Resilient Telecom Networks',
     excerpt: 'Best practices and technologies for creating robust, disaster-resistant telecom infrastructure that ensures uninterrupted connectivity.',
+    content: '',
     author: 'Suresh Menon',
-    date: 'November 10, 2024',
+    publishDate: '2024-11-10',
     category: 'Telecom',
     image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800',
-    readTime: '5 min read'
+    readTime: '5 min read',
+    isFeatured: false
   }
 ];
 
@@ -185,7 +197,7 @@ export default function Blog() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar size={16} />
-                    <span>{formatDate(blogPosts[0].publishDate || blogPosts[0].date)}</span>
+                    <span>{formatDate(blogPosts[0].publishDate)}</span>
                   </div>
                 </div>
                 <button className="flex items-center gap-2 text-purple-600 font-semibold hover:text-purple-800 transition-colors">
@@ -204,7 +216,7 @@ export default function Blog() {
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredPosts.slice(selectedCategory === 'All' ? 1 : 0).map(post => (
-            <article key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer">
+            <article key={post._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow cursor-pointer">
               <img 
                 src={post.image} 
                 alt={post.title}
@@ -228,7 +240,7 @@ export default function Blog() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar size={16} />
-                    <span>{formatDate(post.publishDate || post.date)}</span>
+                    <span>{formatDate(post.publishDate)}</span>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { TrendingUp, DollarSign, FileText, Calendar, Award, Users } from 'lucide-react';
 
 export default function Investors() {

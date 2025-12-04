@@ -17,14 +17,11 @@ import {
   Eye,
   Download,
   RefreshCw,
-  Search,
-  Filter,
   BarChart3,
   DollarSign,
   AlertCircle,
   CheckCircle,
-  Clock,
-  Send
+  Clock
 } from 'lucide-react';
 
 interface User {
@@ -128,7 +125,7 @@ const AdminDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [productUnits, setProductUnits] = useState<ProductUnit[]>([]);
+  const [_productUnits, setProductUnits] = useState<ProductUnit[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
@@ -151,9 +148,9 @@ const AdminDashboard: React.FC = () => {
   >([]);
 
   const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
-  const [warrantyAction, setWarrantyAction] = useState({ id: '', action: '' });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  // const [warrantyAction, setWarrantyAction] = useState({ id: '', action: '' });
+  // const [searchTerm, setSearchTerm] = useState('');
+  // const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     const user = localStorage.getItem('user');
