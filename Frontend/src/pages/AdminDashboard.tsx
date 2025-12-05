@@ -253,7 +253,7 @@ const AdminDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics>(() => getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [_productUnits, setProductUnits] = useState<ProductUnit[]>([]);
+  const [productUnits, setProductUnits] = useState<ProductUnit[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
@@ -269,6 +269,12 @@ const AdminDashboard: React.FC = () => {
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
+  
+  // Product units modal state
+  const [showUnitsModal, setShowUnitsModal] = useState(false);
+  const [selectedProductForUnits, setSelectedProductForUnits] = useState<Product | null>(null);
+  const [showAddUnitsForm, setShowAddUnitsForm] = useState(false);
+  const [newUnits, setNewUnits] = useState<Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>>([]);
 
   const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
 
@@ -341,10 +347,46 @@ const AdminDashboard: React.FC = () => {
 
   const loadProductUnits = async (productId: string) => {
     try {
+      const product = products.find(p => p._id === productId);
+      if (product) {
+        setSelectedProductForUnits(product);
+      }
       const response = await api.get(`/api/product-units/product/${productId}`);
       setProductUnits(response.data);
+      setShowUnitsModal(true);
     } catch (error) {
       console.error('Error loading product units:', error);
+    }
+  };
+
+  const handleAddUnits = async () => {
+    if (!selectedProductForUnits) return;
+    
+    // Validate all fields are filled
+    const allFilled = newUnits.every(u => u.serialNumber && u.modelNumber);
+    if (!allFilled) {
+      alert('Please fill all serial numbers and model numbers');
+      return;
+    }
+
+    try {
+      await api.post('/api/product-units/add', {
+        productId: selectedProductForUnits._id,
+        units: newUnits.map(unit => ({
+          serialNumber: unit.serialNumber,
+          modelNumber: unit.modelNumber,
+          warrantyPeriodMonths: unit.warrantyPeriod || 12,
+          stockType: 'both'
+        }))
+      });
+      alert('Units added successfully');
+      setNewUnits([]);
+      setShowAddUnitsForm(false);
+      // Reload product units and products
+      loadProductUnits(selectedProductForUnits._id);
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to add units');
     }
   };
 
@@ -2132,6 +2174,172 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
           </>
+        )}
+
+        {/* Product Units Modal */}
+        {showUnitsModal && selectedProductForUnits && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Product Units</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {selectedProductForUnits.name} - Total Units: {productUnits.length}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUnitsModal(false);
+                      setSelectedProductForUnits(null);
+                      setShowAddUnitsForm(false);
+                      setNewUnits([]);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Add Units Button */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowAddUnitsForm(!showAddUnitsForm)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {showAddUnitsForm ? 'Hide Add Units Form' : 'Add New Units'}
+                  </button>
+                </div>
+
+                {/* Add Units Form */}
+                {showAddUnitsForm && (
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
+                    <div className="space-y-3">
+                      {newUnits.map((unit, idx) => (
+                        <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded">
+                          <input
+                            type="text"
+                            placeholder="Serial Number"
+                            value={unit.serialNumber}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].serialNumber = e.target.value;
+                              setNewUnits(updated);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Model Number"
+                            value={unit.modelNumber}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].modelNumber = e.target.value;
+                              setNewUnits(updated);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Warranty (months)"
+                            value={unit.warrantyPeriod}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].warrantyPeriod = parseInt(e.target.value) || 12;
+                              setNewUnits(updated);
+                            }}
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => setNewUnits(newUnits.filter((_, i) => i !== idx))}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: 12 }])}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                      >
+                        + Add Another Unit
+                      </button>
+                      {newUnits.length > 0 && (
+                        <button
+                          onClick={handleAddUnits}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                        >
+                          Save Units
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Units List */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model Number</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {productUnits.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                            No units found. Add units to this product.
+                          </td>
+                        </tr>
+                      ) : (
+                        productUnits.map((unit) => (
+                          <tr key={unit._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              {unit.serialNumber}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.modelNumber}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  unit.status === 'available'
+                                    ? 'bg-green-100 text-green-800'
+                                    : unit.status === 'sold'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : unit.status === 'reserved'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {unit.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.warrantyPeriod || 12} months
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.soldTo || '-'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
