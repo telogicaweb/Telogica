@@ -6,7 +6,9 @@ const orderSchema = new mongoose.Schema({
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true }, // Price at time of purchase
-    serialNumbers: [{ type: String }] // Assigned serial numbers
+    serialNumbers: [{ type: String }], // Assigned serial numbers
+    extendedWarranty: { type: Boolean, default: false }, // Whether extended warranty was purchased
+    warrantyMonths: { type: Number, default: 12 } // Warranty period for this product
   }],
   totalAmount: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
