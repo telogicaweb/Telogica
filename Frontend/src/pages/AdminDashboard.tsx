@@ -24,10 +24,6 @@ import {
   Clock,
   MessageSquare,
   Search,
-  UserPlus,
-  UserCheck,
-  UserMinus,
-  PaperPlane,
   Sparkles
 } from 'lucide-react';
 
@@ -41,6 +37,7 @@ interface User {
 }
 
 interface Product {
+  stock: number;
   _id: string;
   name: string;
   description: string;
@@ -51,6 +48,7 @@ interface Product {
   imageUrl?: string;
   images?: string[];
   requiresQuote: boolean;
+  isRecommended?: boolean;
 }
 
 interface ProductFormState {
@@ -79,16 +77,6 @@ const getFreshProductFormState = (): ProductFormState => ({
   requiresQuote: false,
   manualImageUrl: '',
   images: [],
-});
-
-const getDefaultUserForm = (): UserFormState => ({
-  name: '',
-  email: '',
-  role: 'user',
-  phone: '',
-  address: '',
-  password: '',
-  isApproved: true,
 });
 
 interface ProductUnit {
@@ -169,18 +157,6 @@ interface ContactMessage {
   status: 'new' | 'read' | 'replied';
   createdAt: string;
 }
-
-interface UserFormState {
-  name: string;
-  email: string;
-  role: 'admin' | 'retailer' | 'user';
-  phone: string;
-  address: string;
-  password: string;
-  isApproved: boolean;
-}
-
-type QuoteFilter = 'all' | 'pending' | 'responded' | 'accepted' | 'rejected';
 
 interface Analytics {
   sales: {
@@ -284,18 +260,10 @@ const AdminDashboard: React.FC = () => {
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
   const MAX_PRODUCT_IMAGES = 4;
   const [productSearch, setProductSearch] = useState('');
-  const [userFormVisible, setUserFormVisible] = useState(false);
-  const [userFormMode, setUserFormMode] = useState<'create' | 'edit'>('create');
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
-  const [userForm, setUserForm] = useState<UserFormState>(() => getDefaultUserForm());
-  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>('pending');
-  const [contactReplies, setContactReplies] = useState<Record<string, string>>({});
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState<ProductFormState>(() => getFreshProductFormState());
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [imageUploadError, setImageUploadError] = useState('');
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
@@ -454,92 +422,6 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Product Management
-  const handleQuantityChange = (quantity: number) => {
-    setProductForm({ ...productForm, quantity });
-    const units = Array.from({ length: quantity }, () => ({
-      serialNumber: '',
-      modelNumber: '',
-      warrantyPeriod: 12,
-    }));
-    setProductUnitsForm(units);
-  };
-
-  const handleProductUnitChange = (
-    index: number,
-    field: string,
-    value: string | number
-  ) => {
-    const updatedUnits = [...productUnitsForm];
-    updatedUnits[index] = { ...updatedUnits[index], [field]: value };
-    setProductUnitsForm(updatedUnits);
-  };
-
-  const handleAddImageLink = () => {
-    const trimmedUrl = productForm.manualImageUrl.trim();
-    if (!trimmedUrl) {
-      return;
-    }
-    if (productForm.images.length >= MAX_PRODUCT_IMAGES) {
-      alert(`You can only attach up to ${MAX_PRODUCT_IMAGES} images.`);
-      return;
-    }
-    setProductForm((prev) => ({
-      ...prev,
-      manualImageUrl: '',
-      images: [...prev.images, trimmedUrl],
-    }));
-    setImageUploadError('');
-  };
-
-  const handleImageFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files?.length) {
-      return;
-    }
-
-    const remainingSlots = MAX_PRODUCT_IMAGES - productForm.images.length;
-    if (!remainingSlots) {
-      setImageUploadError(`Maximum of ${MAX_PRODUCT_IMAGES} images reached. Remove one to add another.`);
-      event.target.value = '';
-      return;
-    }
-
-    const filesToUpload = Array.from(files).slice(0, remainingSlots);
-    setImageUploadError('');
-    setIsUploadingImage(true);
-
-    try {
-      for (const file of filesToUpload) {
-        const formData = new FormData();
-        formData.append('image', file);
-        const response = await api.post('/api/products/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        setProductForm((prev) => ({
-          ...prev,
-          images: [...prev.images, response.data.url],
-        }));
-      }
-      if (files.length > remainingSlots) {
-        setImageUploadError(`Only the first ${remainingSlots} image(s) were uploaded.`);
-      }
-    } catch (error: any) {
-      console.error('Image upload failed', error);
-      setImageUploadError(error.response?.data?.message || 'Failed to upload images. Please try again.');
-    } finally {
-      setIsUploadingImage(false);
-      event.target.value = '';
-    }
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setProductForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, idx) => idx !== index),
-    }));
-    setImageUploadError('');
-  };
-
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.images.length) {
@@ -595,7 +477,6 @@ const AdminDashboard: React.FC = () => {
       setShowProductForm(false);
       setProductForm(getFreshProductFormState());
       setProductUnitsForm([]);
-      setImageUploadError('');
       loadProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to create product');
@@ -891,7 +772,7 @@ const AdminDashboard: React.FC = () => {
     );
     const lowStockCount = products.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
     const quoteOnlyCount = products.filter((product) => product.requiresQuote).length;
-    const recommendedCount = products.filter((product) => product.requiresQuote === false && product.isRecommended).length;
+    const recommendedCount = filteredProducts.filter((product) => product.requiresQuote === false && (product.isRecommended ?? false)).length;
 
     return (
       <div className="space-y-6">
@@ -964,423 +845,228 @@ const AdminDashboard: React.FC = () => {
               <Sparkles className="text-indigo-600" />
             </div>
             <form onSubmit={handleCreateProduct} className="space-y-4">
-              {/* existing form fields unchanged */}
-
-      {showProductForm && (
-        <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-          <h3 className="text-xl font-semibold mb-4">Create New Product</h3>
-          <form onSubmit={handleCreateProduct} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={productForm.name}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={productForm.category}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Normal Price (₹)
-                </label>
-                <input
-                  type="number"
-                  value={productForm.normalPrice}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, normalPrice: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Leave empty for quote-only"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Retailer Price (₹)
-                </label>
-                <input
-                  type="number"
-                  value={productForm.retailerPrice}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, retailerPrice: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={productForm.quantity}
-                  onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Warranty Period (months)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={productForm.warrantyPeriodMonths}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, warrantyPeriodMonths: Number(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Product Images (up to {MAX_PRODUCT_IMAGES})
-                </label>
-                <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
                   <input
                     type="text"
-                    value={productForm.manualImageUrl}
-                    onChange={(e) =>
-                      setProductForm({ ...productForm, manualImageUrl: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Paste image URL (https://...)"
+                    value={productForm.name}
+                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter product name"
                   />
-                  <button
-                    type="button"
-                    disabled={!productForm.manualImageUrl.trim() || productForm.images.length >= MAX_PRODUCT_IMAGES}
-                    onClick={handleAddImageLink}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700"
-                  >
-                    Add URL
-                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                  <input
+                    type="text"
+                    value={productForm.category}
+                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter category"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Normal Price (₹)</label>
+                  <input
+                    type="number"
+                    value={productForm.normalPrice}
+                    onChange={(e) => setProductForm({ ...productForm, normalPrice: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter price"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Retailer Price (₹)</label>
+                  <input
+                    type="number"
+                    value={productForm.retailerPrice}
+                    onChange={(e) => setProductForm({ ...productForm, retailerPrice: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter price"
+                  />
                 </div>
               </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium cursor-pointer shadow-sm hover:bg-gray-50">
-                  Upload images
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageFilesChange}
-                  />
-                </label>
-                {isUploadingImage && (
-                  <span className="text-sm text-gray-600">Uploading images…</span>
-                )}
-                <span className="text-xs text-gray-500">Max {MAX_PRODUCT_IMAGES}</span>
-              </div>
-
-              {imageUploadError && (
-                <p className="text-xs text-red-600">{imageUploadError}</p>
-              )}
-
-              <div className="flex flex-wrap gap-3">
-                {productForm.images.map((src, idx) => (
-                  <div
-                    key={`${src}-${idx}`}
-                    className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
-                  >
-                    <img
-                      src={src}
-                      alt={`Product ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(idx)}
-                      className="absolute top-1 right-1 bg-white bg-opacity-80 hover:bg-opacity-100 text-red-500 rounded-full p-0.5 text-xs"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs text-gray-500">
-                {productForm.images.length}/{MAX_PRODUCT_IMAGES} images added
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                value={productForm.description}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, description: e.target.value })
-                }
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="requiresQuote"
-                  checked={productForm.requiresQuote}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, requiresQuote: e.target.checked })
-                  }
-                  className="w-4 h-4"
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={productForm.description}
+                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter product description"
                 />
-                <label htmlFor="requiresQuote" className="text-sm text-gray-700">
-                  Requires Quote (Quote-only product)
-                </label>
               </div>
-
-              <div className="flex items-center gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Product Images *</label>
                 <input
-                  type="checkbox"
-                  id="isRecommended"
-                  checked={productForm.isRecommended}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, isRecommended: e.target.checked })
-                  }
-                  className="w-4 h-4"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (!files?.length) return;
+                    const remainingSlots = MAX_PRODUCT_IMAGES - productForm.images.length;
+                    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+                    filesToUpload.forEach((file) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setProductForm((prev) => ({
+                          ...prev,
+                          images: [...prev.images, reader.result as string]
+                        }));
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value = '';
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 />
-                <label htmlFor="isRecommended" className="text-sm text-gray-700">
-                  Recommended Product
-                </label>
-              </div>
-            </div>
-
-            {/* Serial Numbers and Model Numbers for each unit */}
-            {productUnitsForm.length > 0 && (
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold text-lg mb-3">
-                  Enter Details for Each Unit ({productUnitsForm.length} units)
-                </h4>
-                <div className="max-h-96 overflow-y-auto space-y-3">
-                  {productUnitsForm.map((unit, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-200 p-4 rounded-lg bg-gray-50"
-                    >
-                      <h5 className="font-medium mb-2">Unit {index + 1}</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Serial Number *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={unit.serialNumber}
-                            onChange={(e) =>
-                              handleProductUnitChange(
-                                index,
-                                'serialNumber',
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                            placeholder={`SN-${index + 1}`}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Model Number *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={unit.modelNumber}
-                            onChange={(e) =>
-                              handleProductUnitChange(
-                                index,
-                                'modelNumber',
-                                e.target.value
-                              )
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                            placeholder={`MN-${index + 1}`}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Warranty (months)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={unit.warrantyPeriod}
-                            onChange={(e) =>
-                              handleProductUnitChange(
-                                index,
-                                'warrantyPeriod',
-                                Number(e.target.value)
-                              )
-                            }
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {productForm.images.map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img} alt={`preview-${idx}`} className="w-20 h-20 rounded object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            images: prev.images.filter((_, i) => i !== idx)
+                          }));
+                        }}
+                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 -mt-2 -mr-2"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Create Product
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProductForm(false);
+                    setProductForm(getFreshProductFormState());
+                    setProductUnitsForm([]);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-              >
-                Create Product
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProductForm(false);
-                  setProductForm(getFreshProductFormState());
-                  setImageUploadError('');
-                  setProductUnitsForm([]);
-                }}
-                className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Products List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Normal Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Retailer Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => {
-                const thumbnail = product.images?.[0] || product.imageUrl;
-                return (
-                  <tr key={product._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      {thumbnail && (
-                        <img
-                          src={thumbnail}
-                          alt={product.name}
-                          className="w-12 h-12 rounded object-cover mr-3"
-                        />
-                      )}
-                      <div>
-                        <div className="font-medium text-gray-900">{product.name}</div>
-                        {product.requiresQuote && (
-                          <span className="text-xs text-blue-600 font-medium">
-                            Quote Required
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {product.category}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {product.normalPrice ? `₹${product.normalPrice}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {product.retailerPrice ? `₹${product.retailerPrice}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        product.stockQuantity > 10
-                          ? 'bg-green-100 text-green-800'
-                          : product.stockQuantity > 0
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {product.stockQuantity}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => loadProductUnits(product._id)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="View Units"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+        {/* Products List */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Product
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Normal Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Retailer Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Stock
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredProducts.map((product) => {
+                  const thumbnail = product.images?.[0] || product.imageUrl;
+                  return (
+                    <tr key={product._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          {thumbnail && (
+                            <img
+                              src={thumbnail}
+                              alt={product.name}
+                              className="w-12 h-12 rounded object-cover mr-3"
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium text-gray-900">{product.name}</div>
+                            {product.requiresQuote && (
+                              <span className="text-xs text-blue-600 font-medium">
+                                Quote Required
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {product.category}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {product.normalPrice ? `₹${product.normalPrice}` : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {product.retailerPrice ? `₹${product.retailerPrice}` : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            product.stockQuantity > 10
+                              ? 'bg-green-100 text-green-800'
+                              : product.stockQuantity > 0
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {product.stockQuantity}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => loadProductUnits(product._id)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="View Units"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(product._id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Render Users Tab
   const renderUsers = () => (

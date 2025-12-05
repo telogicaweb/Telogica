@@ -4,6 +4,8 @@ A comprehensive full-stack MERN (MongoDB, Express, React, Node.js) e-commerce pl
 
 ## 🌐 Live Deployments
 
+- **Status**: Active and continuously updated
+
 - **Frontend (Vercel)**: https://telogica-p7tf.vercel.app/
 - **Backend API (Render)**: https://telogica.onrender.com
 

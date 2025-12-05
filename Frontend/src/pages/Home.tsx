@@ -61,43 +61,6 @@ const Home = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <Hero />
-      
-      {/* Stats Section */}
-      <section className="py-16 bg-white border-y border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                <Package className="w-6 h-6 text-blue-600" />
-              </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-1">500+</h3>
-              <p className="text-gray-600 text-sm">Products Delivered</p>
-            </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-1">200+</h3>
-              <p className="text-gray-600 text-sm">Happy Clients</p>
-            </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full mb-4">
-                <Award className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-1">15+</h3>
-              <p className="text-gray-600 text-sm">Years Experience</p>
-            </div>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mb-4">
-                <TrendingUp className="w-6 h-6 text-yellow-600" />
-              </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-1">98%</h3>
-              <p className="text-gray-600 text-sm">Customer Satisfaction</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Products Section */}
       <section id="products" className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -272,8 +235,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 };
