@@ -1,10 +1,11 @@
 const PDFDocument = require('pdfkit');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const { Parser } = require('json2csv');
 
 /**
  * Universal Export Utilities for Enterprise E-Commerce Platform
  * Supports PDF, CSV, and Excel exports for all admin modules
+ * Using ExcelJS (secure alternative to xlsx)
  */
 
 // ============================================
@@ -172,37 +173,53 @@ const generateCSV = (data, config) => {
  * @param {Array} config.columns - Column definitions
  * @returns {Buffer} Excel buffer
  */
-const generateExcel = (data, config) => {
+const generateExcel = async (data, config) => {
   try {
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(config.sheetName || 'Sheet1');
     
-    // Transform data if columns are specified
-    let exportData = data;
+    // Define columns
     if (config.columns) {
-      exportData = data.map(row => {
-        const newRow = {};
+      worksheet.columns = config.columns.map(col => ({
+        header: col.header,
+        key: col.key,
+        width: col.width ? Math.floor(col.width / 8) : 15,
+      }));
+      
+      // Add data with formatting
+      data.forEach(row => {
+        const rowData = {};
         config.columns.forEach(col => {
           const value = getNestedValue(row, col.key);
-          newRow[col.header] = col.formatter ? col.formatter(value, row) : value;
+          rowData[col.key] = col.formatter ? col.formatter(value, row) : value;
         });
-        return newRow;
+        worksheet.addRow(rowData);
       });
+      
+      // Style header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+    } else {
+      // Auto-generate columns from first data item
+      if (data.length > 0) {
+        const headers = Object.keys(data[0]);
+        worksheet.columns = headers.map(header => ({
+          header: header.charAt(0).toUpperCase() + header.slice(1),
+          key: header,
+          width: 15,
+        }));
+        data.forEach(row => worksheet.addRow(row));
+        worksheet.getRow(1).font = { bold: true };
+      }
     }
     
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    
-    // Auto-size columns
-    const colWidths = [];
-    if (config.columns) {
-      config.columns.forEach((col, idx) => {
-        colWidths[idx] = { wch: col.width ? Math.floor(col.width / 8) : 15 };
-      });
-      worksheet['!cols'] = colWidths;
-    }
-    
-    XLSX.utils.book_append_sheet(workbook, worksheet, config.sheetName || 'Sheet1');
-    
-    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
   } catch (error) {
     throw new Error(`Excel generation failed: ${error.message}`);
   }
