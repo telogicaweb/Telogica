@@ -32,9 +32,13 @@ const Quote = () => {
       return;
     }
 
-    // Minimum 4 products required for quote
-    if (itemsToQuote.length < 4) {
-      alert('Quote requests must have at least 4 products. Please add more items.');
+    // Validation Logic
+    const telecomItems = itemsToQuote.filter(item => item.product.isTelecom || item.product.category === 'Telecom');
+    const hasTelecom = telecomItems.length > 0;
+    
+    // If has telecom items, must have at least 3 telecom items
+    if (hasTelecom && telecomItems.length < 3) {
+      alert(`For Telecom products, a minimum of 3 items is required. You currently have ${telecomItems.length} Telecom items.`);
       return;
     }
 
@@ -58,7 +62,12 @@ const Quote = () => {
   };
 
   const displayItems = quoteItems.length > 0 ? quoteItems : cart;
-  const isMinimumMet = displayItems.length >= 4;
+  
+  // Validation Logic for UI
+  const telecomItems = displayItems.filter(item => item.product.isTelecom || item.product.category === 'Telecom');
+  const hasTelecom = telecomItems.length > 0;
+  const isTelecomValid = !hasTelecom || telecomItems.length >= 3;
+  const isMinimumMet = displayItems.length > 0 && isTelecomValid;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
@@ -86,8 +95,15 @@ const Quote = () => {
               <p className={`text-sm ${isMinimumMet ? 'text-green-700' : 'text-yellow-700'}`}>
                 {isMinimumMet 
                   ? `✓ You have ${displayItems.length} items. Ready to submit quote request.`
-                  : `You have ${displayItems.length} items. Minimum 4 products required for quote requests. Add ${4 - displayItems.length} more.`}
+                  : hasTelecom 
+                    ? `You have ${telecomItems.length} Telecom items. Minimum 3 Telecom products required. Add ${3 - telecomItems.length} more.`
+                    : `You have ${displayItems.length} items. Add items to request a quote.`}
               </p>
+              {hasTelecom && (
+                <p className="text-xs mt-1 text-gray-500">
+                  * Telecom products require a minimum quantity of 3. Other products have no minimum.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -96,7 +112,7 @@ const Quote = () => {
           <div className="text-center py-16 bg-white rounded-lg shadow-sm">
             <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
             <p className="text-gray-600 text-lg mb-2">Your quote list is empty.</p>
-            <p className="text-gray-500 text-sm mb-6">Add at least 4 items to request a quote.</p>
+            <p className="text-gray-500 text-sm mb-6">Add items to request a quote.</p>
             <button 
               onClick={() => navigate('/')} 
               className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
@@ -124,11 +140,16 @@ const Quote = () => {
                 <li key={item.product._id} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50">
                   <div className="flex items-center flex-1">
                     {item.product.images && item.product.images[0] && (
-                      <img 
-                        src={item.product.images[0]} 
-                        alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded-md border border-gray-200"
-                      />
+                      <div className="relative">
+                        <img 
+                          src={item.product.images[0]} 
+                          alt={item.product.name}
+                          className="w-16 h-16 object-cover rounded-md border border-gray-200"
+                        />
+                        <span className="absolute -top-1 -right-1 bg-white/90 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow border border-gray-100">
+                          {item.product.category}
+                        </span>
+                      </div>
                     )}
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">{item.product.name}</h3>

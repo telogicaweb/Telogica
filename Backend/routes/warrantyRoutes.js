@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { protect, admin } = require('../middleware/authMiddleware');
+const multer = require('multer');
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+
 const {
   registerWarranty,
   getUserWarranties,
@@ -8,10 +16,12 @@ const {
   approveWarranty,
   rejectWarranty,
   updateWarranty,
-  checkSerialNumber
+  checkSerialNumber,
+  uploadInvoice
 } = require('../controllers/warrantyController');
 
 // User routes
+router.post('/upload-invoice', protect, upload.single('invoice'), uploadInvoice);
 router.post('/', protect, registerWarranty);
 router.get('/my-warranties', protect, getUserWarranties);
 router.get('/check-serial', protect, checkSerialNumber);

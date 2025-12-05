@@ -186,6 +186,11 @@ const verifyPayment = async (req, res) => {
       order.razorpaySignature = razorpaySignature;
       await order.save();
 
+      // Update quote status if this order was from a quote
+      if (order.quoteId) {
+        await Quote.findByIdAndUpdate(order.quoteId, { status: 'completed' });
+      }
+
       await order.populate('user products.product');
 
       // Assign product units to the order

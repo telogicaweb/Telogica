@@ -25,7 +25,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUsersUpdated }
   }, [users, dateFrom, dateTo]);
   const handleApproveRetailer = async (userId: string) => {
     try {
-      await api.put(`/api/auth/approve/${userId}`);
+      await api.put(`/api/auth/approve/${userId}`, {});
       alert('Retailer approved successfully');
       onUsersUpdated();
     } catch (error: any) {

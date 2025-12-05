@@ -54,12 +54,13 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/accept`);
+      await api.put(`/api/quotes/${quoteId}/accept`, {});
       alert('Quote accepted! You can now proceed to checkout with this quote.');
       fetchData();
     } catch (error: unknown) {
       console.error('Error accepting quote', error);
-      const axiosError = error as { response?: { data?: { message?: string } } };
+      const axiosError = error as { response?: { data?: { message?: string }, status?: number } };
+      console.log('Error details:', axiosError.response);
       alert(axiosError.response?.data?.message || 'Failed to accept quote');
     } finally {
       setActionLoading(false);
@@ -71,7 +72,7 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`, {});
       alert('Quote rejected.');
       fetchData();
     } catch (error: unknown) {
@@ -93,10 +94,26 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      const totalQty = quote.products.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0);
+      // Filter out invalid products (e.g. deleted products)
+      const validItems = quote.products.filter((item: any) => item.product && item.product._id);
+      
+      if (validItems.length === 0) {
+        alert('Cannot proceed: All products in this quote are no longer available.');
+        setActionLoading(false);
+        return;
+      }
+
+      if (validItems.length < quote.products.length) {
+        if (!confirm('Some products in this quote are no longer available. Do you want to proceed with the remaining items?')) {
+          setActionLoading(false);
+          return;
+        }
+      }
+
+      const totalQty = validItems.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0);
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
 
-      const products = quote.products.map((item: { product: { _id: string }; quantity: number }) => ({
+      const products = validItems.map((item: { product: { _id: string }; quantity: number }) => ({
         product: item.product._id, // Changed from productId to product to match backend schema
         quantity: item.quantity,
         price: totalQty > 0 ? totalPrice / totalQty : 0
@@ -310,7 +327,7 @@ const UserDashboard = () => {
                               <li key={p._id} className="py-4 flex items-center justify-between">
                                 <div className="flex items-center">
                                   <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-900">{p.product.name}</p>
+                                    <p className="text-sm font-medium text-gray-900">{p.product?.name || 'Product Unavailable'}</p>
                                     <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
                                   </div>
                                 </div>
@@ -328,100 +345,162 @@ const UserDashboard = () => {
 
             {activeTab === 'quotes' && (
               <div>
-                {quotes.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No quotes found.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-6 md:grid-cols-2">
-                    {quotes.map(quote => (
-                      <div key={quote._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                            {getStatusIcon(quote.status)}
-                            {quote.status}
-                          </span>
-                          <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                        </div>
+                {/* Active Quotes Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
+                  {quotes.filter(q => q.status !== 'completed').length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                      <FileText size={32} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-gray-500 text-sm">No active quotes found.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {quotes.filter(q => q.status !== 'completed').map(quote => (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+                          <div className="flex justify-between items-start mb-4">
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
+                              {getStatusIcon(quote.status)}
+                              {quote.status}
+                            </span>
+                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                          </div>
 
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {quote.products.map((p: any) => (
-                              <li key={p._id} className="flex justify-between">
-                                <span>{p.product.name}</span>
-                                <span className="text-gray-500">Qty: {p.quantity}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {quote.message && (
                           <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
-                            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {quote.products.map((p: any) => (
+                                <li key={p._id} className="flex justify-between">
+                                  <span>{p.product?.name || 'Product Unavailable'}</span>
+                                  <span className="text-gray-500">Qty: {p.quantity}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                        )}
 
-                        {quote.adminResponse && (
-                          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                            <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-indigo-700">Offered Price:</span>
-                              <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                          {quote.message && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
+                              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
                             </div>
-                            {quote.adminResponse.discountPercentage > 0 && (
+                          )}
+
+                          {quote.adminResponse && (
+                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
+                              <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
                               <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-indigo-700">Discount:</span>
-                                <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                <span className="text-sm text-indigo-700">Offered Price:</span>
+                                <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
                               </div>
-                            )}
-                            <p className="text-sm text-indigo-800">{quote.adminResponse.message}</p>
-                          </div>
-                        )}
+                              {quote.adminResponse.discountPercentage > 0 && (
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm text-indigo-700">Discount:</span>
+                                  <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                </div>
+                              )}
+                              <p className="text-sm text-indigo-800">{quote.adminResponse.message}</p>
+                            </div>
+                          )}
 
-                        {quote.status === 'responded' && (
-                          <div className="flex gap-2 mt-4">
-                            <button
-                              onClick={() => acceptQuote(quote._id)}
-                              disabled={actionLoading}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                            >
-                              <ThumbsUp size={16} />
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => rejectQuote(quote._id)}
-                              disabled={actionLoading}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                            >
-                              <ThumbsDown size={16} />
-                              Reject
-                            </button>
-                          </div>
-                        )}
+                          {quote.status === 'responded' && (
+                            <div className="flex gap-2 mt-4">
+                              <button
+                                onClick={() => acceptQuote(quote._id)}
+                                disabled={actionLoading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                              >
+                                <ThumbsUp size={16} />
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => rejectQuote(quote._id)}
+                                disabled={actionLoading}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                              >
+                                <ThumbsDown size={16} />
+                                Reject
+                              </button>
+                            </div>
+                          )}
 
-                        {quote.status === 'accepted' && (
-                          <button
-                            onClick={() => proceedToCheckout(quote)}
-                            disabled={actionLoading}
-                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
-                          >
-                            {actionLoading ? (
-                              <>
-                                <Loader2 size={16} className="mr-2 animate-spin" />
-                                Processing...
-                              </>
-                            ) : (
-                              'Proceed to Checkout'
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                          {quote.status === 'accepted' && (
+                            <>
+                              {quote.orderId ? (
+                                <button
+                                  onClick={() => setActiveTab('orders')}
+                                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                >
+                                  <CheckCircle size={16} />
+                                  Order Created - View in Orders
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => proceedToCheckout(quote)}
+                                  disabled={actionLoading}
+                                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
+                                >
+                                  {actionLoading ? (
+                                    <>
+                                      <Loader2 size={16} className="mr-2 animate-spin" />
+                                      Processing...
+                                    </>
+                                  ) : (
+                                    'Proceed to Checkout'
+                                  )}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Quote History Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
+                  {quotes.filter(q => q.status === 'completed').length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                      <Clock size={32} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-gray-500 text-sm">No completed quotes found.</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {quotes.filter(q => q.status === 'completed').map(quote => (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
+                          <div className="flex justify-between items-start mb-4">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                              <CheckCircle size={14} />
+                              Completed
+                            </span>
+                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                          </div>
+
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {quote.products.map((p: any) => (
+                                <li key={p._id} className="flex justify-between">
+                                  <span>{p.product?.name || 'Product Unavailable'}</span>
+                                  <span className="text-gray-500">Qty: {p.quantity}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {quote.adminResponse && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Final Price:</span>
+                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

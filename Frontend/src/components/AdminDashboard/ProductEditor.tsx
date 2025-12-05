@@ -12,7 +12,6 @@ import {
   Package,
   Shield,
   Tag,
-  Calendar,
   ClipboardCheck
 } from 'lucide-react';
 import api from '../../api';
@@ -329,7 +328,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
           {[
             { id: 'details', label: 'Details', icon: Tag },
             { id: 'units', label: 'Units & Stock', icon: Layers },
-            { id: 'recommendations', label: 'Recommendations', icon: ClipboardCheck }
+            { id: 'recommendations', label: 'Suggested Products', icon: ClipboardCheck }
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -419,7 +418,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                 </div>
                 <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Featured Product</p>
+                    <p className="text-sm font-medium text-gray-800">Suggested Product</p>
                     <p className="text-xs text-gray-500">Highlight in storefront</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -774,7 +773,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Recommended Products</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Suggested Products</h3>
                   <p className="text-sm text-gray-500">Select products to surface alongside {product.name} on the storefront.</p>
                 </div>
                 <button

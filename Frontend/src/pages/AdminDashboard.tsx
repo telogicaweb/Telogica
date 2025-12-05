@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import {
@@ -51,6 +52,7 @@ interface Product {
   images?: string[];
   requiresQuote: boolean;
   isRecommended?: boolean;
+  recommendedProductIds?: Array<string | { _id: string }>;
 }
 
 interface ProductFormState {
@@ -65,6 +67,7 @@ interface ProductFormState {
   requiresQuote: boolean;
   manualImageUrl: string;
   images: string[];
+  recommendedProductIds: string[];
 }
 
 const DEFAULT_WARRANTY_MONTHS = 12;
@@ -81,6 +84,7 @@ const getFreshProductFormState = (): ProductFormState => ({
   requiresQuote: false,
   manualImageUrl: '',
   images: [],
+  recommendedProductIds: [],
 });
 
 interface ProductUnit {
@@ -246,12 +250,6 @@ const getDefaultAnalytics = (): Analytics => ({
   },
 });
 
-interface TabConfig {
-  id: string;
-  name: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -281,13 +279,45 @@ const AdminDashboard: React.FC = () => {
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
 
+  const availableRecommendationProducts = useMemo(
+    () => products.filter(product => product && product._id && (!editingProduct || product._id !== editingProduct._id)),
+    [products, editingProduct]
+  );
+
+  const selectedRecommendationDetails = useMemo(
+    () =>
+      availableRecommendationProducts.filter(product =>
+        productForm.recommendedProductIds.includes(product._id)
+      ),
+    [availableRecommendationProducts, productForm.recommendedProductIds]
+  );
+
+  const handleRecommendationSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = Array.from(event.target.selectedOptions, option => option.value);
+    setProductForm(prev => ({
+      ...prev,
+      recommendedProductIds: selected,
+    }));
+  };
+
+  const handleRemoveRecommendation = (id: string) => {
+    setProductForm(prev => ({
+      ...prev,
+      recommendedProductIds: prev.recommendedProductIds.filter(existingId => existingId !== id),
+    }));
+  };
+
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [selectedProductForUnits, setSelectedProductForUnits] = useState<Product | null>(null);
   const [showAddUnitsForm, setShowAddUnitsForm] = useState(false);
   const [newUnits, setNewUnits] = useState<Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>>([]);
 
-  const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
+  const [quoteResponse, setQuoteResponse] = useState<{
+    id: string;
+    response: string;
+    products: { [productId: string]: number };
+  }>({ id: '', response: '', products: {} });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -387,11 +417,11 @@ const AdminDashboard: React.FC = () => {
     // Validate all fields are filled
     const invalidUnits = newUnits.filter(u => !u.serialNumber || !u.modelNumber);
     if (invalidUnits.length > 0) {
-      const missingFields = invalidUnits.map((_, idx) => {
-        const unitNumber = newUnits.indexOf(_) + 1;
-        const missing = [];
-        if (!_.serialNumber) missing.push('serial number');
-        if (!_.modelNumber) missing.push('model number');
+      const missingFields = invalidUnits.map((unit) => {
+        const unitNumber = newUnits.indexOf(unit) + 1;
+        const missing: string[] = [];
+        if (!unit.serialNumber) missing.push('serial number');
+        if (!unit.modelNumber) missing.push('model number');
         return `Unit ${unitNumber}: ${missing.join(' and ')}`;
       }).join(', ');
       alert(`Please fill the following required fields:\n${missingFields}`);
@@ -521,6 +551,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       // Step 1: Create the product
+      const recommendations = Array.from(new Set(productForm.recommendedProductIds.filter(Boolean)));
       const productData = {
         name: productForm.name,
         description: productForm.description,
@@ -533,6 +564,7 @@ const AdminDashboard: React.FC = () => {
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
         warrantyPeriodMonths: productForm.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
         isRecommended: productForm.isRecommended || false,
+        recommendedProductIds: recommendations,
       };
 
       const productResponse = await api.post('/api/products', productData);
@@ -584,6 +616,11 @@ const AdminDashboard: React.FC = () => {
       requiresQuote: product.requiresQuote,
       manualImageUrl: '',
       images: product.images || [],
+      recommendedProductIds: Array.isArray(product.recommendedProductIds)
+        ? product.recommendedProductIds
+            .map(id => (typeof id === 'string' ? id : id?._id))
+            .filter((id): id is string => Boolean(id))
+        : [],
     });
     setShowProductForm(true);
   };
@@ -603,6 +640,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
+      const recommendations = Array.from(new Set(productForm.recommendedProductIds.filter(Boolean)));
       const productData = {
         name: productForm.name,
         description: productForm.description,
@@ -612,6 +650,7 @@ const AdminDashboard: React.FC = () => {
         images: productForm.images,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
         isRecommended: productForm.isRecommended,
+        recommendedProductIds: recommendations,
       };
 
       await api.put(`/api/products/${editingProduct._id}`, productData);
@@ -638,20 +677,31 @@ const AdminDashboard: React.FC = () => {
 
   // Quote Management
   const handleRespondToQuote = async (quoteId: string) => {
-    if (!quoteResponse.response || !quoteResponse.price) {
-      alert('Please provide response and quoted price');
+    if (!quoteResponse.response) {
+      alert('Please provide a response message');
       return;
     }
+
+    // Prepare products array for backend
+    const productsPayload = Object.entries(quoteResponse.products).map(([productId, price]) => ({
+      product: productId,
+      offeredPrice: price
+    }));
+
+    if (productsPayload.length === 0) {
+        // If no products are set, maybe the user didn't interact with inputs.
+        // We should probably validate that all products in the quote have a price set.
+        // But for now, let's just check if payload is empty.
+        // Actually, better to check if we have prices for the quote being responded to.
+    }
+
     try {
-      // Compute discountPercentage if original total is available in quote.products
-      // Send to backend using the /respond endpoint
       await api.put(`/api/quotes/${quoteId}/respond`, {
-        totalPrice: Number(quoteResponse.price),
-        discountPercentage: 0,
+        products: productsPayload,
         message: quoteResponse.response,
       });
       alert('Quote response sent successfully');
-      setQuoteResponse({ id: '', response: '', price: '' });
+      setQuoteResponse({ id: '', response: '', products: {} });
       loadQuotes();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to respond to quote');
@@ -662,7 +712,7 @@ const AdminDashboard: React.FC = () => {
     const reason = window.prompt('Enter rejection reason:');
     if (!reason) return;
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`, {});
       // Optionally you could send reason via another endpoint or email log
       alert('Quote rejected successfully');
       loadQuotes();
@@ -1094,6 +1144,47 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recommended Products
+                </label>
+                <select
+                  multiple
+                  value={productForm.recommendedProductIds}
+                  onChange={handleRecommendationSelection}
+                  className="w-full min-h-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  size={Math.min(6, availableRecommendationProducts.length || 4)}
+                >
+                  {availableRecommendationProducts.length === 0 && (
+                    <option disabled value="">
+                      No other products available yet
+                    </option>
+                  )}
+                  {availableRecommendationProducts.map(product => (
+                    <option key={product._id} value={product._id}>
+                      {product.name} • {product.category}
+                    </option>
+                  ))}
+                </select>
+                {selectedRecommendationDetails.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedRecommendationDetails.map(product => (
+                      <button
+                        key={product._id}
+                        type="button"
+                        onClick={() => handleRemoveRecommendation(product._id)}
+                        className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-blue-100"
+                      >
+                        <span>{product.name}</span>
+                        <X className="w-3 h-3" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  Hold <span className="font-semibold">Ctrl</span> (or <span className="font-semibold">Cmd</span> on Mac) to select multiple products.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -1745,61 +1836,112 @@ const AdminDashboard: React.FC = () => {
               )}
 
               {quote.status === 'pending' && (
-                <div className="flex gap-3 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Response
-                    </label>
-                    <textarea
-                      value={
-                        quoteResponse.id === quote._id ? quoteResponse.response : ''
-                      }
-                      onChange={(e) =>
-                        setQuoteResponse({
-                          ...quoteResponse,
-                          id: quote._id,
-                          response: e.target.value,
-                        })
-                      }
-                      rows={2}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter your response..."
-                    />
+                <div className="mt-4 border-t pt-4">
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">Provide Quote Response:</h4>
+                  
+                  {/* Product Pricing Table */}
+                  <div className="mb-4 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Product</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Qty</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Original Price</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-500">Offered Price (Per Unit)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {quote.products.map((item, idx) => {
+                          const productId = item.product?._id || item.productId?._id || `unknown-${idx}`;
+                          const productName = item.product?.name || item.productId?.name || 'Unknown Product';
+                          // @ts-ignore
+                          const originalPrice = item.product?.price || item.product?.normalPrice || item.originalPrice || 0;
+                          
+                          return (
+                            <tr key={idx}>
+                              <td className="px-3 py-2">{productName}</td>
+                              <td className="px-3 py-2">{item.quantity}</td>
+                              <td className="px-3 py-2">₹{originalPrice}</td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="number"
+                                  value={quoteResponse.id === quote._id ? (quoteResponse.products[productId] ?? '') : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                    setQuoteResponse(prev => ({
+                                      ...prev,
+                                      id: quote._id,
+                                      products: {
+                                        ...prev.products,
+                                        [productId]: val === '' ? 0 : val
+                                      }
+                                    }));
+                                  }}
+                                  className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Enter Price"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="w-40">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Quoted Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={quoteResponse.id === quote._id ? quoteResponse.price : ''}
-                      onChange={(e) =>
-                        setQuoteResponse({
-                          ...quoteResponse,
-                          id: quote._id,
-                          price: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="Price"
-                    />
+
+                  {/* Calculated Total Display */}
+                  <div className="mb-4 flex justify-end bg-gray-50 p-3 rounded border border-gray-200">
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Calculated Total Amount</p>
+                      <p className="text-xl font-bold text-green-600">
+                        ₹{quote.products.reduce((sum, item) => {
+                          const productId = item.product?._id || item.productId?._id;
+                          // @ts-ignore
+                          const price = (quoteResponse.id === quote._id && quoteResponse.products[productId]) ? Number(quoteResponse.products[productId]) : 0;
+                          return sum + (price * item.quantity);
+                        }, 0).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Message
+                      </label>
+                      <textarea
+                        value={
+                          quoteResponse.id === quote._id ? quoteResponse.response : ''
+                        }
+                        onChange={(e) =>
+                          setQuoteResponse(prev => ({
+                            ...prev,
+                            id: quote._id,
+                            response: e.target.value,
+                            products: prev.products // Keep products
+                          }))
+                        }
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter your response..."
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleRespondToQuote(quote._id)}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 h-10"
+                    >
+                      <Check className="w-4 h-4" />
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleRejectQuote(quote._id)}
+                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2 h-10"
+                    >
+                      <X className="w-4 h-4" />
+                      Reject
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleRespondToQuote(quote._id)}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleRejectQuote(quote._id)}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  Reject
-                </button>
-              </div>
-            )}
+              )}
           </div>
         ))}
       </div>

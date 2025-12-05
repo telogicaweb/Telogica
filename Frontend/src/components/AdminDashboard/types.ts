@@ -47,6 +47,7 @@ export interface ProductFormState {
   requiresQuote: boolean;
   manualImageUrl: string;
   images: string[];
+  recommendedProductIds: string[];
 }
 
 export interface ProductUnit {

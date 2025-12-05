@@ -242,7 +242,7 @@ const RetailerDashboard = () => {
     if (!confirm('Accept this quote?')) return;
     setLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/accept`);
+      await api.put(`/api/quotes/${quoteId}/accept`, {});
       alert('Quote accepted! Proceed to checkout.');
       loadQuotes();
     } catch (error: any) {
@@ -256,7 +256,7 @@ const RetailerDashboard = () => {
     if (!confirm('Reject this quote?')) return;
     setLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`, {});
       alert('Quote rejected.');
       loadQuotes();
     } catch (error: any) {
@@ -269,10 +269,26 @@ const RetailerDashboard = () => {
   const proceedToCheckout = async (quote: Quote) => {
     setLoading(true);
     try {
-      const totalPrice = quote.adminResponse?.totalPrice || 0;
-      const totalQty = quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0);
+      // Filter out invalid products
+      const validItems = quote.products.filter((item: any) => (item.product && item.product._id) || (item.productId && item.productId._id));
+      
+      if (validItems.length === 0) {
+        alert('Cannot proceed: All products in this quote are no longer available.');
+        setLoading(false);
+        return;
+      }
 
-      const products = quote.products.map((item: any) => ({
+      if (validItems.length < quote.products.length) {
+        if (!confirm('Some products in this quote are no longer available. Do you want to proceed with the remaining items?')) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      const totalPrice = quote.adminResponse?.totalPrice || 0;
+      const totalQty = validItems.reduce((sum: number, p: any) => sum + p.quantity, 0);
+
+      const products = validItems.map((item: any) => ({
         product: item.product?._id || item.productId?._id,
         quantity: item.quantity,
         price: totalQty > 0 ? totalPrice / totalQty : 0
@@ -564,11 +580,16 @@ const RetailerDashboard = () => {
         {filteredProducts.map(product => (
           <div key={product._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             {product.images && product.images[0] && (
-              <img
-                src={product.images[0]}
-                alt={product.name}
-                className="w-full h-48 object-cover"
-              />
+              <div className="relative">
+                <img
+                  src={product.images[0]}
+                  alt={product.name}
+                  className="w-full h-48 object-cover"
+                />
+                <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                  {product.category}
+                </span>
+              </div>
             )}
             <div className="p-4">
               <h3 className="font-bold text-lg text-gray-900 mb-2">{product.name}</h3>
@@ -619,87 +640,146 @@ const RetailerDashboard = () => {
         </button>
       </div>
 
-      {quotes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 mb-4">No quotes found</p>
-          <button
-            onClick={() => navigate('/quote')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Request a Quote
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {quotes.map(quote => (
-            <div key={quote._id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-start mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                  {quote.status}
-                </span>
-                <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-              </div>
+      {/* Active Quotes Section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
+        {quotes.filter(q => q.status !== 'completed').length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500 mb-4">No active quotes found</p>
+            <button
+              onClick={() => navigate('/quote')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Request a Quote
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {quotes.filter(q => q.status !== 'completed').map(quote => (
+              <div key={quote._id} className="bg-white rounded-lg shadow p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
+                    {quote.status}
+                  </span>
+                  <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                </div>
 
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  {quote.products.map((p: any, idx: number) => (
-                    <li key={idx}>• {p.product?.name || 'Unknown'} (Qty: {p.quantity})</li>
-                  ))}
-                </ul>
-              </div>
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    {quote.products.map((p: any, idx: number) => (
+                      <li key={idx}>• {p.product?.name || 'Unknown'} (Qty: {p.quantity})</li>
+                    ))}
+                  </ul>
+                </div>
 
-              {quote.adminResponse && (
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                  <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-indigo-700">Offered Price:</span>
-                    <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                {quote.adminResponse && (
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-indigo-700">Offered Price:</span>
+                      <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                    </div>
+                    {quote.adminResponse.discountPercentage > 0 && (
+                      <p className="text-sm text-green-600">{quote.adminResponse.discountPercentage}% discount!</p>
+                    )}
+                    {quote.adminResponse.message && (
+                      <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
+                    )}
                   </div>
-                  {quote.adminResponse.discountPercentage > 0 && (
-                    <p className="text-sm text-green-600">{quote.adminResponse.discountPercentage}% discount!</p>
-                  )}
-                  {quote.adminResponse.message && (
-                    <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
-                  )}
-                </div>
-              )}
+                )}
 
-              {quote.status === 'responded' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => acceptQuote(quote._id)}
-                    disabled={loading}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
-                  >
-                    <ThumbsUp size={16} />
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => rejectQuote(quote._id)}
-                    disabled={loading}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
-                  >
-                    <ThumbsDown size={16} />
-                    Reject
-                  </button>
-                </div>
-              )}
+                {quote.status === 'responded' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => acceptQuote(quote._id)}
+                      disabled={loading}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                    >
+                      <ThumbsUp size={16} />
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => rejectQuote(quote._id)}
+                      disabled={loading}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
+                    >
+                      <ThumbsDown size={16} />
+                      Reject
+                    </button>
+                  </div>
+                )}
 
-              {quote.status === 'accepted' && (
-                <button
-                  onClick={() => proceedToCheckout(quote)}
-                  disabled={loading}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
-                >
-                  Proceed to Checkout
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                {quote.status === 'accepted' && (
+                  <>
+                    {quote.orderId ? (
+                      <button
+                        onClick={() => setActiveTab('orders')}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle size={16} />
+                        Order Created - View in Orders
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => proceedToCheckout(quote)}
+                        disabled={loading}
+                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                      >
+                        Proceed to Checkout
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quote History Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
+        {quotes.filter(q => q.status === 'completed').length === 0 ? (
+          <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <Clock size={32} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500 text-sm">No completed quotes found.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {quotes.filter(q => q.status === 'completed').map(quote => (
+              <div key={quote._id} className="bg-white rounded-lg shadow p-6 opacity-75 hover:opacity-100 transition-opacity">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                    <CheckCircle size={14} />
+                    Completed
+                  </span>
+                  <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                </div>
+
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    {quote.products.map((p: any, idx: number) => (
+                      <li key={idx}>• {p.product?.name || 'Unknown'} (Qty: {p.quantity})</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {quote.adminResponse && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Final Price:</span>
+                      <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 

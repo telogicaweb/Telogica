@@ -14,7 +14,6 @@ import {
   Package,
   Layers,
   AlertCircle,
-  CheckCircle,
   Star,
   Download,
   Calendar,
@@ -48,6 +47,7 @@ const getFreshProductFormState = (): ProductFormState => ({
   requiresQuote: false,
   manualImageUrl: '',
   images: [],
+  recommendedProductIds: [],
 });
 
 const ProductManagement: React.FC<ProductManagementProps> = ({
@@ -87,6 +87,31 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     const cats = products.filter(p => p && p.category).map(p => p.category);
     return ['all', ...Array.from(new Set(cats))];
   }, [products]);
+
+  const availableRecommendationProducts = useMemo(
+    () => products.filter(p => p && p._id && (!editingProduct || p._id !== editingProduct._id)),
+    [products, editingProduct]
+  );
+
+  const selectedRecommendations = useMemo(
+    () => availableRecommendationProducts.filter(p => productForm.recommendedProductIds.includes(p._id)),
+    [availableRecommendationProducts, productForm.recommendedProductIds]
+  );
+
+  const handleRecommendationSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selected = Array.from(event.target.selectedOptions, option => option.value);
+    setProductForm(prev => ({
+      ...prev,
+      recommendedProductIds: selected,
+    }));
+  };
+
+  const handleRemoveRecommendation = (id: string) => {
+    setProductForm(prev => ({
+      ...prev,
+      recommendedProductIds: prev.recommendedProductIds.filter(existingId => existingId !== id),
+    }));
+  };
 
   // Enhanced filtering
   const filteredProducts = useMemo(() => {
@@ -208,7 +233,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
           resolveStock(p),
           price ? `₹${price}` : 'Quote Only',
           p.retailerPrice ? `₹${p.retailerPrice}` : '-',
-          p.requiresQuote ? 'Quote' : (p.isRecommended ? 'Featured' : 'Regular')
+          p.requiresQuote ? 'Quote' : (p.isRecommended ? 'Suggested' : 'Regular')
         ];
       });
 
@@ -324,7 +349,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         { header: 'Retailer Price (₹)', key: 'retailerPrice', width: 15 },
         { header: 'Warranty (months)', key: 'warranty', width: 12 },
         { header: 'Requires Quote', key: 'requiresQuote', width: 12 },
-        { header: 'Featured', key: 'featured', width: 10 },
+        { header: 'Suggested', key: 'featured', width: 10 },
         { header: 'Created At', key: 'createdAt', width: 15 }
       ];
       
@@ -373,7 +398,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         { metric: 'Low Stock Items', value: stats.lowStock },
         { metric: 'Out of Stock Items', value: stats.outOfStock },
         { metric: 'Quote Only Products', value: stats.quoteOnly },
-        { metric: 'Featured Products', value: stats.recommended },
+        { metric: 'Suggested Products', value: stats.recommended },
         { metric: 'Categories', value: stats.categories }
       ]);
       
@@ -444,6 +469,8 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         })
       );
 
+      const recommendations = Array.from(new Set(productForm.recommendedProductIds.filter(Boolean)));
+
       const productData = {
         name: productForm.name,
         description: productForm.description,
@@ -456,6 +483,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
         warrantyPeriodMonths: productForm.warrantyPeriodMonths || 12,
         isRecommended: productForm.isRecommended || false,
+        recommendedProductIds: recommendations,
       };
 
       const productResponse = await api.post('/api/products', productData);
@@ -554,7 +582,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
             )}
             {product.isRecommended && (
               <span className="px-2 py-1 bg-amber-500 text-white text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
-                <Star className="w-3 h-3" /> Featured
+                <Star className="w-3 h-3" /> Suggested
               </span>
             )}
             {(product.stockQuantity ?? 0) <= 5 && (product.stockQuantity ?? 0) > 0 && (
@@ -809,7 +837,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               {stats.quoteOnly} quote-only
             </span>
             <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
-              {stats.recommended} featured
+              {stats.recommended} suggested
             </span>
           </div>
         </div>
@@ -863,7 +891,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               <option value="low-stock">Low Stock</option>
               <option value="out-of-stock">Out of Stock</option>
               <option value="quote-only">Quote Only</option>
-              <option value="recommended">Recommended</option>
+              <option value="recommended">Suggested</option>
             </select>
 
             <div className="flex items-center gap-2">
@@ -1048,6 +1076,50 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                 )}
               </div>
 
+              {/* Recommendations */}
+              <div className="bg-gradient-to-r from-yellow-50 via-amber-50 to-orange-50 p-4 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Suggested Products</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Select existing products to surface as suggestions alongside this item on the storefront.
+                </p>
+                <select
+                  multiple
+                  value={productForm.recommendedProductIds}
+                  onChange={handleRecommendationSelection}
+                  className="w-full min-h-[140px] px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  size={Math.min(6, availableRecommendationProducts.length || 4)}
+                >
+                  {availableRecommendationProducts.length === 0 && (
+                    <option disabled value="">
+                      No other products available yet
+                    </option>
+                  )}
+                  {availableRecommendationProducts.map(product => (
+                    <option key={product._id} value={product._id}>
+                      {product.name} • {product.category}
+                    </option>
+                  ))}
+                </select>
+                {selectedRecommendations.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedRecommendations.map(product => (
+                      <button
+                        key={product._id}
+                        type="button"
+                        onClick={() => handleRemoveRecommendation(product._id)}
+                        className="inline-flex items-center gap-2 bg-white border border-amber-200 text-amber-700 px-3 py-1.5 rounded-full text-sm shadow-sm hover:bg-amber-50"
+                      >
+                        <span className="font-medium">{product.name}</span>
+                        <X className="w-3 h-3" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-3">
+                  Tip: Hold <span className="font-semibold">Ctrl</span> (or <span className="font-semibold">Cmd</span> on Mac) to select multiple products.
+                </p>
+              </div>
+
               {/* Settings */}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Settings</h3>
@@ -1070,7 +1142,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">Featured Product</p>
+                      <p className="font-medium text-gray-900">Suggested Product</p>
                       <p className="text-sm text-gray-600">Mark as recommended product</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -1208,7 +1280,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                             )}
                             {product.isRecommended && (
                               <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                <Star className="w-3 h-3 mr-1" /> Featured
+                                <Star className="w-3 h-3 mr-1" /> Suggested
                               </span>
                             )}
                           </div>

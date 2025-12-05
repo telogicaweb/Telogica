@@ -3,6 +3,37 @@ const ProductUnit = require('../models/ProductUnit');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const { sendEmail } = require('../utils/mailer');
+const cloudinary = require('../utils/cloudinary');
+const streamifier = require('streamifier');
+
+// Upload invoice
+exports.uploadInvoice = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No invoice file provided' });
+  }
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'invoices',
+          resource_type: 'auto', // Allow PDF etc.
+        },
+        (error, response) => {
+          if (error) return reject(error);
+          resolve(response);
+        }
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+    });
+
+    res.status(201).json({ url: result.secure_url, public_id: result.public_id });
+  } catch (error) {
+    console.error('Cloudinary upload failed', error);
+    res.status(500).json({ message: 'Failed to upload invoice' });
+  }
+};
 
 // Register warranty
 exports.registerWarranty = async (req, res) => {

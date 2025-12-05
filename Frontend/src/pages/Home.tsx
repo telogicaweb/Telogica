@@ -4,8 +4,7 @@ import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import Hero from '../components/Hero';
-import Footer from '../components/Footer';
-import { ShoppingCart, FileText, Eye, TrendingUp, Award, Users, Package } from 'lucide-react';
+import { ShoppingCart, FileText, Eye, Package } from 'lucide-react';
 
 interface Product {
   _id: string;
@@ -110,11 +109,16 @@ const Home = () => {
                       alt={product.name} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                     />
-                    {!product.price && (
-                      <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                        Quote Only
-                      </div>
-                    )}
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                      <span className="bg-white/90 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                        {product.category}
+                      </span>
+                      {!product.price && (
+                        <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow">
+                          Quote Only
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Product Info */}

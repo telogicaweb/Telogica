@@ -64,6 +64,30 @@ const WarrantyRegistration = () => {
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const uploadData = new FormData();
+    uploadData.append('invoice', file);
+
+    try {
+      setLoading(true);
+      const res = await api.post('/api/warranties/upload-invoice', uploadData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setFormData(prev => ({ ...prev, invoice: res.data.url }));
+      // alert('Invoice uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading invoice:', error);
+      alert('Failed to upload invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -268,15 +292,21 @@ const WarrantyRegistration = () => {
                       Invoice Upload (Required) *
                     </label>
                     <input
-                      type="text"
-                      required={formData.purchaseType !== 'telogica_online'}
-                      value={formData.invoice}
-                      onChange={(e) => setFormData({ ...formData, invoice: e.target.value })}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      required={formData.purchaseType !== 'telogica_online' && !formData.invoice}
+                      onChange={handleFileChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter invoice URL"
                     />
+                    {formData.invoice && (
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                        <CheckCircle size={16} />
+                        <span>Invoice uploaded successfully</span>
+                        <a href={formData.invoice} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">View</a>
+                      </div>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">
-                      Upload invoice to cloud storage and paste URL here
+                      Supported formats: PDF, JPG, PNG (Max 5MB)
                     </p>
                   </div>
                 )}

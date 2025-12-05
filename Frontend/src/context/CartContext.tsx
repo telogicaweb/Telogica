@@ -7,6 +7,7 @@ interface Product {
   images: string[];
   category?: string;
   description?: string;
+  isTelecom?: boolean;
 }
 
 interface CartItem {

@@ -3,20 +3,29 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { CartContext } from '../context/CartContext';
 
-interface Product {
+const FALLBACK_PRODUCT_IMAGE = 'https://via.placeholder.com/400x300?text=Telogica+Product';
+
+interface RecommendedProductSummary {
   _id: string;
   name: string;
-  description: string;
-  price?: number;
-  images: string[];
   category: string;
+  images: string[];
+  price?: number;
+  retailerPrice?: number;
   isRecommended?: boolean;
+  requiresQuote?: boolean;
+  isTelecom?: boolean;
+}
+
+interface Product extends RecommendedProductSummary {
+  description?: string;
+  recommendedProductIds?: Array<string | RecommendedProductSummary>;
 }
 
 const ProductDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
-  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProductSummary[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const { addToCart, addToQuote } = useContext(CartContext)!;
@@ -26,18 +35,65 @@ const ProductDetails = () => {
       try {
         // Fetch current product
         const { data: productData } = await api.get(`/api/products/${id}`);
-        setProduct(productData);
-        setActiveImage(productData.images?.[0] ?? null);
+        const normalizedProduct: Product = {
+          _id: productData._id,
+          name: productData.name,
+          category: productData.category,
+          images: Array.isArray(productData.images) ? productData.images : [],
+          price: productData.price,
+          retailerPrice: productData.retailerPrice,
+          isRecommended: productData.isRecommended,
+          requiresQuote: productData.requiresQuote,
+          description: productData.description,
+          recommendedProductIds: productData.recommendedProductIds,
+          isTelecom: productData.isTelecom,
+        };
 
-        // Fetch all products for recommendations
-        const { data: allProducts } = await api.get('/api/products');
-        
-        // Filter recommended products (excluding current one)
-        const recommended = allProducts.filter((p: Product) => 
-          p.isRecommended && p._id !== id
-        ); // Show all recommended products
-        
-        setRecommendedProducts(recommended);
+        setProduct(normalizedProduct);
+        setActiveImage(normalizedProduct.images[0] ?? null);
+
+        let recommendations: RecommendedProductSummary[] = [];
+
+        if (Array.isArray(productData.recommendedProductIds)) {
+          const populated = productData.recommendedProductIds as Array<string | RecommendedProductSummary>;
+          recommendations = populated
+            .filter((item: string | RecommendedProductSummary): item is RecommendedProductSummary =>
+              item !== null && typeof item === 'object' && '_id' in item
+            )
+            .filter((recommendation: RecommendedProductSummary) => recommendation._id !== normalizedProduct._id)
+            .map((recommendation) => ({
+              _id: recommendation._id,
+              name: recommendation.name,
+              category: recommendation.category,
+              images: Array.isArray(recommendation.images) ? recommendation.images : [],
+              price: recommendation.price,
+              retailerPrice: recommendation.retailerPrice,
+              isRecommended: recommendation.isRecommended,
+              requiresQuote: recommendation.requiresQuote,
+            }));
+        }
+
+        if (!recommendations.length) {
+          const { data: allProducts } = await api.get('/api/products');
+          recommendations = allProducts
+            .filter((p: Product) => p.isRecommended && p._id !== normalizedProduct._id)
+            .map((p: Product) => ({
+              _id: p._id,
+              name: p.name,
+              category: p.category,
+              images: Array.isArray(p.images) ? p.images : [],
+              price: p.price,
+              retailerPrice: p.retailerPrice,
+              isRecommended: p.isRecommended,
+              requiresQuote: p.requiresQuote,
+            }));
+        }
+
+        const uniqueRecommendations = recommendations.filter(
+          (rec, index, self) => self.findIndex(item => item._id === rec._id) === index
+        );
+
+        setRecommendedProducts(uniqueRecommendations);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -153,30 +209,39 @@ const ProductDetails = () => {
         {/* Recommended Products - Right Side */}
         <div className="lg:w-1/4">
           <div className="sticky top-24">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Recommended</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Suggested Products</h3>
             <div className="space-y-4 max-h-[calc(100vh-150px)] overflow-y-auto pr-2">
-              {recommendedProducts.map((recProduct) => (
-                <Link to={`/product/${recProduct._id}`} key={recProduct._id} className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden">
-                  <div className="h-32 overflow-hidden">
-                    <img 
-                      src={recProduct.images[0]} 
-                      alt={recProduct.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <h4 className="font-semibold text-gray-800 text-sm truncate">{recProduct.name}</h4>
-                    <p className="text-xs text-gray-500 uppercase mt-1">{recProduct.category}</p>
-                    <div className="mt-2">
-                      {recProduct.category.toLowerCase() === 'telecom' && recProduct.price ? (
-                        <span className="text-sm font-bold text-gray-900">₹{recProduct.price.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-xs font-bold text-blue-600">Price on Request</span>
-                      )}
+              {recommendedProducts.map((recProduct) => {
+                const thumbnail = recProduct.images.length ? recProduct.images[0] : FALLBACK_PRODUCT_IMAGE;
+                const isTelecom = recProduct.category?.toLowerCase() === 'telecom';
+                const canShowPrice = isTelecom && typeof recProduct.price === 'number' && !recProduct.requiresQuote;
+
+                return (
+                  <Link to={`/product/${recProduct._id}`} key={recProduct._id} className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden">
+                    <div className="h-32 overflow-hidden relative">
+                      <img 
+                        src={thumbnail} 
+                        alt={recProduct.name} 
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute top-1 right-1 bg-white/90 text-gray-900 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow">
+                        {recProduct.category}
+                      </span>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                    <div className="p-3">
+                      <h4 className="font-semibold text-gray-800 text-sm truncate">{recProduct.name}</h4>
+                      <p className="text-xs text-gray-500 uppercase mt-1">{recProduct.category}</p>
+                      <div className="mt-2">
+                        {canShowPrice ? (
+                          <span className="text-sm font-bold text-gray-900">₹{recProduct.price!.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-xs font-bold text-blue-600">Price on Request</span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
               {recommendedProducts.length === 0 && (
                 <p className="text-gray-500 text-sm">No recommendations available.</p>
               )}

@@ -158,12 +158,15 @@ const Cart = () => {
               <ul className="divide-y divide-gray-200">
                 {cart.map((item) => (
                   <li key={item.product._id} className="p-6 flex">
-                    <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden">
+                    <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden relative">
                       <img
                         src={item.product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
                         alt={item.product.name}
                         className="w-full h-full object-center object-cover"
                       />
+                      <span className="absolute top-1 right-1 bg-white/90 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow">
+                        {item.product.category}
+                      </span>
                     </div>
 
                     <div className="ml-4 flex-1 flex flex-col">
@@ -243,23 +246,32 @@ const Cart = () => {
                     </p>
                   </>
                 ) : (
-                  <button
-                    onClick={handleCheckout}
-                    disabled={isProcessing}
-                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 size={18} className="mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        Proceed to Checkout
-                        <ArrowRight size={18} className="ml-2" />
-                      </>
-                    )}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleCheckout}
+                      disabled={isProcessing}
+                      className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 size={18} className="mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          Proceed to Checkout
+                          <ArrowRight size={18} className="ml-2" />
+                        </>
+                      )}
+                    </button>
+                    
+                    <button
+                      onClick={() => navigate('/quote')}
+                      className="w-full flex justify-center items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      Request a Quote
+                    </button>
+                  </div>
                 )}
               </div>
               

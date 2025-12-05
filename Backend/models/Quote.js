@@ -5,12 +5,13 @@ const quoteSchema = new mongoose.Schema({
   products: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, required: true },
-    originalPrice: { type: Number } // Store original price for reference
+    originalPrice: { type: Number }, // Store original price for reference
+    offeredPrice: { type: Number } // Price offered by admin per unit
   }],
   message: { type: String },
   status: { 
     type: String, 
-    enum: ['pending', 'responded', 'accepted', 'rejected'], 
+    enum: ['pending', 'responded', 'accepted', 'rejected', 'completed'], 
     default: 'pending' 
   },
   adminResponse: {

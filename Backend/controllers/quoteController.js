@@ -56,9 +56,14 @@ const getQuotes = async (req, res) => {
   try {
     let quotes;
     if (req.user.role === 'admin') {
-      quotes = await Quote.find({}).populate('user', 'name email role').populate('products.product');
+      quotes = await Quote.find({})
+        .populate('user', 'name email role')
+        .populate('products.product')
+        .sort({ createdAt: -1 });
     } else {
-      quotes = await Quote.find({ user: req.user._id }).populate('products.product');
+      quotes = await Quote.find({ user: req.user._id })
+        .populate('products.product')
+        .sort({ createdAt: -1 });
     }
     res.json(quotes);
   } catch (error) {
@@ -70,14 +75,40 @@ const getQuotes = async (req, res) => {
 // @route   PUT /api/quotes/:id/respond
 // @access  Private/Admin
 const respondToQuote = async (req, res) => {
-  const { totalPrice, discountPercentage, message } = req.body;
+  const { products, message } = req.body;
 
   try {
-    const quote = await Quote.findById(req.params.id).populate('user', 'email name');
+    const quote = await Quote.findById(req.params.id).populate('user', 'email name').populate('products.product');
 
     if (quote) {
+      let calculatedTotal = 0;
+      let originalTotal = 0;
+
+      // Update each product's offered price
+      if (products && Array.isArray(products)) {
+        products.forEach(pItem => {
+          // Safely find the product, checking if product exists (it might be null if deleted)
+          const quoteProduct = quote.products.find(qp => 
+            qp.product && qp.product._id.toString() === pItem.product.toString()
+          );
+          
+          if (quoteProduct) {
+            quoteProduct.offeredPrice = Number(pItem.offeredPrice);
+            calculatedTotal += quoteProduct.offeredPrice * quoteProduct.quantity;
+            originalTotal += (quoteProduct.originalPrice || 0) * quoteProduct.quantity;
+          }
+        });
+      }
+
+      // Calculate discount percentage
+      let discountPercentage = 0;
+      if (originalTotal > 0 && calculatedTotal < originalTotal) {
+        discountPercentage = ((originalTotal - calculatedTotal) / originalTotal) * 100;
+        discountPercentage = Math.round(discountPercentage * 100) / 100;
+      }
+
       quote.adminResponse = { 
-        totalPrice, 
+        totalPrice: calculatedTotal, 
         discountPercentage,
         message,
         respondedAt: new Date()
@@ -87,7 +118,7 @@ const respondToQuote = async (req, res) => {
       const updatedQuote = await quote.save();
 
       // Notify User with detailed email
-      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: ₹${totalPrice}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
+      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: ₹${calculatedTotal}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
       
       // HTML escape function to prevent XSS
       const escapeHtml = (text) => {
@@ -107,7 +138,7 @@ const respondToQuote = async (req, res) => {
         <p>Your quote request has been reviewed.</p>
         <ul>
           <li><strong>Discount offered:</strong> ${escapeHtml(String(discountPercentage))}%</li>
-          <li><strong>Total Price:</strong> ₹${escapeHtml(String(totalPrice))}</li>
+          <li><strong>Total Price:</strong> ₹${escapeHtml(String(calculatedTotal))}</li>
           <li><strong>Message:</strong> ${escapeHtml(message)}</li>
         </ul>
         <p>Please login to your account to accept or reject this quote.</p>

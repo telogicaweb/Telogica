@@ -1,6 +1,42 @@
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
+
+const { Types } = mongoose;
+
+const normalizeRecommendationIds = async (ids, currentProductId = null) => {
+  if (!Array.isArray(ids)) {
+    return [];
+  }
+
+  const rawIds = ids
+    .map(id => {
+      if (!id) return null;
+      if (typeof id === 'object') {
+        if (id._id) return id._id;
+        if (id.id) return id.id;
+      }
+      return id;
+    })
+    .filter(Boolean)
+    .map(id => id.toString());
+
+  const uniqueIds = [...new Set(rawIds)].filter(id => Types.ObjectId.isValid(id));
+
+  const filteredIds = currentProductId
+    ? uniqueIds.filter(id => id !== currentProductId.toString())
+    : uniqueIds;
+
+  if (!filteredIds.length) {
+    return [];
+  }
+
+  const existingIds = await Product.find({ _id: { $in: filteredIds } }).distinct('_id');
+  const existingSet = new Set(existingIds.map(id => id.toString()));
+
+  return filteredIds.filter(id => existingSet.has(id));
+};
 
 // @desc    Fetch all products
 // @route   GET /api/products
@@ -19,7 +55,8 @@ const getProducts = async (req, res) => {
 // @access  Public
 const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('recommendedProductIds', 'name category images price retailerPrice requiresQuote isRecommended stock');
 
     if (product) {
       res.json(product);
@@ -50,10 +87,13 @@ const createProduct = async (req, res) => {
     requiresQuote,
     modelNumberPrefix,
     features,
-    technicalSpecs
+    technicalSpecs,
+    recommendedProductIds
   } = req.body;
 
   try {
+    const sanitizedRecommendations = await normalizeRecommendationIds(recommendedProductIds);
+
     const product = new Product({
       name,
       description,
@@ -69,7 +109,8 @@ const createProduct = async (req, res) => {
       requiresQuote: requiresQuote || !price, // Auto-set if price missing
       modelNumberPrefix,
       features,
-      technicalSpecs
+      technicalSpecs,
+      recommendedProductIds: sanitizedRecommendations
     });
 
     const createdProduct = await product.save();
@@ -98,13 +139,18 @@ const updateProduct = async (req, res) => {
     requiresQuote,
     modelNumberPrefix,
     features,
-    technicalSpecs
+    technicalSpecs,
+    recommendedProductIds
   } = req.body;
 
   try {
     const product = await Product.findById(req.params.id);
 
     if (product) {
+      if (recommendedProductIds !== undefined) {
+        const sanitizedRecommendations = await normalizeRecommendationIds(recommendedProductIds, product._id);
+        product.recommendedProductIds = sanitizedRecommendations;
+      }
       product.name = name || product.name;
       product.description = description || product.description;
       product.images = images || product.images;
@@ -192,9 +238,7 @@ const updateRecommendations = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Filter out self references and ensure ObjectId format
-    const sanitized = recommendedProductIds
-      .filter(id => String(id) !== String(req.params.id));
+    const sanitized = await normalizeRecommendationIds(recommendedProductIds, product._id);
     product.recommendedProductIds = sanitized;
 
     const updated = await product.save();

@@ -20,51 +20,48 @@ const EmailLogs: React.FC<EmailLogsProps> = ({ emailLogs, onEmailLogsUpdated }) 
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Email Logs</h2>
+    <div className="space-y-8 animate-fadeIn">
+      <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Email Logs</h2>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Recipient
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Subject
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Sent At
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
+                {['Recipient', 'Subject', 'Type', 'Status', 'Sent At', 'Actions'].map((header) => (
+                  <th
+                    key={header}
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+
+            <tbody className="bg-white divide-y divide-gray-100">
               {emailLogs.map((log) => (
-                <tr key={log._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                <tr
+                  key={log._id}
+                  className="hover:bg-gray-50 transition-all"
+                >
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {log.recipient}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+
+                  <td className="px-6 py-4 text-sm text-gray-800">
                     {log.subject}
                   </td>
+
                   <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 shadow-sm">
                       {log.emailType}
                     </span>
                   </td>
+
                   <td className="px-6 py-4 text-sm">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
                         log.status === 'sent'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
@@ -73,16 +70,19 @@ const EmailLogs: React.FC<EmailLogsProps> = ({ emailLogs, onEmailLogsUpdated }) 
                       {log.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+
+                  <td className="px-6 py-4 text-sm text-gray-700">
                     {new Date(log.sentAt).toLocaleString()}
                   </td>
+
                   <td className="px-6 py-4 text-sm">
                     <button
                       onClick={() => handleResendEmail(log._id)}
-                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-all"
                       title="Resend Email"
                     >
                       <RefreshCw className="w-4 h-4" />
+                      <span className="text-xs font-semibold">Resend</span>
                     </button>
                   </td>
                 </tr>
