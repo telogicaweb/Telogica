@@ -3,13 +3,15 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
+import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
+import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const Cart = () => {
   const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
   const navigate = useNavigate();
   const [shippingAddress, setShippingAddress] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.product.price || 0) * item.quantity, 0);
   const shipping = 0; // Free shipping for now
@@ -36,6 +38,14 @@ const Cart = () => {
       return;
     }
 
+    // Check if Razorpay is loaded
+    if (typeof window.Razorpay === 'undefined') {
+      alert('Payment gateway is not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
       const { data } = await api.post('/api/orders', {
         products: cart.map(item => ({
@@ -48,14 +58,14 @@ const Cart = () => {
       });
 
       // Razorpay Integration
-      const options = {
+      const options: RazorpayOptions = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
         amount: data.razorpayOrder.amount,
         currency: data.razorpayOrder.currency,
         name: "Telogica",
         description: "Order Payment",
         order_id: data.razorpayOrder.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           try {
             await api.post('/api/orders/verify', {
               orderId: data.order._id,
@@ -65,8 +75,10 @@ const Cart = () => {
             alert('Payment Successful!');
             clearCart();
             navigate('/user-dashboard');
-          } catch (error) {
+          } catch {
             alert('Payment Verification Failed');
+          } finally {
+            setIsProcessing(false);
           }
         },
         prefill: {
@@ -78,20 +90,23 @@ const Cart = () => {
         }
       };
 
-      const rzp1 = new (window as any).Razorpay(options);
-      rzp1.on('payment.failed', function (response: any){
+      const rzp1 = new window.Razorpay(options);
+      rzp1.on('payment.failed', function (response: { error: { description: string } }){
         alert(response.error.description);
+        setIsProcessing(false);
       });
       rzp1.open();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      if (error.response?.data?.requiresQuote) {
-        alert(error.response.data.message);
+      const axiosError = error as { response?: { data?: { requiresQuote?: boolean; message?: string } }; message?: string };
+      if (axiosError.response?.data?.requiresQuote) {
+        alert(axiosError.response.data.message);
         navigate('/quote');
       } else {
-        alert('Checkout Failed: ' + (error.response?.data?.message || error.message));
+        alert('Checkout Failed: ' + (axiosError.response?.data?.message || axiosError.message));
       }
+      setIsProcessing(false);
     }
   };
 
@@ -230,10 +245,20 @@ const Cart = () => {
                 ) : (
                   <button
                     onClick={handleCheckout}
-                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                    disabled={isProcessing}
+                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
                   >
-                    Checkout
-                    <ArrowRight size={18} className="ml-2" />
+                    {isProcessing ? (
+                      <>
+                        <Loader2 size={18} className="mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Proceed to Checkout
+                        <ArrowRight size={18} className="ml-2" />
+                      </>
+                    )}
                   </button>
                 )}
               </div>

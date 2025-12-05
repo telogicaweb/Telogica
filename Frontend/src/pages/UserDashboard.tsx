@@ -2,7 +2,8 @@ import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2 } from 'lucide-react';
+import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const UserDashboard = () => {
   const auth = useContext(AuthContext);
@@ -56,9 +57,10 @@ const UserDashboard = () => {
       await api.put(`/api/quotes/${quoteId}/accept`);
       alert('Quote accepted! You can now proceed to checkout with this quote.');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error accepting quote', error);
-      alert(error.response?.data?.message || 'Failed to accept quote');
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to accept quote');
     } finally {
       setActionLoading(false);
     }
@@ -72,14 +74,23 @@ const UserDashboard = () => {
       await api.put(`/api/quotes/${quoteId}/reject`);
       alert('Quote rejected.');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error rejecting quote', error);
-      alert(error.response?.data?.message || 'Failed to reject quote');
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to reject quote');
     } finally {
       setActionLoading(false);
     }
   };
 
+  const proceedToCheckout = async (quote: { _id: string; products: { product: { _id: string }; quantity: number }[]; adminResponse?: { totalPrice: number }; quotedPrice?: number }) => {
+    // Check if Razorpay is loaded
+    if (typeof window.Razorpay === 'undefined') {
+      alert('Payment gateway is not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    setLoading(true);
   const proceedToCheckout = async (quote: any) => {
     if (!user) {
       alert('Please login again to continue.');
@@ -89,16 +100,16 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      const totalQty = quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0);
+      const totalQty = quote.products.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0);
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
 
-      const products = quote.products.map((item: any) => ({
+      const products = quote.products.map((item: { product: { _id: string }; quantity: number }) => ({
         product: item.product._id, // Changed from productId to product to match backend schema
         quantity: item.quantity,
         price: totalQty > 0 ? totalPrice / totalQty : 0
       }));
 
-      const shippingAddress = prompt("Please enter your shipping address:", user.address || "");
+      const shippingAddress = prompt("Please enter your shipping address:", user?.address || "");
       if (!shippingAddress) {
         setActionLoading(false);
         return;
@@ -112,14 +123,14 @@ const UserDashboard = () => {
       });
 
       // Razorpay Integration
-      const options = {
+      const options: RazorpayOptions = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
         amount: data.razorpayOrder.amount,
         currency: data.razorpayOrder.currency,
         name: "Telogica",
         description: "Quote Order Payment",
         order_id: data.razorpayOrder.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayResponse) {
           try {
             await api.post('/api/orders/verify', {
               orderId: data.order._id,
@@ -128,32 +139,36 @@ const UserDashboard = () => {
             });
             alert('Payment Successful!');
             fetchData();
-          } catch (error) {
+          } catch {
             alert('Payment Verification Failed');
+          } finally {
+            setLoading(false);
           }
         },
         prefill: {
-          name: user.name,
-          email: user.email,
+          name: user?.name || '',
+          email: user?.email || '',
         },
         theme: {
           color: "#3399cc"
         }
       };
 
-      const rzp1 = new (window as any).Razorpay(options);
-      rzp1.on('payment.failed', function (response: any){
+      const rzp1 = new window.Razorpay(options);
+      rzp1.on('payment.failed', function (response: { error: { description: string } }){
         alert(response.error.description);
+        setLoading(false);
       });
       rzp1.open();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating order', error);
-      if (error.response?.status === 401) {
+      const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosError.response?.status === 401) {
         alert('Session expired. Please login again.');
         return;
       }
-      alert(error.response?.data?.message || 'Failed to create order');
+      alert(axiosError.response?.data?.message || 'Failed to create order');
     } finally {
       setActionLoading(false);
     }
@@ -401,10 +416,19 @@ const UserDashboard = () => {
                         {quote.status === 'accepted' && (
                           <button
                             onClick={() => proceedToCheckout(quote)}
+                            disabled={loading}
+                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
                             disabled={actionLoading}
                             className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                           >
-                            Proceed to Checkout
+                            {loading ? (
+                              <>
+                                <Loader2 size={16} className="mr-2 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              'Proceed to Checkout'
+                            )}
                           </button>
                         )}
                       </div>
