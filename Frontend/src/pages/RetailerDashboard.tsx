@@ -169,6 +169,8 @@ const RetailerDashboard = () => {
       navigate('/');
       return;
     }
+
+    // Initial load
     loadDashboardData();
 
     // Set up auto-refresh every 30 seconds
@@ -180,11 +182,13 @@ const RetailerDashboard = () => {
 
     return () => clearInterval(refreshInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, navigate]);
+  }, [user?._id, navigate]); // Depend on user ID, not user object
 
   // Refresh data when switching to data-dependent tabs
   useEffect(() => {
-    if (user && user.role === 'retailer' && dataRefreshTabs.includes(activeTab)) {
+    // Skip if it's the initial mount (handled by the first useEffect)
+    // We can check if data is already loaded or just rely on the fact that activeTab changes
+    if (user && user.role === 'retailer' && dataRefreshTabs.includes(activeTab) && activeTab !== 'dashboard') {
       silentRefresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -383,7 +387,7 @@ const RetailerDashboard = () => {
         },
         theme: { color: "#3399cc" },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setCheckoutLoading(false);
           }
         }
@@ -844,8 +848,8 @@ const RetailerDashboard = () => {
               key={filter}
               onClick={() => setInventoryFilter(filter)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
             >
               {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
@@ -1145,8 +1149,8 @@ const RetailerDashboard = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                     }`}
                 >
                   <Icon size={18} />
