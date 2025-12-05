@@ -61,45 +61,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return savedQuote ? JSON.parse(savedQuote) : [];
   });
 
-  // Listen for user changes in localStorage (login/logout)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const storedUser = localStorage.getItem('user');
-      let newUserId: string | null = null;
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          newUserId = user._id || null;
-        } catch {
-          newUserId = null;
-        }
-      }
-      if (newUserId !== userId) {
-        setUserIdState(newUserId);
-        // Load user-specific cart and quote items
-        const cartKey = getStorageKey('cart', newUserId);
-        const quoteKey = getStorageKey('quoteItems', newUserId);
-        const savedCart = localStorage.getItem(cartKey);
-        const savedQuote = localStorage.getItem(quoteKey);
-        setCart(savedCart ? JSON.parse(savedCart) : []);
-        setQuoteItems(savedQuote ? JSON.parse(savedQuote) : []);
-      }
-    };
-
-    // Check periodically for user changes (handles same-tab changes)
-    const interval = setInterval(handleStorageChange, 500);
-    
-    // Listen for storage changes from other tabs
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [userId]);
-
-  // Update cart when userId changes
-  const setUserId = useCallback((newUserId: string | null) => {
+  // Handle user changes via custom event
+  const handleUserChange = useCallback((newUserId: string | null) => {
     if (newUserId !== userId) {
       setUserIdState(newUserId);
       // Load user-specific cart and quote items
@@ -111,6 +74,36 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setQuoteItems(savedQuote ? JSON.parse(savedQuote) : []);
     }
   }, [userId]);
+
+  // Listen for user changes in localStorage (login/logout) from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user') {
+        let newUserId: string | null = null;
+        if (e.newValue) {
+          try {
+            const user = JSON.parse(e.newValue);
+            newUserId = user._id || null;
+          } catch {
+            newUserId = null;
+          }
+        }
+        handleUserChange(newUserId);
+      }
+    };
+    
+    // Listen for storage changes from other tabs
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [handleUserChange]);
+
+  // Update cart when userId changes
+  const setUserId = useCallback((newUserId: string | null) => {
+    handleUserChange(newUserId);
+  }, [handleUserChange]);
 
   useEffect(() => {
     const key = getStorageKey('cart', userId);

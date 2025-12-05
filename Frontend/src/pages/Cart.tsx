@@ -64,7 +64,7 @@ const Cart = () => {
         })),
         totalAmount: total,
         shippingAddress,
-        isRetailerDirectPurchase: user.role === 'retailer'
+        isRetailerDirectPurchase: user?.role === 'retailer'
       });
 
       // Razorpay Integration
@@ -84,7 +84,8 @@ const Cart = () => {
             });
             alert('Payment Successful!');
             clearCart();
-            navigate('/user-dashboard');
+            // Redirect to appropriate dashboard based on user role
+            navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
           } catch {
             alert('Payment Verification Failed');
           } finally {
@@ -256,23 +257,30 @@ const Cart = () => {
                     </p>
                   </>
                 ) : (
-                  <button
-                    onClick={handleCheckout}
-                    disabled={isProcessing}
-                    className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 size={18} className="mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        Proceed to Checkout
-                        <ArrowRight size={18} className="ml-2" />
-                      </>
+                  <>
+                    <button
+                      onClick={handleCheckout}
+                      disabled={isProcessing}
+                      className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 size={18} className="mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          Proceed to Checkout
+                          <ArrowRight size={18} className="ml-2" />
+                        </>
+                      )}
+                    </button>
+                    {user?.role === 'retailer' && (
+                      <p className="text-xs text-center text-green-600 mt-2">
+                        Products will be added to your inventory after delivery confirmation
+                      </p>
                     )}
-                  </button>
+                  </>
                 )}
               </div>
               

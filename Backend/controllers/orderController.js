@@ -16,6 +16,7 @@ const razorpay = new Razorpay({
 });
 
 const MAX_DIRECT_PURCHASE = parseInt(process.env.MAX_DIRECT_PURCHASE_ITEMS) || 3;
+const PRICE_TOLERANCE = 0.01; // Tolerance for floating point price comparisons
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -70,7 +71,7 @@ const createOrder = async (req, res) => {
             });
           }
           // Verify price matches retailer price
-          if (Math.abs(item.price - dbProduct.retailerPrice) > 0.01) {
+          if (Math.abs(item.price - dbProduct.retailerPrice) > PRICE_TOLERANCE) {
             return res.status(400).json({
               message: `Invalid price for product "${dbProduct.name}". Expected retailer price: ₹${dbProduct.retailerPrice}`,
               product: dbProduct.name

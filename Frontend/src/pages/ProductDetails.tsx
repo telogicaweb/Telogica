@@ -182,7 +182,10 @@ const ProductDetails = () => {
                       type="number" 
                       min="1" 
                       value={quantity} 
-                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} 
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value);
+                        setQuantity(isNaN(parsed) || parsed < 1 ? 1 : parsed);
+                      }} 
                       className="mt-1 block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
