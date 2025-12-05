@@ -1,16 +1,15 @@
 const PDFDocument = require('pdfkit');
 const cloudinary = require('./cloudinary');
 
-const generateAndUploadInvoice = async (order, invoiceNumber) => {
+const generateAndUploadInvoice = async (order, invoice) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
-    
-    // Create a stream to upload to Cloudinary
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: 'invoices',
-        public_id: `invoice_${invoiceNumber}_${Date.now()}`,
-        resource_type: 'auto', // 'auto' usually handles PDF correctly as 'image' or 'raw' depending on config, but 'raw' is safer for non-image files. However, Cloudinary supports PDF as image type for transformations. Let's use 'auto'.
+        public_id: `invoice_${invoice.invoiceNumber || invoice._id}_${Date.now()}`,
+        resource_type: 'auto',
         format: 'pdf'
       },
       (error, result) => {
@@ -24,16 +23,31 @@ const generateAndUploadInvoice = async (order, invoiceNumber) => {
     );
 
     doc.pipe(uploadStream);
-
-    // --- PDF Content Generation ---
-    generateHeader(doc);
-    generateCustomerInformation(doc, order, invoiceNumber);
-    generateInvoiceTable(doc, order);
-    generateFooter(doc);
-
+    renderInvoice(doc, order, invoice);
     doc.end();
   });
 };
+
+const generateInvoicePdfBuffer = async (order, invoice) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on('data', (data) => buffers.push(data));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    renderInvoice(doc, order, invoice);
+    doc.end();
+  });
+};
+
+function renderInvoice(doc, order, invoice) {
+  generateHeader(doc);
+  generateCustomerInformation(doc, order, invoice.invoiceNumber);
+  generateInvoiceTable(doc, order, invoice);
+  generateFooter(doc);
+}
 
 function generateHeader(doc) {
   doc
@@ -76,7 +90,7 @@ function generateCustomerInformation(doc, order, invoiceNumber) {
   generateHr(doc, 252);
 }
 
-function generateInvoiceTable(doc, order) {
+function generateInvoiceTable(doc, order, invoice) {
   let i;
   const invoiceTableTop = 330;
 
@@ -95,7 +109,12 @@ function generateInvoiceTable(doc, order) {
   let position = invoiceTableTop + 30;
 
   order.products.forEach((item) => {
-    const positionY = position;
+    const matchingInvoiceProduct = invoice?.products?.find(invItem => {
+      const invoiceProductId = invItem.product?._id || invItem.product;
+      const orderProductId = item.product?._id || item.product;
+      return invoiceProductId && orderProductId && invoiceProductId.toString() === orderProductId.toString();
+    });
+
     const name = item.product.name || 'Product';
     const price = formatCurrency(item.price);
     const quantity = item.quantity;
@@ -103,14 +122,23 @@ function generateInvoiceTable(doc, order) {
 
     generateTableRow(
       doc,
-      positionY,
+      position,
       name,
       price,
       quantity,
       lineTotal
     );
-    
-    position += 20;
+
+    if (matchingInvoiceProduct?.serialNumbers?.length) {
+      doc.fontSize(8).fillColor('#555555');
+      doc.text(`Serials: ${matchingInvoiceProduct.serialNumbers.join(', ')}`, 50, position + 12, {
+        width: 500
+      });
+      doc.fillColor('#000000').fontSize(10);
+      position += 28;
+    } else {
+      position += 20;
+    }
   });
 
   generateHr(doc, position + 20);
@@ -126,7 +154,7 @@ function generateInvoiceTable(doc, order) {
   );
   
   // If there's a discount
-  if (order.discountApplied > 0) {
+  if ((invoice.discount || order.discountApplied) > 0) {
       const discountPosition = subtotalPosition + 20;
       generateTableRow(
         doc,
@@ -134,7 +162,7 @@ function generateInvoiceTable(doc, order) {
         '',
         '',
         'Discount',
-        `${order.discountApplied}%`
+        `${invoice.discount || order.discountApplied}%`
       );
   }
   
@@ -180,8 +208,8 @@ function generateHr(doc, y) {
     .stroke();
 }
 
-function formatCurrency(cents) {
-  return "INR " + (cents).toFixed(2);
+function formatCurrency(amount) {
+  return "INR " + (amount).toFixed(2);
 }
 
 function formatDate(date) {
@@ -192,4 +220,4 @@ function formatDate(date) {
   return year + "/" + month + "/" + day;
 }
 
-module.exports = { generateAndUploadInvoice };
+module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer };

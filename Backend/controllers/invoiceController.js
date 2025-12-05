@@ -2,6 +2,7 @@ const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
 const ProductUnit = require('../models/ProductUnit');
 const { sendEmail } = require('../utils/mailer');
+const { generateInvoicePdfBuffer } = require('../utils/invoiceGenerator');
 
 // Generate invoice for an order
 exports.generateInvoice = async (req, res) => {
@@ -203,6 +204,44 @@ exports.resendInvoice = async (req, res) => {
     res.json({ message: 'Invoice email sent successfully' });
   } catch (error) {
     console.error('Error resending invoice:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Download invoice PDF
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoice = await Invoice.findById(id)
+      .populate('user', 'name email phone')
+      .populate({ path: 'products.product', select: 'name' })
+      .populate('order');
+
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    if (req.user.role !== 'admin' && invoice.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const order = await Order.findById(invoice.order)
+      .populate('user', 'name email phone')
+      .populate('products.product');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found for invoice' });
+    }
+
+    const buffer = await generateInvoicePdfBuffer(order, invoice);
+    const filename = `${invoice.invoiceNumber || invoice._id}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

@@ -11,6 +11,8 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, default: 0 }, // Total stock (calculated from ProductUnits)
   offlineStock: { type: Number, default: 0 }, // Stock available for offline/retailer sales
   isRecommended: { type: Boolean, default: false },
+  // List of related products selected by admin to recommend alongside this product
+  recommendedProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   requiresQuote: { type: Boolean, default: false }, // Auto-set if price is missing
   specifications: { type: Map, of: String }, // Key-value pairs for product specs
   warrantyPeriodMonths: { type: Number, default: 12 } // Default warranty period

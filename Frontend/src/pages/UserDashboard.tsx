@@ -143,7 +143,7 @@ const UserDashboard = () => {
 
   const downloadInvoice = async (invoiceId: string) => {
     try {
-      const response = await api.get(`/invoices/${invoiceId}/download`, {
+      const response = await api.get(`/api/invoices/${invoiceId}/download`, {
         responseType: 'blob'
       });
       
@@ -543,7 +543,7 @@ const UserDashboard = () => {
                                 #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
                               </td>
                               <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                                #{invoice.orderId?._id?.slice(-8).toUpperCase() || 'N/A'}
+                                #{invoice.order?._id?.slice(-8).toUpperCase() || 'N/A'}
                               </td>
                               <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                                 ₹{invoice.totalAmount?.toLocaleString()}
@@ -552,8 +552,14 @@ const UserDashboard = () => {
                                 {new Date(invoice.createdAt).toLocaleDateString()}
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Paid
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  invoice.paymentStatus === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : invoice.paymentStatus === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm">

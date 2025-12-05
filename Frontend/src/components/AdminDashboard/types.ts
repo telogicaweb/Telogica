@@ -10,18 +10,26 @@ export interface User {
 }
 
 export interface Product {
-  stock: number;
   _id: string;
   name: string;
   description: string;
   category: string;
+  price?: number;
   normalPrice?: number;
   retailerPrice?: number;
+  stock: number;
   stockQuantity: number;
+  offlineStock?: number;
   imageUrl?: string;
   images?: string[];
   requiresQuote: boolean;
   isRecommended?: boolean;
+  warrantyPeriodMonths?: number;
+  specifications?: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+  // Optional list of recommended product ids (related products selected by admin)
+  recommendedProductIds?: string[];
 }
 
 export interface ProductFormState {
@@ -40,13 +48,21 @@ export interface ProductFormState {
 
 export interface ProductUnit {
   _id: string;
-  productId: { _id: string; name: string };
+  product: { _id: string; name: string } | string;
   serialNumber: string;
   modelNumber: string;
-  warrantyPeriod: number;
-  status: string;
-  soldTo?: string;
-  soldDate?: Date;
+  warrantyPeriodMonths: number;
+  manufacturingDate?: string;
+  status: 'available' | 'sold' | 'reserved' | 'defective' | 'returned';
+  stockType: 'online' | 'offline' | 'both';
+  currentOwner?: { _id: string; name: string; email?: string } | string;
+  retailer?: { _id: string; name: string; email?: string } | string;
+  order?: { _id: string; orderNumber?: string } | string;
+  soldDate?: string;
+  retailerPurchaseDate?: string;
+  finalCustomerSaleDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Quote {

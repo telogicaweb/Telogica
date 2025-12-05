@@ -1,31 +1,25 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Trash2, 
-  Eye, 
-  X, 
-  Sparkles, 
-  FileDown, 
-  Edit3, 
-  Filter, 
-  ChevronDown, 
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Plus,
+  Search,
+  Trash2,
+  Eye,
+  X,
+  Sparkles,
+  FileDown,
+  Edit3,
+  ChevronDown,
   ChevronUp,
   Image as ImageIcon,
   Package,
-  Tag,
   Layers,
   AlertCircle,
   CheckCircle,
   Star,
   Download,
-  Upload,
   Calendar,
-  BarChart3,
   Grid,
   List,
-  Settings,
-  MoreVertical,
   Shield,
   DollarSign,
   ShoppingCart,
@@ -33,6 +27,7 @@ import {
 } from 'lucide-react';
 import api from '../../api';
 import { Product, ProductFormState } from './types';
+import ProductEditor from './ProductEditor';
 
 interface ProductManagementProps {
   products: Product[];
@@ -64,7 +59,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState<ProductFormState>(getFreshProductFormState());
   const [productUnitsForm, setProductUnitsForm] = useState<
-    Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
+    Array<{ serialNumber: string; modelNumber: string; warrantyPeriodMonths?: number; manufacturingDate?: string; stockType?: 'online' | 'offline' | 'both' }>
   >([]);
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -73,10 +68,20 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
-  const [editingProduct, setEditingProduct] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
+  const resolveStock = (p: Product) => p.stockQuantity ?? p.stock ?? 0;
+  const resolvePrice = (p: Product) => p.normalPrice ?? p.price ?? undefined;
+
+  useEffect(() => {
+    if (!editingProduct) return;
+    const updated = products.find(p => p._id === editingProduct._id);
+    if (updated && updated !== editingProduct) {
+      setEditingProduct(updated);
+    }
+  }, [products, editingProduct]);
   // Extract unique categories
   const categories = useMemo(() => {
     const cats = products.map(p => p.category).filter(Boolean);
@@ -106,13 +111,13 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     if (stockFilter !== 'all') {
       switch(stockFilter) {
         case 'in-stock':
-          filtered = filtered.filter(p => (p.stockQuantity ?? 0) > 0);
+          filtered = filtered.filter(p => resolveStock(p) > 0);
           break;
         case 'low-stock':
-          filtered = filtered.filter(p => (p.stockQuantity ?? 0) > 0 && (p.stockQuantity ?? 0) <= 5);
+          filtered = filtered.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5);
           break;
         case 'out-of-stock':
-          filtered = filtered.filter(p => (p.stockQuantity ?? 0) === 0);
+          filtered = filtered.filter(p => resolveStock(p) === 0);
           break;
         case 'quote-only':
           filtered = filtered.filter(p => p.requiresQuote);
@@ -139,9 +144,9 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   // Statistics
   const stats = useMemo(() => ({
     total: products.length,
-    totalStock: products.reduce((acc, p) => acc + (p.stockQuantity ?? 0), 0),
-    lowStock: products.filter(p => (p.stockQuantity ?? 0) > 0 && (p.stockQuantity ?? 0) <= 5).length,
-    outOfStock: products.filter(p => (p.stockQuantity ?? 0) === 0).length,
+    totalStock: products.reduce((acc, p) => acc + resolveStock(p), 0),
+    lowStock: products.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5).length,
+    outOfStock: products.filter(p => resolveStock(p) === 0).length,
     quoteOnly: products.filter(p => p.requiresQuote).length,
     recommended: products.filter(p => p.isRecommended).length,
     categories: categories.length - 1,
@@ -190,15 +195,18 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         ['No.', 'Product Name', 'Category', 'Stock', 'Normal Price', 'Retailer Price', 'Status']
       ];
       
-      const body = filteredProducts.map((p, i) => [
-        i + 1,
-        p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
-        p.category,
-        p.stockQuantity ?? 0,
-        p.normalPrice ? `₹${p.normalPrice}` : 'Quote Only',
-        p.retailerPrice ? `₹${p.retailerPrice}` : '-',
-        p.requiresQuote ? 'Quote' : (p.isRecommended ? 'Featured' : 'Regular')
-      ]);
+      const body = filteredProducts.map((p, i) => {
+        const price = resolvePrice(p);
+        return [
+          i + 1,
+          p.name.length > 20 ? p.name.substring(0, 20) + '...' : p.name,
+          p.category,
+          resolveStock(p),
+          price ? `₹${price}` : 'Quote Only',
+          p.retailerPrice ? `₹${p.retailerPrice}` : '-',
+          p.requiresQuote ? 'Quote' : (p.isRecommended ? 'Featured' : 'Regular')
+        ];
+      });
 
       autoTable(doc, {
         startY: 70,
@@ -246,7 +254,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Total Products: ${stats.total}`, 15, finalY + 25);
-      doc.text(`Total Stock Value: ₹${filteredProducts.reduce((sum, p) => sum + ((p.normalPrice || 0) * (p.stockQuantity || 0)), 0).toLocaleString()}`, 15, finalY + 32);
+      doc.text(`Total Stock Value: ₹${filteredProducts.reduce((sum, p) => sum + ((resolvePrice(p) || 0) * resolveStock(p)), 0).toLocaleString()}`, 15, finalY + 32);
       doc.text(`Low Stock Items: ${stats.lowStock}`, 100, finalY + 25);
       doc.text(`Out of Stock: ${stats.outOfStock}`, 100, finalY + 32);
 
@@ -264,9 +272,9 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
       p.name,
       p.category,
       p.description || '',
-      p.stockQuantity || 0,
-      p.normalPrice || '',
-      p.retailerPrice || '',
+      resolveStock(p),
+      resolvePrice(p) ?? '',
+      p.retailerPrice ?? '',
       p.requiresQuote ? 'Yes' : 'No',
       p.isRecommended ? 'Yes' : 'No',
       (p as any).createdAt || new Date().toISOString()
@@ -301,6 +309,25 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     if (productForm.images.length > MAX_PRODUCT_IMAGES) {
       alert(`Maximum ${MAX_PRODUCT_IMAGES} images allowed`);
       return;
+    }
+
+    // Validate units if quantity provided
+    if (productForm.quantity > 0) {
+      if (productUnitsForm.length !== productForm.quantity) {
+        alert(`Please generate ${productForm.quantity} unit rows and fill serial/model numbers for each`);
+        return;
+      }
+      const serials = productUnitsForm.map(u => u.serialNumber.trim());
+      const models = productUnitsForm.map(u => u.modelNumber.trim());
+      if (serials.some(s => !s) || models.some(m => !m)) {
+        alert('Each unit must have a serial number and model number');
+        return;
+      }
+      const dup = serials.filter((s, i) => serials.indexOf(s) !== i);
+      if (dup.length) {
+        alert(`Duplicate serial numbers found: ${Array.from(new Set(dup)).join(', ')}`);
+        return;
+      }
     }
 
     try {
@@ -339,15 +366,16 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
       const productResponse = await api.post('/api/products', productData);
       const createdProduct = productResponse.data;
 
-      // Add product units if quantity > 0
+      // Add product units using admin-provided data
       if (productForm.quantity > 0) {
         await api.post('/api/product-units/add', {
           productId: createdProduct._id,
-          units: Array.from({ length: productForm.quantity }, (_, i) => ({
-            serialNumber: `${createdProduct._id.slice(-6)}-${i + 1}`.toUpperCase(),
-            modelNumber: `MOD-${createdProduct.category.slice(0, 3).toUpperCase()}-${i + 1}`,
+          units: productUnitsForm.map(u => ({
+            serialNumber: u.serialNumber.trim(),
+            modelNumber: u.modelNumber.trim(),
             warrantyPeriodMonths: productForm.warrantyPeriodMonths || 12,
-            stockType: 'both',
+            manufacturingDate: u.manufacturingDate,
+            stockType: u.stockType || 'both'
           }))
         });
       }
@@ -355,7 +383,6 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
       // Reset and refresh
       setShowProductForm(false);
       setProductForm(getFreshProductFormState());
-      setProductUnitsForm([]);
       onProductsUpdated();
       
       // Show success message
@@ -368,23 +395,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     }
   };
 
-  const handleUpdateProduct = async (productId: string) => {
-    // Implementation for updating product
-    try {
-      const updatedData = {
-        // Add your update logic here
-        name: productForm.name,
-        price: productForm.normalPrice,
-      };
-      
-      await api.put(`/api/products/${productId}`, updatedData);
-      onProductsUpdated();
-      setEditingProduct(null);
-      alert('Product updated successfully!');
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to update product');
-    }
-  };
+  
 
   const handleDeleteProduct = async (productId: string) => {
     if (!window.confirm('Are you sure? This will permanently delete the product.')) return;
@@ -418,9 +429,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   };
 
   // View components
-  const ProductGridItem = ({ product }: { product: Product }) => {
+  const ProductGridItem = ({ product, onManage }: { product: Product; onManage: (product: Product) => void }) => {
     const thumbnail = product.images?.[0];
     const isExpanded = expandedProduct === product._id;
+    const price = resolvePrice(product);
     
     return (
       <div className="group bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-300 transition-all duration-300 overflow-hidden">
@@ -466,7 +478,11 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
-              <button className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-white">
+              <button
+                className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm hover:bg-white"
+                onClick={() => onManage(product)}
+                title="Manage product"
+              >
                 <Edit3 className="w-4 h-4" />
               </button>
             </div>
@@ -486,10 +502,10 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
           {/* Pricing */}
           <div className="space-y-1 mb-3">
-            {product.normalPrice ? (
+            {price ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Normal Price</span>
-                <span className="font-bold text-gray-900">₹{product.normalPrice.toLocaleString()}</span>
+                <span className="font-bold text-gray-900">₹{price.toLocaleString()}</span>
               </div>
             ) : (
               <div className="text-sm text-blue-600 font-medium">Quote Required</div>
@@ -506,16 +522,16 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                (product.stockQuantity ?? 0) > 10 ? 'bg-green-500' :
-                (product.stockQuantity ?? 0) > 0 ? 'bg-amber-500' :
+                resolveStock(product) > 10 ? 'bg-green-500' :
+                resolveStock(product) > 0 ? 'bg-amber-500' :
                 'bg-red-500'
               }`} />
               <span className={`text-sm font-medium ${
-                (product.stockQuantity ?? 0) > 10 ? 'text-green-700' :
-                (product.stockQuantity ?? 0) > 0 ? 'text-amber-700' :
+                resolveStock(product) > 10 ? 'text-green-700' :
+                resolveStock(product) > 0 ? 'text-amber-700' :
                 'text-red-700'
               }`}>
-                {product.stockQuantity || 0} in stock
+                {resolveStock(product)} in stock
               </span>
             </div>
             <button
@@ -649,12 +665,15 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
             </div>
           </div>
           <div className="mt-4">
-            <div className="h-2 bg-green-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-green-500 rounded-full"
-                style={{ width: `${(stats.totalStock / (stats.total * 100)) * 100}%` }}
-              />
-            </div>
+            {(() => {
+              const percent = Math.min(100, Math.max(0, (stats.totalStock / (stats.total * 100)) * 100));
+              const widthClass = percent >= 75 ? 'w-3/4' : percent >= 50 ? 'w-1/2' : percent >= 25 ? 'w-1/4' : 'w-1/12';
+              return (
+                <div className="h-2 bg-green-200 rounded-full overflow-hidden">
+                  <div className={`h-full bg-green-500 rounded-full ${widthClass}`} />
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -1016,7 +1035,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map(product => (
-              <ProductGridItem key={product._id} product={product} />
+              <ProductGridItem key={product._id} product={product} onManage={setEditingProduct} />
             ))}
           </div>
         ) : (
@@ -1034,83 +1053,89 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredProducts.map(product => (
-                    <tr key={product._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <img
-                              className="h-10 w-10 rounded-lg object-cover"
-                              src={product.images?.[0]}
-                              alt={product.name}
-                            />
+                  {filteredProducts.map(product => {
+                    const price = resolvePrice(product);
+                    return (
+                      <tr key={product._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <img
+                                className="h-10 w-10 rounded-lg object-cover"
+                                src={product.images?.[0]}
+                                alt={product.name}
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                              <div className="text-sm text-gray-500 line-clamp-1">{product.description}</div>
+                            </div>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500 line-clamp-1">{product.description}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                            {product.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            {price && (
+                              <div className="text-sm font-semibold text-gray-900">₹{price.toLocaleString()}</div>
+                            )}
+                            {product.retailerPrice && (
+                              <div className="text-xs text-gray-500">Retailer: ₹{product.retailerPrice.toLocaleString()}</div>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          {product.normalPrice && (
-                            <div className="text-sm font-semibold text-gray-900">₹{product.normalPrice.toLocaleString()}</div>
-                          )}
-                          {product.retailerPrice && (
-                            <div className="text-xs text-gray-500">Retailer: ₹{product.retailerPrice.toLocaleString()}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className={`w-2 h-2 rounded-full mr-2 ${
-                            (product.stockQuantity ?? 0) > 10 ? 'bg-green-500' :
-                            (product.stockQuantity ?? 0) > 0 ? 'bg-amber-500' :
-                            'bg-red-500'
-                          }`} />
-                          <span className="text-sm text-gray-900">{product.stockQuantity || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          {product.requiresQuote && (
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                              Quote Only
-                            </span>
-                          )}
-                          {product.isRecommended && (
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                              <Star className="w-3 h-3 mr-1" /> Featured
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setExpandedProduct(expandedProduct === product._id ? null : product._id)}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg">
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product._id)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className={`w-2 h-2 rounded-full mr-2 ${
+                              resolveStock(product) > 10 ? 'bg-green-500' :
+                              resolveStock(product) > 0 ? 'bg-amber-500' :
+                              'bg-red-500'
+                            }`} />
+                            <span className="text-sm text-gray-900">{resolveStock(product)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            {product.requiresQuote && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                Quote Only
+                              </span>
+                            )}
+                            {product.isRecommended && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                                <Star className="w-3 h-3 mr-1" /> Featured
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setExpandedProduct(expandedProduct === product._id ? null : product._id)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setEditingProduct(product)}
+                              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(product._id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1137,7 +1162,135 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
             </button>
           </div>
         )}
+
       </div>
+
+      {/* Units */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Units (Per-item serial/model)</h3>
+        <div className="grid md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
+            <input
+              type="number"
+              min={0}
+              value={productForm.quantity}
+              onChange={(e) => setProductForm({ ...productForm, quantity: Number(e.target.value) })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g. 20"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Warranty (months)</label>
+            <input
+              type="number"
+              min={1}
+              value={productForm.warrantyPeriodMonths}
+              onChange={(e) => setProductForm({ ...productForm, warrantyPeriodMonths: Number(e.target.value) })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="12"
+            />
+          </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                const qty = productForm.quantity || 0;
+                setProductUnitsForm(Array.from({ length: qty }, () => ({ serialNumber: '', modelNumber: '' })));
+              }}
+              className="w-full px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-600 hover:to-orange-700"
+            >
+              Generate Unit Rows
+            </button>
+          </div>
+        </div>
+
+        {productUnitsForm.length > 0 && (
+          <div className="mt-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-700">
+                    <th className="px-3 py-2">#</th>
+                    <th className="px-3 py-2">Serial Number *</th>
+                    <th className="px-3 py-2">Model Number *</th>
+                    <th className="px-3 py-2">Manufacturing Date</th>
+                    <th className="px-3 py-2">Stock Type</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {productUnitsForm.map((unit, idx) => (
+                    <tr key={idx}>
+                      <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={unit.serialNumber}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setProductUnitsForm(prev => prev.map((u, i) => i === idx ? { ...u, serialNumber: v } : u));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Unique serial"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={unit.modelNumber}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setProductUnitsForm(prev => prev.map((u, i) => i === idx ? { ...u, modelNumber: v } : u));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Model number"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="date"
+                          value={unit.manufacturingDate || ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setProductUnitsForm(prev => prev.map((u, i) => i === idx ? { ...u, manufacturingDate: v } : u));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <select
+                          value={unit.stockType || 'both'}
+                          onChange={(e) => {
+                            const v = e.target.value as 'online' | 'offline' | 'both';
+                            setProductUnitsForm(prev => prev.map((u, i) => i === idx ? { ...u, stockType: v } : u));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="online">online</option>
+                          <option value="offline">offline</option>
+                          <option value="both">both</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Ensure serial numbers are unique—server will reject duplicates.</p>
+          </div>
+        )}
+      </div>
+
+      {editingProduct && (
+        <ProductEditor
+          product={editingProduct}
+          products={products}
+          onClose={() => setEditingProduct(null)}
+          onUpdated={() => {
+            onProductsUpdated();
+          }}
+        />
+      )}
     </div>
   );
 };
