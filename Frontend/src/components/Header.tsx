@@ -67,7 +67,7 @@ export default function Header() {
               
               {user ? (
                 <div className="flex items-center gap-2 md:gap-4">
-                  <Link to={user.role === 'admin' ? '/admin' : '/user-dashboard'} className="text-gray-700 hover:text-gray-900 transition-colors" aria-label="Dashboard">
+                  <Link to={user.role === 'admin' ? '/admin' : user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard'} className="text-gray-700 hover:text-gray-900 transition-colors" aria-label="Dashboard">
                     <User size={22} />
                   </Link>
                   <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 transition-colors" aria-label="Logout">
