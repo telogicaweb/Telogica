@@ -24,7 +24,8 @@ import {
   Clock,
   MessageSquare,
   Search,
-  Sparkles
+  Sparkles,
+  Store
 } from 'lucide-react';
 
 interface User {
@@ -1777,6 +1778,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'products', name: 'Products', icon: Package },
     { id: 'users', name: 'Users', icon: Users },
+    { id: 'retailers', name: 'Retailers', icon: Store },
     { id: 'quotes', name: 'Quotes', icon: FileText },
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'warranties', name: 'Warranties', icon: Shield },
@@ -1917,6 +1919,104 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'dashboard' && renderDashboard()}
             {activeTab === 'products' && renderProducts()}
             {activeTab === 'users' && renderUsers()}
+            {activeTab === 'retailers' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800">Retailer Management</h2>
+                  <button
+                    onClick={() => navigate('/admin/retailer-management')}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                  >
+                    <Store className="w-4 h-4" />
+                    Open Full Dashboard
+                  </button>
+                </div>
+                <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
+                  <p className="text-indigo-800">
+                    Click "Open Full Dashboard" to access the comprehensive retailer management panel with analytics, 
+                    individual retailer details, inventory tracking, and sales history.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Total Retailers</p>
+                        <p className="text-2xl font-bold text-gray-800">
+                          {users.filter(u => u.role === 'retailer').length}
+                        </p>
+                      </div>
+                      <Users className="w-10 h-10 text-indigo-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Pending Approval</p>
+                        <p className="text-2xl font-bold text-gray-800">
+                          {users.filter(u => u.role === 'retailer' && !u.isApproved).length}
+                        </p>
+                      </div>
+                      <Clock className="w-10 h-10 text-yellow-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Active Retailers</p>
+                        <p className="text-2xl font-bold text-gray-800">
+                          {users.filter(u => u.role === 'retailer' && u.isApproved).length}
+                        </p>
+                      </div>
+                      <CheckCircle className="w-10 h-10 text-green-500" />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-4 border-b">
+                    <h3 className="font-semibold text-gray-800">Recent Retailers</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {users.filter(u => u.role === 'retailer').slice(0, 5).map(retailer => (
+                          <tr key={retailer._id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{retailer.name}</td>
+                            <td className="px-6 py-4 text-sm text-gray-600">{retailer.email}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {retailer.isApproved ? 'Active' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {!retailer.isApproved && (
+                                <button
+                                  onClick={() => handleApproveRetailer(retailer._id)}
+                                  className="text-green-600 hover:text-green-800"
+                                  title="Approve"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'warranties' && renderWarranties()}
