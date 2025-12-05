@@ -20,7 +20,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:5173',
       'https://telogica-p7tf.vercel.app',
-      'https://telogica.onrender.com'
+      'https://telogica.onrender.com',
+      'https://telogica-lac.vercel.app'
     ];
     
     // Allow requests with no origin (like mobile apps, curl requests, or server-to-server)
@@ -33,11 +34,16 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly for all routes
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 const authRoutes = require('./routes/authRoutes');
