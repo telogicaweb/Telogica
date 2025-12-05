@@ -95,4 +95,37 @@ const deleteContact = async (req, res) => {
   }
 };
 
-module.exports = { submitContact, getContacts, updateContactStatus, deleteContact };
+const replyToContact = async (req, res) => {
+  try {
+    const { replySubject, replyMessage } = req.body;
+    const contact = await Contact.findById(req.params.id);
+
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact submission not found' });
+    }
+
+    if (!replyMessage) {
+      return res.status(400).json({ message: 'Reply message is required' });
+    }
+
+    const subject = replySubject || `Re: ${contact.subject}`;
+    await sendEmail(
+      contact.email,
+      subject,
+      replyMessage,
+      'general',
+      { entityType: 'contact', entityId: contact._id }
+    );
+
+    contact.status = 'replied';
+    contact.repliedAt = new Date();
+    await contact.save();
+
+    res.json({ message: 'Reply sent successfully', contact });
+  } catch (error) {
+    console.error('Failed to reply to contact:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { submitContact, getContacts, updateContactStatus, deleteContact, replyToContact };

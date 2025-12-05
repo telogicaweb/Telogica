@@ -151,32 +151,17 @@ export default function Contact() {
 
           {/* Contact Information */}
           <div className="space-y-6">
-            {/* Office Locations */}
+            {/* Head Office */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Our Offices</h3>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Headquarters</h4>
-                  <div className="flex items-start gap-3 text-gray-700">
-                    <MapPin size={20} className="text-indigo-600 mt-1 flex-shrink-0" />
-                    <p className="text-sm">
-                      Tech Tower, 5th Floor<br />
-                      Cyber City, Gurgaon<br />
-                      Haryana - 122002, India
-                    </p>
-                  </div>
-                </div>
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-2">Regional Office</h4>
-                  <div className="flex items-start gap-3 text-gray-700">
-                    <MapPin size={20} className="text-indigo-600 mt-1 flex-shrink-0" />
-                    <p className="text-sm">
-                      Innovation Hub, Block B<br />
-                      Whitefield, Bangalore<br />
-                      Karnataka - 560066, India
-                    </p>
-                  </div>
-                </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Head Office</h3>
+              <div className="flex items-start gap-3 text-gray-700">
+                <MapPin size={20} className="text-indigo-600 mt-1 flex-shrink-0" />
+                <p className="text-sm">
+                  TELOGICA LIMITED<br />
+                  Empire Square, Plot No 233-A, 234 &amp; 235,<br />
+                  3rd Fl, Rd No 36, Jubilee Hills,<br />
+                  Hyderabad - 500 033, Telangana, India
+                </p>
               </div>
             </div>
 
@@ -190,7 +175,9 @@ export default function Contact() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone</p>
-                    <p className="font-semibold text-gray-900">+91-124-4567-890</p>
+                    <p className="font-semibold text-gray-900">+91 9396610682</p>
+                    <p className="font-semibold text-gray-900">+91-40-27531324 to 26</p>
+                    <p className="font-semibold text-gray-900">+91-40-27535423</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -199,7 +186,8 @@ export default function Contact() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-semibold text-gray-900">info@telogica.com</p>
+                    <p className="font-semibold text-gray-900">sales@telogica.com</p>
+                    <p className="font-semibold text-gray-900">support@telogica.com</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

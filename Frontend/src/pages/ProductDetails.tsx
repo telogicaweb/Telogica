@@ -18,6 +18,7 @@ const ProductDetails = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState<string | null>(null);
   const { addToCart, addToQuote } = useContext(CartContext)!;
 
   useEffect(() => {
@@ -26,6 +27,7 @@ const ProductDetails = () => {
         // Fetch current product
         const { data: productData } = await api.get(`/api/products/${id}`);
         setProduct(productData);
+        setActiveImage(productData.images?.[0] ?? null);
 
         // Fetch all products for recommendations
         const { data: allProducts } = await api.get('/api/products');
@@ -49,6 +51,9 @@ const ProductDetails = () => {
 
   if (!product) return <div className="pt-24 text-center">Loading...</div>;
 
+  const displayedImages = product.images?.slice(0, 4) ?? [];
+  const selectedImage = activeImage || displayedImages[0] || '';
+
   const handleAction = () => {
     const isTelecom = product.category.toLowerCase() === 'telecom';
     const requiresQuote = !isTelecom || quantity > 3 || !product.price;
@@ -70,9 +75,42 @@ const ProductDetails = () => {
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="md:flex">
               <div className="md:w-1/2 p-4">
-                {product.images.map((img, idx) => (
-                  <img key={idx} src={img} alt={product.name} className="w-full h-96 object-cover rounded-lg shadow-md mb-4" />
-                ))}
+                <div className="rounded-lg overflow-hidden bg-gray-100 shadow">
+                  {selectedImage ? (
+                    <img
+                      src={selectedImage}
+                      alt={product.name}
+                      className="w-full h-96 object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-96 items-center justify-center text-gray-400">
+                      <span>No image available</span>
+                    </div>
+                  )}
+                </div>
+                {displayedImages.length > 0 && (
+                  <div className="mt-4 grid grid-cols-4 gap-2">
+                    {displayedImages.map((img, idx) => {
+                      const isActiveThumbnail = activeImage
+                        ? activeImage === img
+                        : displayedImages[0] === img;
+                      return (
+                        <button
+                          key={`${img}-${idx}`}
+                          type="button"
+                          onClick={() => setActiveImage(img)}
+                          className={`h-20 overflow-hidden rounded-lg border transition focus:outline-none ${isActiveThumbnail ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-200'}`}
+                        >
+                          <img
+                            src={img}
+                            alt={`${product.name} thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="md:w-1/2 p-8">
                 <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold">{product.category}</div>

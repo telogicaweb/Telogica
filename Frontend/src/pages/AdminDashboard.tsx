@@ -22,7 +22,13 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  MessageSquare
+  MessageSquare,
+  Search,
+  UserPlus,
+  UserCheck,
+  UserMinus,
+  PaperPlane,
+  Sparkles
 } from 'lucide-react';
 
 interface User {
@@ -43,8 +49,47 @@ interface Product {
   retailerPrice?: number;
   stockQuantity: number;
   imageUrl?: string;
+  images?: string[];
   requiresQuote: boolean;
 }
+
+interface ProductFormState {
+  name: string;
+  description: string;
+  category: string;
+  normalPrice: string;
+  retailerPrice: string;
+  quantity: number;
+  warrantyPeriodMonths: number;
+  isRecommended: boolean;
+  requiresQuote: boolean;
+  manualImageUrl: string;
+  images: string[];
+}
+
+const getFreshProductFormState = (): ProductFormState => ({
+  name: '',
+  description: '',
+  category: '',
+  normalPrice: '',
+  retailerPrice: '',
+  quantity: 1,
+  warrantyPeriodMonths: 12,
+  isRecommended: false,
+  requiresQuote: false,
+  manualImageUrl: '',
+  images: [],
+});
+
+const getDefaultUserForm = (): UserFormState => ({
+  name: '',
+  email: '',
+  role: 'user',
+  phone: '',
+  address: '',
+  password: '',
+  isApproved: true,
+});
 
 interface ProductUnit {
   _id: string;
@@ -125,18 +170,101 @@ interface ContactMessage {
   createdAt: string;
 }
 
-interface Analytics {
-  totalSales: number;
-  directSales: number;
-  quoteSales: number;
-  totalOrders: number;
-  pendingQuotes: number;
-  pendingWarranties: number;
-  totalUsers: number;
-  totalRetailers: number;
-  totalProducts: number;
-  lowStock: number;
+interface UserFormState {
+  name: string;
+  email: string;
+  role: 'admin' | 'retailer' | 'user';
+  phone: string;
+  address: string;
+  password: string;
+  isApproved: boolean;
 }
+
+type QuoteFilter = 'all' | 'pending' | 'responded' | 'accepted' | 'rejected';
+
+interface Analytics {
+  sales: {
+    total: number;
+    direct: number;
+    quote: number;
+    byUserType: {
+      user: number;
+      retailer: number;
+    };
+  };
+  orders: {
+    total: number;
+    direct: number;
+    quote: number;
+    byUserType: {
+      user: number;
+      retailer: number;
+    };
+  };
+  quotes: {
+    total: number;
+    pending: number;
+    responded: number;
+    accepted: number;
+    rejected: number;
+    conversionRate: string | number;
+  };
+  users: {
+    total: number;
+    retailers: number;
+    pendingRetailers: number;
+  };
+  inventory: {
+    total: number;
+    online: number;
+    offline: number;
+  };
+  warranties: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+}
+
+const getDefaultAnalytics = (): Analytics => ({
+  sales: {
+    total: 0,
+    direct: 0,
+    quote: 0,
+    byUserType: { user: 0, retailer: 0 },
+  },
+  orders: {
+    total: 0,
+    direct: 0,
+    quote: 0,
+    byUserType: { user: 0, retailer: 0 },
+  },
+  quotes: {
+    total: 0,
+    pending: 0,
+    responded: 0,
+    accepted: 0,
+    rejected: 0,
+    conversionRate: '0.00',
+  },
+  users: {
+    total: 0,
+    retailers: 0,
+    pendingRetailers: 0,
+  },
+  inventory: {
+    total: 0,
+    online: 0,
+    offline: 0,
+  },
+  warranties: {
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  },
+});
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -145,7 +273,7 @@ const AdminDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // State for different sections
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics>(() => getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [_productUnits, setProductUnits] = useState<ProductUnit[]>([]);
@@ -154,22 +282,20 @@ const AdminDashboard: React.FC = () => {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
+  const MAX_PRODUCT_IMAGES = 4;
+  const [productSearch, setProductSearch] = useState('');
+  const [userFormVisible, setUserFormVisible] = useState(false);
+  const [userFormMode, setUserFormMode] = useState<'create' | 'edit'>('create');
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [userForm, setUserForm] = useState<UserFormState>(() => getDefaultUserForm());
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>('pending');
+  const [contactReplies, setContactReplies] = useState<Record<string, string>>({});
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
-  const [productForm, setProductForm] = useState({
-    name: '',
-    description: '',
-    category: '',
-    normalPrice: '',
-    retailerPrice: '',
-    quantity: 1,
-    imageUrl: '',
-    additionalImages: '',
-    warrantyPeriodMonths: 12,
-    isRecommended: false,
-    requiresQuote: false,
-  });
+  const [productForm, setProductForm] = useState<ProductFormState>(() => getFreshProductFormState());
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
@@ -215,23 +341,11 @@ const AdminDashboard: React.FC = () => {
 
   const loadAnalytics = async () => {
     try {
-      const response = await api.get('/api/analytics');
+      const response = await api.get('/api/analytics/dashboard');
       setAnalytics(response.data);
     } catch (error) {
       console.error('Error loading analytics:', error);
-      // Set default analytics if endpoint fails
-      setAnalytics({
-        totalSales: 0,
-        directSales: 0,
-        quoteSales: 0,
-        totalOrders: 0,
-        pendingQuotes: 0,
-        pendingWarranties: 0,
-        totalUsers: 0,
-        totalRetailers: 0,
-        totalProducts: 0,
-        lowStock: 0
-      });
+      setAnalytics(getDefaultAnalytics());
     }
   };
 
@@ -314,6 +428,9 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN')}`;
+  const formatNumber = (value: number) => value.toLocaleString('en-IN');
+
   // User Management
   const handleApproveRetailer = async (userId: string) => {
     try {
@@ -357,9 +474,84 @@ const AdminDashboard: React.FC = () => {
     setProductUnitsForm(updatedUnits);
   };
 
+  const handleAddImageLink = () => {
+    const trimmedUrl = productForm.manualImageUrl.trim();
+    if (!trimmedUrl) {
+      return;
+    }
+    if (productForm.images.length >= MAX_PRODUCT_IMAGES) {
+      alert(`You can only attach up to ${MAX_PRODUCT_IMAGES} images.`);
+      return;
+    }
+    setProductForm((prev) => ({
+      ...prev,
+      manualImageUrl: '',
+      images: [...prev.images, trimmedUrl],
+    }));
+    setImageUploadError('');
+  };
+
+  const handleImageFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files?.length) {
+      return;
+    }
+
+    const remainingSlots = MAX_PRODUCT_IMAGES - productForm.images.length;
+    if (!remainingSlots) {
+      setImageUploadError(`Maximum of ${MAX_PRODUCT_IMAGES} images reached. Remove one to add another.`);
+      event.target.value = '';
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    setImageUploadError('');
+    setIsUploadingImage(true);
+
+    try {
+      for (const file of filesToUpload) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const response = await api.post('/api/products/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        setProductForm((prev) => ({
+          ...prev,
+          images: [...prev.images, response.data.url],
+        }));
+      }
+      if (files.length > remainingSlots) {
+        setImageUploadError(`Only the first ${remainingSlots} image(s) were uploaded.`);
+      }
+    } catch (error: any) {
+      console.error('Image upload failed', error);
+      setImageUploadError(error.response?.data?.message || 'Failed to upload images. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setProductForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, idx) => idx !== index),
+    }));
+    setImageUploadError('');
+  };
+
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!productForm.images.length) {
+      alert('Please add at least one product image before saving.');
+      return;
+    }
+
+    if (productForm.images.length > MAX_PRODUCT_IMAGES) {
+      alert(`Only up to ${MAX_PRODUCT_IMAGES} images are allowed.`);
+      return;
+    }
+
     // Validate all serial numbers and model numbers are filled
     const allFilled = productUnitsForm.every(
       (unit) => unit.serialNumber && unit.modelNumber
@@ -377,10 +569,7 @@ const AdminDashboard: React.FC = () => {
         category: productForm.category,
         price: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
         retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
-        images: [
-          productForm.imageUrl,
-          ...(productForm.additionalImages ? productForm.additionalImages.split(',').map(url => url.trim()).filter(url => url) : [])
-        ].filter(url => url),
+        images: productForm.images,
         stock: 0, // Will be updated after adding units
         offlineStock: 0,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
@@ -404,17 +593,9 @@ const AdminDashboard: React.FC = () => {
 
       alert('Product created successfully with all units');
       setShowProductForm(false);
-      setProductForm({
-        name: '',
-        description: '',
-        category: '',
-        normalPrice: '',
-        retailerPrice: '',
-        quantity: 1,
-        imageUrl: '',
-        requiresQuote: false,
-      });
+      setProductForm(getFreshProductFormState());
       setProductUnitsForm([]);
+      setImageUploadError('');
       loadProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to create product');
@@ -580,117 +761,210 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Render Dashboard/Analytics Tab
-  const renderDashboard = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
-      
-      {analytics && (
+  const renderDashboard = () => {
+    const conversionRate =
+      typeof analytics.quotes.conversionRate === 'number'
+        ? analytics.quotes.conversionRate.toFixed(2)
+        : analytics.quotes.conversionRate;
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Total Sales */}
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-blue-100 text-sm">Total Sales</p>
-                <p className="text-3xl font-bold">₹{analytics.totalSales.toLocaleString()}</p>
+                <p className="text-3xl font-bold">{formatCurrency(analytics.sales.total)}</p>
               </div>
               <DollarSign className="w-12 h-12 text-blue-200" />
             </div>
           </div>
 
-          {/* Total Orders */}
           <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Total Orders</p>
-                <p className="text-3xl font-bold">{analytics.totalOrders}</p>
+                <p className="text-3xl font-bold">{formatNumber(analytics.orders.total)}</p>
               </div>
               <ShoppingCart className="w-12 h-12 text-green-200" />
             </div>
           </div>
 
-          {/* Pending Quotes */}
           <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-lg text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-yellow-100 text-sm">Pending Quotes</p>
-                <p className="text-3xl font-bold">{analytics.pendingQuotes}</p>
+                <p className="text-3xl font-bold">{formatNumber(analytics.quotes.pending)}</p>
+                <p className="text-xs text-yellow-200 mt-2">
+                  Conversion: {conversionRate}%
+                </p>
               </div>
               <FileText className="w-12 h-12 text-yellow-200" />
             </div>
           </div>
 
-          {/* Pending Warranties */}
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-purple-100 text-sm">Pending Warranties</p>
-                <p className="text-3xl font-bold">{analytics.pendingWarranties}</p>
+                <p className="text-3xl font-bold">{formatNumber(analytics.warranties.pending)}</p>
               </div>
               <Shield className="w-12 h-12 text-purple-200" />
             </div>
           </div>
+        </div>
 
-          {/* Direct Sales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Direct Sales</p>
-                <p className="text-2xl font-bold text-gray-800">₹{analytics.directSales.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(analytics.sales.direct)}</p>
               </div>
               <TrendingUp className="w-10 h-10 text-blue-500" />
             </div>
           </div>
 
-          {/* Quote Sales */}
           <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Quote Sales</p>
-                <p className="text-2xl font-bold text-gray-800">₹{analytics.quoteSales.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(analytics.sales.quote)}</p>
               </div>
               <BarChart3 className="w-10 h-10 text-green-500" />
             </div>
           </div>
 
-          {/* Total Users */}
           <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Total Users</p>
-                <p className="text-2xl font-bold text-gray-800">{analytics.totalUsers}</p>
+                <p className="text-2xl font-bold text-gray-800">{formatNumber(analytics.users.total)}</p>
               </div>
               <Users className="w-10 h-10 text-purple-500" />
             </div>
           </div>
 
-          {/* Low Stock Products */}
           <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm">Low Stock</p>
-                <p className="text-2xl font-bold text-gray-800">{analytics.lowStock}</p>
+                <p className="text-gray-600 text-sm">Retailers Waiting Approval</p>
+                <p className="text-2xl font-bold text-gray-800">{formatNumber(analytics.users.pendingRetailers)}</p>
               </div>
               <AlertCircle className="w-10 h-10 text-red-500" />
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+            <p className="text-xs uppercase tracking-wide text-blue-600">Inventory - Total</p>
+            <p className="text-2xl font-bold text-blue-900">{formatNumber(analytics.inventory.total)}</p>
+          </div>
+          <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+            <p className="text-xs uppercase tracking-wide text-green-600">Inventory Online</p>
+            <p className="text-2xl font-bold text-green-900">{formatNumber(analytics.inventory.online)}</p>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
+            <p className="text-xs uppercase tracking-wide text-yellow-600">Inventory Offline</p>
+            <p className="text-2xl font-bold text-yellow-900">{formatNumber(analytics.inventory.offline)}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Render Products Tab
-  const renderProducts = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Product Management</h2>
-        <button
-          onClick={() => setShowProductForm(!showProductForm)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Product
-        </button>
-      </div>
+  const renderProducts = () => {
+    const searchTerm = productSearch.trim().toLowerCase();
+    const filteredProducts = products.filter((product) => {
+      if (!searchTerm) return true;
+      const combined = `${product.name} ${product.category}`.toLowerCase();
+      return combined.includes(searchTerm);
+    });
+
+    const totalStock = products.reduce(
+      (acc, product) => acc + (product.stockQuantity ?? 0) + (product.stock ?? 0),
+      0
+    );
+    const lowStockCount = products.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
+    const quoteOnlyCount = products.filter((product) => product.requiresQuote).length;
+    const recommendedCount = products.filter((product) => product.requiresQuote === false && product.isRecommended).length;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Product Management</h2>
+            <p className="text-sm text-gray-600 max-w-xl">
+              Keep Telogica product listings crisp, visually consistent, and ready for every purchase channel. Upload images, manage stock, and keep quote-only gear in a single place.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search by name or category"
+                className="pl-10 pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            </div>
+            {productSearch && (
+              <button
+                onClick={() => setProductSearch('')}
+                className="text-sm px-3 py-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-100"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              onClick={() => setShowProductForm(!showProductForm)}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:from-blue-600 hover:to-indigo-700"
+            >
+              <Plus className="w-4 h-4" />
+              {showProductForm ? 'Hide Form' : 'Add Product'}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
+            <p className="text-xs uppercase tracking-widest text-gray-500">Total Products</p>
+            <p className="text-3xl font-bold text-gray-900">{products.length}</p>
+            <p className="text-sm text-gray-500 mt-1">Live catalog size</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
+            <p className="text-xs uppercase tracking-widest text-gray-500">Inventory stock</p>
+            <p className="text-3xl font-bold text-gray-900">{totalStock.toLocaleString()}</p>
+            <p className="text-sm text-gray-500 mt-1">Online + offline availability</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
+            <p className="text-xs uppercase tracking-widest text-gray-500">Quote-only gear</p>
+            <p className="text-3xl font-bold text-gray-900">{quoteOnlyCount}</p>
+            <p className="text-sm text-gray-500 mt-1">Requires approval / quotes</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
+            <p className="text-xs uppercase tracking-widest text-gray-500">Low stock alerts</p>
+            <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
+            <p className="text-sm text-gray-500 mt-1">{recommendedCount} featured ready</p>
+          </div>
+        </div>
+
+        {showProductForm && (
+          <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-semibold">Create New Product</h3>
+                <p className="text-sm text-gray-500">Add up to {MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.</p>
+              </div>
+              <Sparkles className="text-indigo-600" />
+            </div>
+            <form onSubmit={handleCreateProduct} className="space-y-4">
+              {/* existing form fields unchanged */}
 
       {showProductForm && (
         <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
@@ -770,20 +1044,6 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Image URL
-                </label>
-                <input
-                  type="text"
-                  value={productForm.imageUrl}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, imageUrl: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Main product image URL"
-                />
-              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -801,20 +1061,78 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional Image URLs (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={productForm.additionalImages}
-                onChange={(e) =>
-                  setProductForm({ ...productForm, additionalImages: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
-              />
-              <p className="text-xs text-gray-500 mt-1">Enter additional product image URLs separated by commas</p>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Product Images (up to {MAX_PRODUCT_IMAGES})
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    value={productForm.manualImageUrl}
+                    onChange={(e) =>
+                      setProductForm({ ...productForm, manualImageUrl: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Paste image URL (https://...)"
+                  />
+                  <button
+                    type="button"
+                    disabled={!productForm.manualImageUrl.trim() || productForm.images.length >= MAX_PRODUCT_IMAGES}
+                    onClick={handleAddImageLink}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700"
+                  >
+                    Add URL
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium cursor-pointer shadow-sm hover:bg-gray-50">
+                  Upload images
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageFilesChange}
+                  />
+                </label>
+                {isUploadingImage && (
+                  <span className="text-sm text-gray-600">Uploading images…</span>
+                )}
+                <span className="text-xs text-gray-500">Max {MAX_PRODUCT_IMAGES}</span>
+              </div>
+
+              {imageUploadError && (
+                <p className="text-xs text-red-600">{imageUploadError}</p>
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                {productForm.images.map((src, idx) => (
+                  <div
+                    key={`${src}-${idx}`}
+                    className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 shadow-sm"
+                  >
+                    <img
+                      src={src}
+                      alt={`Product ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 bg-white bg-opacity-80 hover:bg-opacity-100 text-red-500 rounded-full p-0.5 text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-500">
+                {productForm.images.length}/{MAX_PRODUCT_IMAGES} images added
+              </p>
             </div>
 
             <div>
@@ -951,19 +1269,8 @@ const AdminDashboard: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setShowProductForm(false);
-                  setProductForm({
-                    name: '',
-                    description: '',
-                    category: '',
-                    normalPrice: '',
-                    retailerPrice: '',
-                    quantity: 1,
-                    imageUrl: '',
-                    additionalImages: '',
-                    warrantyPeriodMonths: 12,
-                    isRecommended: false,
-                    requiresQuote: false,
-                  });
+                  setProductForm(getFreshProductFormState());
+                  setImageUploadError('');
                   setProductUnitsForm([]);
                 }}
                 className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
@@ -1002,13 +1309,15 @@ const AdminDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
-                <tr key={product._id} className="hover:bg-gray-50">
+              {products.map((product) => {
+                const thumbnail = product.images?.[0] || product.imageUrl;
+                return (
+                  <tr key={product._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      {product.imageUrl && (
+                      {thumbnail && (
                         <img
-                          src={product.imageUrl}
+                          src={thumbnail}
                           alt={product.name}
                           className="w-12 h-12 rounded object-cover mr-3"
                         />
@@ -1064,7 +1373,8 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

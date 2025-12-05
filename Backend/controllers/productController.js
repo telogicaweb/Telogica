@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const streamifier = require('streamifier');
+const cloudinary = require('../utils/cloudinary');
 
 // @desc    Fetch all products
 // @route   GET /api/products
@@ -135,4 +137,32 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct };
+const uploadProductImage = async (req, res) => {
+  if (!req.file || !req.file.buffer) {
+    return res.status(400).json({ message: 'No image file provided' });
+  }
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'products',
+          resource_type: 'image',
+        },
+        (error, response) => {
+          if (error) return reject(error);
+          resolve(response);
+        }
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+    });
+
+    res.status(201).json({ url: result.secure_url, public_id: result.public_id });
+  } catch (error) {
+    console.error('Cloudinary upload failed', error);
+    res.status(500).json({ message: 'Failed to upload image' });
+  }
+};
+
+module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, uploadProductImage };

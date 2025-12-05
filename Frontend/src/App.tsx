@@ -23,6 +23,9 @@ import EventManagement from './pages/admin/EventManagement';
 import ReportManagement from './pages/admin/ReportManagement';
 import PageContent from './pages/admin/PageContent';
 import StatsManagement from './pages/admin/StatsManagement';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsAndConditions from './pages/TermsAndConditions';
+import SiteMap from './pages/SiteMap';
 
 function App() {
   return (
@@ -52,6 +55,9 @@ function App() {
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/warranty" element={<WarrantyRegistration />} />
             <Route path="/retailer-inventory" element={<RetailerInventory />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+            <Route path="/site-map" element={<SiteMap />} />
           </Routes>
         </Router>
       </CartProvider>

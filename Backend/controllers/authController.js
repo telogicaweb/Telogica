@@ -149,6 +149,80 @@ const getUsers = async (req, res) => {
     }
 }
 
+const adminCreateUser = async (req, res) => {
+  const { name, email, password, role = 'user', phone, address, isApproved } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email and password are required' });
+  }
+
+  const existing = await User.findOne({ email });
+  if (existing) {
+    return res.status(400).json({ message: 'A user with this email already exists' });
+  }
+
+  try {
+    const user = new User({
+      name,
+      email,
+      password,
+      role,
+      phone,
+      address,
+      isApproved: typeof isApproved === 'boolean' ? isApproved : role !== 'retailer',
+    });
+    await user.save();
+
+    res.status(201).json(user);
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  const { name, email, role, phone, address, isApproved } = req.body;
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (email && email !== user.email) {
+      const emailTaken = await User.findOne({ email });
+      if (emailTaken) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+    }
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (role) user.role = role;
+    if (typeof isApproved === 'boolean') user.isApproved = isApproved;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+
+    const updatedUser = await user.save();
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    await user.deleteOne();
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Approve retailer
 // @route   PUT /api/auth/approve/:id
 // @access  Private/Admin
@@ -177,4 +251,13 @@ const approveRetailer = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile, getUsers, approveRetailer };
+module.exports = {
+  registerUser,
+  loginUser,
+  getUserProfile,
+  getUsers,
+  approveRetailer,
+  adminCreateUser,
+  updateUser,
+  deleteUser,
+};
