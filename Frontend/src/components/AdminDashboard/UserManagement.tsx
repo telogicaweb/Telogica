@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Check, Trash2, Download, FileDown } from 'lucide-react';
 import api from '../../api';
 import { User } from './types';
 
@@ -9,6 +9,20 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ users, onUsersUpdated }) => {
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
+
+  const filteredUsers = useMemo(() => {
+    if (!dateFrom && !dateTo) return users;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+    return users.filter((u) => {
+      const created = u.createdAt ? new Date(u.createdAt).getTime() : undefined;
+      if (created === undefined) return true;
+      return created >= fromTime && created <= toTime;
+    });
+  }, [users, dateFrom, dateTo]);
   const handleApproveRetailer = async (userId: string) => {
     try {
       await api.put(`/api/auth/approve/${userId}`);
@@ -30,9 +44,125 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUsersUpdated }
     }
   };
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data.length) {
+      alert('No data to export');
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const cell = row[header] === null || row[header] === undefined ? '' : row[header];
+            return JSON.stringify(cell);
+          })
+          .join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const exportUsersCSV = () => {
+    const data = filteredUsers.map((u) => ({
+      Name: u.name,
+      Email: u.email,
+      Role: u.role,
+      Approved: u.role === 'retailer' ? (u.isApproved ? 'Yes' : 'No') : '-',
+      Joined: new Date(u.createdAt).toLocaleDateString(),
+    }));
+    downloadCSV(data, `users_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportUsersPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Users Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Users: ${filteredUsers.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+
+      const head = [['Name', 'Email', 'Role', 'Approved', 'Joined']];
+      const body = filteredUsers.map((u) => [
+        u.name,
+        u.email,
+        u.role,
+        u.role === 'retailer' ? (u.isApproved ? 'Yes' : 'No') : '-',
+        new Date(u.createdAt).toLocaleDateString(),
+      ]);
+
+      autoTable(doc, { startY: 38, head, body, styles: { fontSize: 9 }, headStyles: { fillColor: [158, 158, 158] } });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`users_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="From Date"
+          />
+          <span className="text-gray-500">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="To Date"
+          />
+          <button
+            onClick={exportUsersCSV}
+            className="bg-white border border-gray-300 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button
+            onClick={exportUsersPDF}
+            disabled={exporting}
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? 'Exporting…' : 'PDF'}
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -60,7 +190,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onUsersUpdated }
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {user.name}
