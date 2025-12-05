@@ -5,7 +5,8 @@ const orderSchema = new mongoose.Schema({
   products: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, required: true },
-    price: { type: Number, required: true } // Price at time of purchase
+    price: { type: Number, required: true }, // Price at time of purchase
+    serialNumbers: [{ type: String }] // Assigned serial numbers
   }],
   totalAmount: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
@@ -16,12 +17,13 @@ const orderSchema = new mongoose.Schema({
   },
   orderStatus: { 
     type: String, 
-    enum: ['processing', 'shipped', 'delivered', 'cancelled'], 
+    enum: ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled'], 
     default: 'processing' 
   },
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   razorpaySignature: { type: String },
+  orderNumber: { type: String, unique: true }, // Custom order number (e.g., ORD-20251204-1234)
   quoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }, // Reference to quote if order is from quote
   isQuoteBased: { type: Boolean, default: false }, // Flag to indicate if order is based on a quote
   discountApplied: { type: Number, default: 0 } // Discount amount/percentage applied

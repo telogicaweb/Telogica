@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 const WarrantyRegistration = () => {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext) || {};
   const [formData, setFormData] = useState({
     productId: '',
     productName: '',
@@ -20,15 +22,25 @@ const WarrantyRegistration = () => {
   const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
 
   useEffect(() => {
+    if (!user) {
+      // navigate('/login'); // Optional: redirect if not logged in
+      // For now, just don't fetch warranties if not logged in
+      return;
+    }
     fetchWarranties();
-  }, []);
+  }, [user]);
 
   const fetchWarranties = async () => {
     try {
       const res = await api.get('/api/warranties/my-warranties');
-      setWarranties(res.data);
+      if (Array.isArray(res.data)) {
+        setWarranties(res.data);
+      } else {
+        setWarranties([]);
+      }
     } catch (error) {
       console.error('Error fetching warranties:', error);
+      setWarranties([]);
     }
   };
 
@@ -107,7 +119,7 @@ const WarrantyRegistration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 pt-24 md:pt-32 pb-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">

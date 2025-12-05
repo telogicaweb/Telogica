@@ -75,22 +75,66 @@ const UserDashboard = () => {
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
 
       const products = quote.products.map((item: any) => ({
-        productId: item.product._id,
+        product: item.product._id, // Changed from productId to product to match backend schema
         quantity: item.quantity,
         price: totalQty > 0 ? totalPrice / totalQty : 0
       }));
 
-      await api.post('/api/orders', {
+      const shippingAddress = prompt("Please enter your shipping address:", user.address || "");
+      if (!shippingAddress) {
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await api.post('/api/orders', {
         products,
         totalAmount: totalPrice,
-        quoteId: quote._id
+        quoteId: quote._id,
+        shippingAddress
       });
 
-      alert('Order created successfully! Proceed to payment.');
-      navigate('/user-dashboard');
-      fetchData();
+      // Razorpay Integration
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+        amount: data.razorpayOrder.amount,
+        currency: data.razorpayOrder.currency,
+        name: "Telogica",
+        description: "Quote Order Payment",
+        order_id: data.razorpayOrder.id,
+        handler: async function (response: any) {
+          try {
+            await api.post('/api/orders/verify', {
+              orderId: data.order._id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            alert('Payment Successful!');
+            fetchData();
+          } catch (error) {
+            alert('Payment Verification Failed');
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: "#3399cc"
+        }
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.on('payment.failed', function (response: any){
+        alert(response.error.description);
+      });
+      rzp1.open();
+
     } catch (error: any) {
       console.error('Error creating order', error);
+      if (error.response?.status === 401) {
+        alert('Session expired. Please login again.');
+        return;
+      }
       alert(error.response?.data?.message || 'Failed to create order');
     } finally {
       setLoading(false);
@@ -119,7 +163,8 @@ const UserDashboard = () => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-      case 'accepted': return 'text-green-600 bg-green-100';
+      case 'accepted':
+      case 'confirmed': return 'text-green-600 bg-green-100';
       case 'pending': return 'text-yellow-600 bg-yellow-100';
       case 'responded': return 'text-blue-600 bg-blue-100';
       case 'cancelled':
@@ -131,7 +176,8 @@ const UserDashboard = () => {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-      case 'accepted': return <CheckCircle size={16} />;
+      case 'accepted':
+      case 'confirmed': return <CheckCircle size={16} />;
       case 'pending': return <Clock size={16} />;
       case 'responded': return <AlertCircle size={16} />;
       case 'cancelled':
@@ -511,13 +557,25 @@ const UserDashboard = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                <button
-                                  onClick={() => downloadInvoice(invoice._id)}
-                                  className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                                >
-                                  <Download size={16} />
-                                  Download
-                                </button>
+                                {invoice.invoiceUrl ? (
+                                  <a
+                                    href={invoice.invoiceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                  >
+                                    <Download size={16} />
+                                    Download
+                                  </a>
+                                ) : (
+                                  <button
+                                    onClick={() => downloadInvoice(invoice._id)}
+                                    className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                  >
+                                    <Download size={16} />
+                                    Download
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}

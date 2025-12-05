@@ -18,11 +18,11 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
     console.log('EmailLog model not available, skipping logging');
   }
 
-  const emailBody = html || text;
+  const emailBody = html || text || 'No content';
   
   // Determine recipient type
   let recipientType = 'user';
-  if (to.includes('admin') || to === process.env.ADMIN_EMAIL) {
+  if (to && (to.includes('admin') || to === process.env.ADMIN_EMAIL)) {
     recipientType = 'admin';
   }
 
@@ -31,9 +31,9 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
   if (EmailLog) {
     try {
       emailLog = await EmailLog.create({
-        recipient: to,
+        recipient: to || 'unknown',
         recipientType,
-        subject,
+        subject: subject || 'No Subject',
         body: emailBody,
         emailType: emailType || 'general',
         status: 'pending',
@@ -42,6 +42,28 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
     } catch (error) {
       console.error('Error creating email log:', error);
     }
+  }
+
+  if (!to) {
+    const errorMsg = 'Recipient email is missing';
+    console.error(errorMsg);
+    if (emailLog) {
+      emailLog.status = 'failed';
+      emailLog.errorMessage = errorMsg;
+      await emailLog.save();
+    }
+    return { success: false, error: errorMsg, emailLog };
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    const errorMsg = 'Email credentials missing in .env';
+    console.error(errorMsg);
+    if (emailLog) {
+      emailLog.status = 'failed';
+      emailLog.errorMessage = errorMsg;
+      await emailLog.save();
+    }
+    return { success: false, error: errorMsg, emailLog };
   }
 
   try {

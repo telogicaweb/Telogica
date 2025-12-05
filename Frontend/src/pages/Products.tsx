@@ -246,8 +246,8 @@ const Products = () => {
                         <p className="text-lg font-semibold text-blue-600">Request Quote</p>
                       )
                     ) : (
-                      // Regular user pricing
-                      product.price && !product.requiresQuote ? (
+                      // Regular user pricing - Only show price for TELECOM products
+                      product.category.toLowerCase() === 'telecom' && product.price && !product.requiresQuote ? (
                         <div className="flex items-baseline gap-2">
                           <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
                           <span className="text-sm text-gray-500">+ GST</span>
@@ -279,7 +279,7 @@ const Products = () => {
                         </button>
                       ) : (
                         <>
-                          {product.price && !product.requiresQuote && (
+                          {product.category.toLowerCase() === 'telecom' && product.price && !product.requiresQuote && (
                             <button 
                               onClick={() => handleAddToCart(product)} 
                               className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
@@ -290,7 +290,7 @@ const Products = () => {
                           )}
                           <button 
                             onClick={() => handleAddToQuote(product)} 
-                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(!product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
+                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(product.category.toLowerCase() !== 'telecom' || !product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
                           >
                             <FileText className="w-4 h-4" />
                             Quote

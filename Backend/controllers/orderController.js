@@ -1,11 +1,13 @@
 const Order = require('../models/Order');
 const Quote = require('../models/Quote');
+const Product = require('../models/Product');
 const ProductUnit = require('../models/ProductUnit');
 const Invoice = require('../models/Invoice');
 const RetailerInventory = require('../models/RetailerInventory');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
+const { generateAndUploadInvoice } = require('../utils/invoiceGenerator');
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -31,6 +33,23 @@ const createOrder = async (req, res) => {
         message: `Regular users can only purchase up to ${MAX_DIRECT_PURCHASE} items directly. Please request a quote for larger orders.`,
         requiresQuote: true
       });
+    }
+
+    // Enforce TELECOM-only direct purchase rule
+    if (!quoteId) {
+      const productIds = products.map(p => p.product);
+      const dbProducts = await Product.find({ _id: { $in: productIds } });
+      
+      const nonTelecomProducts = dbProducts.filter(p => 
+        !p.category || p.category.toLowerCase() !== 'telecom'
+      );
+
+      if (nonTelecomProducts.length > 0) {
+        return res.status(400).json({ 
+          message: 'Only TELECOM products can be purchased directly. Please request a quote for other items.',
+          products: nonTelecomProducts.map(p => p.name)
+        });
+      }
     }
 
     let isQuoteBased = false;
@@ -64,12 +83,22 @@ const createOrder = async (req, res) => {
 
     // Create Razorpay Order
     const options = {
-      amount: finalAmount * 100, // amount in smallest currency unit
+      amount: Math.round(finalAmount * 100), // amount in smallest currency unit (paise), ensure integer
       currency: "INR",
       receipt: `receipt_order_${Date.now()}`
     };
 
+    console.log('Creating Razorpay order with options:', options);
+
     const razorpayOrder = await razorpay.orders.create(options);
+
+    // Generate custom order number
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const random = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `ORD-${year}${month}${day}-${random}`;
 
     const order = new Order({
       user: req.user._id,
@@ -77,6 +106,7 @@ const createOrder = async (req, res) => {
       totalAmount: finalAmount,
       shippingAddress,
       razorpayOrderId: razorpayOrder.id,
+      orderNumber,
       quoteId: quoteId || null,
       isQuoteBased,
       discountApplied
@@ -90,17 +120,23 @@ const createOrder = async (req, res) => {
     }
 
     // Send order confirmation email
-    await sendEmail(
-      req.user.email,
-      'Order Created - Telogica',
-      `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
-      'order_confirmation',
-      { entityType: 'order', entityId: createdOrder._id }
-    );
+    try {
+      await sendEmail(
+        req.user.email,
+        'Order Created - Telogica',
+        `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
+        'order_confirmation',
+        { entityType: 'order', entityId: createdOrder._id }
+      );
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      // Continue even if email fails
+    }
 
     res.status(201).json({ order: createdOrder, razorpayOrder });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error in createOrder:', error);
+    res.status(500).json({ message: error.message, stack: process.env.NODE_ENV === 'development' ? error.stack : undefined });
   }
 };
 
@@ -122,6 +158,7 @@ const verifyPayment = async (req, res) => {
 
     if (generated_signature === razorpaySignature) {
       order.paymentStatus = 'completed';
+      order.orderStatus = 'confirmed';
       order.razorpayPaymentId = razorpayPaymentId;
       order.razorpaySignature = razorpaySignature;
       await order.save();
@@ -130,7 +167,10 @@ const verifyPayment = async (req, res) => {
 
       // Assign product units to the order
       const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
-      for (const item of order.products) {
+      
+      // Use a for loop to allow updating the order object in place
+      for (let i = 0; i < order.products.length; i++) {
+        const item = order.products[i];
         try {
           // Assign units to order
           const filter = { 
@@ -162,6 +202,9 @@ const verifyPayment = async (req, res) => {
             )
           );
 
+          // Update order item with serial numbers
+          order.products[i].serialNumbers = units.map(u => u.serialNumber);
+
           // If retailer purchase, add to retailer inventory
           if (order.user.role === 'retailer') {
             await Promise.all(
@@ -183,7 +226,11 @@ const verifyPayment = async (req, res) => {
         }
       }
 
+      // Save the order again to persist serial numbers
+      await order.save();
+
       // Generate invoice
+      let invoice;
       try {
         const productsWithSerials = await Promise.all(
           order.products.map(async (item) => {
@@ -204,7 +251,7 @@ const verifyPayment = async (req, res) => {
 
         const subtotal = order.products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
-        await Invoice.create({
+        invoice = await Invoice.create({
           user: order.user._id,
           order: order._id,
           products: productsWithSerials,
@@ -219,25 +266,38 @@ const verifyPayment = async (req, res) => {
           invoiceDate: new Date(),
           paidDate: new Date()
         });
+
+        // Generate and upload PDF
+        try {
+            const invoiceUrl = await generateAndUploadInvoice(order, invoice.invoiceNumber);
+            invoice.invoiceUrl = invoiceUrl;
+            await invoice.save();
+        } catch (pdfError) {
+            console.error('Error generating/uploading PDF:', pdfError);
+        }
       } catch (error) {
         console.error('Error generating invoice:', error);
       }
 
       // Send payment confirmation email
-      await sendEmail(
-        order.user.email,
-        'Payment Successful - Telogica',
-        `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}. Your invoice has been generated.`,
-        'payment_confirmation',
-        { entityType: 'order', entityId: order._id }
-      );
+      const invoiceLink = invoice && invoice.invoiceUrl ? `\n\nYou can download your invoice here: ${invoice.invoiceUrl}` : '';
+      
+      if (order.user && order.user.email) {
+        await sendEmail(
+          order.user.email,
+          'Payment Successful - Telogica',
+          `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}.${invoiceLink}`,
+          'payment_confirmation',
+          { entityType: 'order', entityId: order._id }
+        );
+      }
 
       // Notify admin
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
       await sendEmail(
         adminEmail,
         'New Order Placed',
-        `New order from ${order.user.name} (${order.user.role}). Order ID: ${order._id}. Amount: ₹${order.totalAmount}`,
+        `New order from ${order.user ? order.user.name : 'Unknown User'} (${order.user ? order.user.role : 'unknown'}). Order ID: ${order._id}. Amount: ₹${order.totalAmount}`,
         'order_confirmation',
         { entityType: 'order', entityId: order._id }
       );
@@ -277,4 +337,43 @@ const getOrders = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, verifyPayment, getMyOrders, getOrders };
+// @desc    Update order status
+// @route   PUT /api/orders/:id
+// @access  Private/Admin
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+      order.orderStatus = status;
+      const updatedOrder = await order.save();
+      
+      // Send email notification for status change
+      if (order.user) {
+        // Fetch user email if not populated (though findById doesn't populate by default, we might need to fetch user)
+        // Actually order.user is just an ID here unless populated.
+        // Let's populate it to get the email.
+        await updatedOrder.populate('user');
+        
+        if (updatedOrder.user && updatedOrder.user.email) {
+           await sendEmail(
+            updatedOrder.user.email,
+            `Order Status Updated - ${status.toUpperCase()}`,
+            `Your order ${order.orderNumber || order._id} status has been updated to ${status}.`,
+            'order_status_update',
+            { entityType: 'order', entityId: order._id }
+          );
+        }
+      }
+
+      res.json(updatedOrder);
+    } else {
+      res.status(404).json({ message: 'Order not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus };

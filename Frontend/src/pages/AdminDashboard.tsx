@@ -21,7 +21,8 @@ import {
   DollarSign,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 
 interface User {
@@ -77,14 +78,16 @@ interface Quote {
 
 interface Order {
   _id: string;
+  orderNumber?: string;
   userId: { _id: string; name: string; email: string };
   products: Array<{
     productId: { _id: string; name: string };
     quantity: number;
     price: number;
+    serialNumbers?: string[];
   }>;
   totalAmount: number;
-  status: string;
+  orderStatus: string;
   paymentStatus: string;
   createdAt: string;
 }
@@ -109,6 +112,17 @@ interface EmailLog {
   emailType: string;
   sentAt: string;
   status: string;
+}
+
+interface ContactMessage {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'replied';
+  createdAt: string;
 }
 
 interface Analytics {
@@ -139,6 +153,7 @@ const AdminDashboard: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [contacts, setContacts] = useState<ContactMessage[]>([]);
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
@@ -188,6 +203,7 @@ const AdminDashboard: React.FC = () => {
         loadOrders(),
         loadWarranties(),
         loadEmailLogs(),
+        loadContacts(),
       ]);
     } catch (error: any) {
       console.error('Error loading dashboard data:', error);
@@ -285,6 +301,16 @@ const AdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error loading email logs:', error);
       setEmailLogs([]);
+    }
+  };
+
+  const loadContacts = async () => {
+    try {
+      const response = await api.get('/api/contact');
+      setContacts(response.data);
+    } catch (error) {
+      console.error('Error loading contacts:', error);
+      setContacts([]);
     }
   };
 
@@ -464,14 +490,93 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Email Logs
-  const handleResendEmail = async (_logId: string) => {
+  const handleResendEmail = async (logId: string) => {
     try {
-      // await api.post(`/api/email-logs/${logId}/resend`);
-      alert('Email resend feature not yet implemented');
-      // loadEmailLogs();
+      await api.post(`/api/email-logs/${logId}/resend`);
+      alert('Email resent successfully');
+      loadEmailLogs();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to resend email');
     }
+  };
+
+  // Contact Management
+  const handleUpdateContactStatus = async (id: string, status: string) => {
+    try {
+      await api.put(`/api/contact/${id}`, { status });
+      loadContacts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this message?')) return;
+    try {
+      await api.delete(`/api/contact/${id}`);
+      alert('Message deleted successfully');
+      loadContacts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete message');
+    }
+  };
+
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data.length) {
+      alert('No data to export');
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => {
+        const cell = row[header] === null || row[header] === undefined ? '' : row[header];
+        return JSON.stringify(cell);
+      }).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const exportQuotes = () => {
+    const data = quotes.map(q => ({
+      ID: q._id,
+      User: q.user?.name || q.userId?.name || 'Unknown',
+      Email: q.user?.email || q.userId?.email || 'Unknown',
+      Status: q.status,
+      Date: new Date(q.createdAt || '').toLocaleDateString(),
+      Message: q.message || '',
+      AdminResponse: typeof q.adminResponse === 'string' ? q.adminResponse : q.adminResponse?.message || '',
+      QuotedPrice: q.quotedPrice || q.adminResponse?.totalPrice || 0
+    }));
+    downloadCSV(data, `quotes_export_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportOrders = () => {
+    const data = orders.map(o => ({
+      OrderNumber: o.orderNumber || o._id,
+      User: o.userId?.name || 'Unknown',
+      Email: o.userId?.email || 'Unknown',
+      Amount: o.totalAmount,
+      Status: o.orderStatus,
+      PaymentStatus: o.paymentStatus,
+      Date: new Date(o.createdAt).toLocaleDateString(),
+      ItemsCount: o.products.length,
+      ProductsDetails: o.products.map(p => 
+        `${p.productId?.name || 'Unknown'} (Qty: ${p.quantity}) ${p.serialNumbers?.length ? `[SN: ${p.serialNumbers.join(', ')}]` : ''}`
+      ).join('; ')
+    }));
+    downloadCSV(data, `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   // Render Dashboard/Analytics Tab
@@ -1065,7 +1170,16 @@ const AdminDashboard: React.FC = () => {
   // Render Quotes Tab
   const renderQuotes = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
+        <button
+          onClick={exportQuotes}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
+      </div>
       
       <div className="space-y-4">
         {quotes.map((quote) => (
@@ -1197,7 +1311,16 @@ const AdminDashboard: React.FC = () => {
   // Render Orders Tab
   const renderOrders = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
+        <button
+          onClick={exportOrders}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </button>
+      </div>
       
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -1231,7 +1354,7 @@ const AdminDashboard: React.FC = () => {
               {orders.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                    {order._id.slice(-8)}
+                    {order.orderNumber || order._id.slice(-8)}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <div>
@@ -1249,22 +1372,23 @@ const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <select
-                      value={order.status}
+                      value={order.orderStatus}
                       onChange={(e) =>
                         handleUpdateOrderStatus(order._id, e.target.value)
                       }
                       className={`px-2 py-1 rounded text-xs font-medium border-0 ${
-                        order.status === 'delivered'
+                        order.orderStatus === 'delivered'
                           ? 'bg-green-100 text-green-800'
-                          : order.status === 'shipped'
+                          : order.orderStatus === 'shipped'
                           ? 'bg-blue-100 text-blue-800'
-                          : order.status === 'processing'
+                          : order.orderStatus === 'processing'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
                       <option value="pending">Pending</option>
                       <option value="processing">Processing</option>
+                      <option value="confirmed">Confirmed</option>
                       <option value="shipped">Shipped</option>
                       <option value="delivered">Delivered</option>
                       <option value="cancelled">Cancelled</option>
@@ -1457,6 +1581,80 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  // Render Contacts Tab
+  const renderContacts = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
+      
+      <div className="space-y-4">
+        {contacts.map((contact) => (
+          <div
+            key={contact._id}
+            className="bg-white p-6 rounded-lg shadow border border-gray-200"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">{contact.subject}</h3>
+                <p className="text-sm text-gray-600">
+                  From: {contact.name} ({contact.email})
+                </p>
+                {contact.phone && (
+                  <p className="text-sm text-gray-600">Phone: {contact.phone}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Received: {new Date(contact.createdAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={contact.status}
+                  onChange={(e) => handleUpdateContactStatus(contact._id, e.target.value)}
+                  className={`px-2 py-1 rounded text-xs font-medium border-0 ${
+                    contact.status === 'new'
+                      ? 'bg-blue-100 text-blue-800'
+                      : contact.status === 'read'
+                      ? 'bg-gray-100 text-gray-800'
+                      : 'bg-green-100 text-green-800'
+                  }`}
+                >
+                  <option value="new">New</option>
+                  <option value="read">Read</option>
+                  <option value="replied">Replied</option>
+                </select>
+                <button
+                  onClick={() => handleDeleteContact(contact._id)}
+                  className="text-red-600 hover:text-red-800 p-1"
+                  title="Delete Message"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-gray-800 whitespace-pre-wrap">{contact.message}</p>
+            </div>
+            
+            <div className="mt-4 flex justify-end">
+               <a 
+                 href={`mailto:${contact.email}?subject=Re: ${contact.subject}`}
+                 className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+               >
+                 <Mail className="w-4 h-4" />
+                 Reply via Email
+               </a>
+            </div>
+          </div>
+        ))}
+        {contacts.length === 0 && (
+          <div className="text-center py-10 text-gray-500">
+            No messages found.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   // Render Content Management Tab
   const renderContentManagement = () => (
     <div className="space-y-6">
@@ -1586,6 +1784,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'quotes', name: 'Quotes', icon: FileText },
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'warranties', name: 'Warranties', icon: Shield },
+    { id: 'messages', name: 'Messages', icon: MessageSquare },
     { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
   ];
@@ -1725,6 +1924,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'warranties' && renderWarranties()}
+            {activeTab === 'messages' && renderContacts()}
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
           </>

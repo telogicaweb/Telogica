@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const invoiceSchema = new mongoose.Schema({
-  invoiceNumber: { type: String, required: true, unique: true },
+  invoiceNumber: { type: String, unique: true },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
   products: [{
@@ -26,6 +26,7 @@ const invoiceSchema = new mongoose.Schema({
   invoiceDate: { type: Date, default: Date.now },
   dueDate: { type: Date },
   paidDate: { type: Date },
+  invoiceUrl: { type: String },
   notes: { type: String }
 }, { timestamps: true });
 

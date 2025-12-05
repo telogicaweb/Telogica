@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useState, useContext } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
@@ -9,6 +9,7 @@ const Cart = () => {
   const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
   const navigate = useNavigate();
+  const [shippingAddress, setShippingAddress] = useState('');
 
   const subtotal = cart.reduce((acc, item) => acc + (item.product.price || 0) * item.quantity, 0);
   const shipping = 0; // Free shipping for now
@@ -30,21 +31,59 @@ const Cart = () => {
       return;
     }
 
+    if (!shippingAddress.trim()) {
+      alert('Please enter a shipping address');
+      return;
+    }
+
     try {
-      await api.post('/api/orders', {
+      const { data } = await api.post('/api/orders', {
         products: cart.map(item => ({
-          productId: item.product._id,
+          product: item.product._id,
           quantity: item.quantity,
-          price: item.product.price
+          price: item.product.price || 0 // Ensure price is provided
         })),
-        totalAmount: total
+        totalAmount: total,
+        shippingAddress
       });
 
-      // Here you would integrate Razorpay checkout using data.razorpayOrder
-      alert('Order Created! Proceed to Payment');
-      
-      clearCart();
-      navigate('/user-dashboard');
+      // Razorpay Integration
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+        amount: data.razorpayOrder.amount,
+        currency: data.razorpayOrder.currency,
+        name: "Telogica",
+        description: "Order Payment",
+        order_id: data.razorpayOrder.id,
+        handler: async function (response: any) {
+          try {
+            await api.post('/api/orders/verify', {
+              orderId: data.order._id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            });
+            alert('Payment Successful!');
+            clearCart();
+            navigate('/user-dashboard');
+          } catch (error) {
+            alert('Payment Verification Failed');
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: "#3399cc"
+        }
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.on('payment.failed', function (response: any){
+        alert(response.error.description);
+      });
+      rzp1.open();
+
     } catch (error: any) {
       console.error(error);
       if (error.response?.data?.requiresQuote) {
@@ -161,6 +200,20 @@ const Cart = () => {
               </dl>
 
               <div className="mt-6 space-y-3">
+                <div className="mb-4">
+                  <label htmlFor="shippingAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping Address
+                  </label>
+                  <textarea
+                    id="shippingAddress"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Enter your full shipping address"
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                  />
+                </div>
+
                 {requiresQuote ? (
                   <>
                     <button
