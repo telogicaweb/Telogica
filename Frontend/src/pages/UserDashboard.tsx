@@ -28,7 +28,7 @@ const UserDashboard = () => {
         api.get('/api/warranties/my-warranties'),
         api.get('/api/invoices/my-invoices')
       ]);
-      
+
       setOrders(ordersRes.data);
       setQuotes(quotesRes.data);
       setWarranties(warrantiesRes.data);
@@ -51,7 +51,7 @@ const UserDashboard = () => {
 
   const acceptQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to accept this quote?')) return;
-    
+
     setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/accept`);
@@ -68,7 +68,7 @@ const UserDashboard = () => {
 
   const rejectQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to reject this quote?')) return;
-    
+
     setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/reject`);
@@ -83,14 +83,7 @@ const UserDashboard = () => {
     }
   };
 
-  const proceedToCheckout = async (quote: { _id: string; products: { product: { _id: string }; quantity: number }[]; adminResponse?: { totalPrice: number }; quotedPrice?: number }) => {
-    // Check if Razorpay is loaded
-    if (typeof window.Razorpay === 'undefined') {
-      alert('Payment gateway is not loaded. Please refresh the page and try again.');
-      return;
-    }
 
-    setLoading(true);
   const proceedToCheckout = async (quote: any) => {
     if (!user) {
       alert('Please login again to continue.');
@@ -142,7 +135,7 @@ const UserDashboard = () => {
           } catch {
             alert('Payment Verification Failed');
           } finally {
-            setLoading(false);
+            setActionLoading(false);
           }
         },
         prefill: {
@@ -155,9 +148,9 @@ const UserDashboard = () => {
       };
 
       const rzp1 = new window.Razorpay(options);
-      rzp1.on('payment.failed', function (response: { error: { description: string } }){
+      rzp1.on('payment.failed', function (response: { error: { description: string } }) {
         alert(response.error.description);
-        setLoading(false);
+        setActionLoading(false);
       });
       rzp1.open();
 
@@ -179,7 +172,7 @@ const UserDashboard = () => {
       const response = await api.get(`/api/invoices/${invoiceId}/download`, {
         responseType: 'blob'
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -232,44 +225,40 @@ const UserDashboard = () => {
             <nav className="flex -mb-px overflow-x-auto">
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'orders'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'orders'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <Package size={18} />
                 Orders
               </button>
               <button
                 onClick={() => setActiveTab('quotes')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'quotes'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'quotes'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <FileText size={18} />
                 Quotes
               </button>
               <button
                 onClick={() => setActiveTab('warranties')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'warranties'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'warranties'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <Shield size={18} />
                 Warranties
               </button>
               <button
                 onClick={() => setActiveTab('invoices')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'invoices'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'invoices'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <Download size={18} />
                 Invoices
@@ -355,7 +344,7 @@ const UserDashboard = () => {
                           </span>
                           <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
                         </div>
-                        
+
                         <div className="mb-4">
                           <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
                           <ul className="text-sm text-gray-600 space-y-1">
@@ -416,12 +405,10 @@ const UserDashboard = () => {
                         {quote.status === 'accepted' && (
                           <button
                             onClick={() => proceedToCheckout(quote)}
-                            disabled={loading}
-                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
                             disabled={actionLoading}
-                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
                           >
-                            {loading ? (
+                            {actionLoading ? (
                               <>
                                 <Loader2 size={16} className="mr-2 animate-spin" />
                                 Processing...
@@ -594,13 +581,12 @@ const UserDashboard = () => {
                                 {new Date(invoice.createdAt).toLocaleDateString()}
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  invoice.paymentStatus === 'completed'
-                                    ? 'bg-green-100 text-green-800'
-                                    : invoice.paymentStatus === 'pending'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-red-100 text-red-700'
-                                }`}>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.paymentStatus === 'completed'
+                                  ? 'bg-green-100 text-green-800'
+                                  : invoice.paymentStatus === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-700'
+                                  }`}>
                                   {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
                                 </span>
                               </td>
