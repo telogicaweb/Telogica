@@ -1,4 +1,5 @@
 const RetailerInventory = require('../models/RetailerInventory');
+const RetailerSale = require('../models/RetailerSale');
 const ProductUnit = require('../models/ProductUnit');
 const Warranty = require('../models/Warranty');
 const Product = require('../models/Product');
@@ -145,6 +146,31 @@ exports.markAsSold = async (req, res) => {
     // Update inventory with warranty reference
     inventoryItem.warrantyRegistration = warranty._id;
     await inventoryItem.save();
+
+    // Create RetailerSale record for tracking
+    const retailerSale = await RetailerSale.create({
+      retailer: req.user._id,
+      inventoryItem: inventoryItem._id,
+      product: inventoryItem.product._id,
+      productUnit: inventoryItem.productUnit._id,
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        address: customerAddress
+      },
+      saleDate: inventoryItem.soldDate,
+      purchasePrice: inventoryItem.purchasePrice,
+      sellingPrice: sellingPrice || 0,
+      invoiceUrl: customerInvoice,
+      warrantyRegistration: warranty._id,
+      warrantyStatus: 'pending',
+      productDetails: {
+        name: inventoryItem.product.name,
+        serialNumber: inventoryItem.productUnit.serialNumber,
+        modelNumber: inventoryItem.productUnit.modelNumber
+      }
+    });
 
     // Send email to customer
     await sendEmail(

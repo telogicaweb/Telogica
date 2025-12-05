@@ -16,6 +16,7 @@ import Cart from './pages/Cart';
 import Quote from './pages/Quote';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
+import RetailerDashboard from './pages/RetailerDashboard';
 import WarrantyRegistration from './pages/WarrantyRegistration';
 import RetailerInventory from './pages/RetailerInventory';
 import BlogManagement from './pages/admin/BlogManagement';
@@ -24,6 +25,7 @@ import EventManagement from './pages/admin/EventManagement';
 import ReportManagement from './pages/admin/ReportManagement';
 import PageContent from './pages/admin/PageContent';
 import StatsManagement from './pages/admin/StatsManagement';
+import RetailerManagement from './pages/admin/RetailerManagement';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import SiteMap from './pages/SiteMap';
@@ -53,7 +55,9 @@ function App() {
             <Route path="/admin/report-management" element={<ReportManagement />} />
             <Route path="/admin/page-content" element={<PageContent />} />
             <Route path="/admin/stats-management" element={<StatsManagement />} />
+            <Route path="/admin/retailer-management" element={<RetailerManagement />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
+            <Route path="/retailer-dashboard" element={<RetailerDashboard />} />
             <Route path="/warranty" element={<WarrantyRegistration />} />
             <Route path="/retailer-inventory" element={<RetailerInventory />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
