@@ -31,7 +31,11 @@ const {
 
 exports.exportProducts = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    
+    // Enforce maximum export limit to prevent memory issues
+    const maxLimit = 10000;
+    const exportLimit = Math.min(parseInt(limit, 10) || maxLimit, maxLimit);
     
     // Build query from filters
     const query = {};
@@ -41,7 +45,10 @@ exports.exportProducts = async (req, res) => {
       query.price = { ...query.price, $lte: Number(filters.maxPrice) };
     }
     
-    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 })
+      .limit(exportLimit)
+      .lean();
     
     if (!products.length) {
       return res.status(404).json({ message: 'No products found' });
@@ -68,7 +75,11 @@ exports.exportProducts = async (req, res) => {
 
 exports.exportOrders = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    
+    // Enforce maximum export limit to prevent memory issues
+    const maxLimit = 10000;
+    const exportLimit = Math.min(parseInt(limit, 10) || maxLimit, maxLimit);
     
     // Build query from filters
     const query = {};
@@ -84,6 +95,7 @@ exports.exportOrders = async (req, res) => {
     const orders = await Order.find(query)
       .populate('user', 'name email')
       .sort({ createdAt: -1 })
+      .limit(exportLimit)
       .lean();
     
     if (!orders.length) {

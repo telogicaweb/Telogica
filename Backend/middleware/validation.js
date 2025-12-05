@@ -33,17 +33,30 @@ const isValidObjectId = (id) => {
 
 /**
  * Sanitize string input
+ * Removes potentially dangerous characters and patterns
  */
 const sanitizeString = (str) => {
   if (typeof str !== 'string') return str;
   
-  // Remove potentially dangerous characters
-  return str
-    .trim()
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+=/gi, '')
-    .replace(/[<>]/g, '');
+  let sanitized = str.trim();
+  
+  // Remove all script tags (including variations)
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '');
+  
+  // Remove javascript: protocol
+  sanitized = sanitized.replace(/javascript\s*:/gi, '');
+  
+  // Remove data: and vbscript: protocols
+  sanitized = sanitized.replace(/data\s*:/gi, '');
+  sanitized = sanitized.replace(/vbscript\s*:/gi, '');
+  
+  // Remove all on* event handlers (comprehensive)
+  sanitized = sanitized.replace(/\s*on\w+\s*=/gi, '');
+  
+  // Remove potentially dangerous HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  
+  return sanitized;
 };
 
 /**

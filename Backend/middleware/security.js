@@ -243,26 +243,38 @@ const requestTimeout = (timeoutMs = 30000) => {
   };
 };
 
-// ============================================
-// CORS Security
-// ============================================
+/**
+ * CORS Security
+ * ============================================
+ */
 
 /**
  * Strict CORS configuration for production
+ * IMPORTANT: Set ALLOWED_ORIGINS environment variable in production
  */
 const strictCorsOptions = {
   origin: function (origin, callback) {
+    // In production, ALLOWED_ORIGINS must be explicitly set
+    if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
+      console.error('SECURITY WARNING: ALLOWED_ORIGINS environment variable must be set in production!');
+      return callback(new Error('CORS configuration error'));
+    }
+
     const allowedOrigins = process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
       : [
+          // Development defaults only
           'http://localhost:5173',
           'http://localhost:3000',
-          'https://telogica-p7tf.vercel.app',
-          'https://telogica-lac.vercel.app',
         ];
 
-    // Allow requests with no origin (mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (mobile apps, curl, postman) only in development
+    if (!origin) {
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error('Origin header required in production'));
+      }
+      return callback(null, true);
+    }
 
     if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       callback(null, true);
