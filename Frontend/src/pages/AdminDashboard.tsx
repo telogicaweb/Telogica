@@ -1254,216 +1254,503 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Render Users Tab
-  const renderUsers = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+  const renderUsers = () => {
+    const handleExportUsersPDF = async () => {
+      try {
+        const { default: jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default as any;
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {user.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800'
-                        : user.role === 'retailer'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                        }`}
-                    >
-                      {user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {user.role === 'retailer' && !user.isApproved ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Pending Approval
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-2">
-                      {user.role === 'retailer' && !user.isApproved && (
-                        <button
-                          onClick={() => handleApproveRetailer(user._id)}
-                          className="text-green-600 hover:text-green-800"
-                          title="Approve Retailer"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                      {user.role !== 'admin' && (
-                        <button
-                          onClick={() => handleDeleteUser(user._id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFillColor(33, 150, 243);
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TELOGICA', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(18);
+        doc.text('USER MANAGEMENT REPORT', 105, 30, { align: 'center' });
+
+        // Report details
+        doc.setFillColor(245, 245, 245);
+        doc.rect(10, 45, 190, 15, 'F');
+        
+        doc.setTextColor(33, 33, 33);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
+        doc.text(`Total Users: ${users.length}`, 100, 55);
+
+        // Table
+        const headers = [['No.', 'Name', 'Email', 'Role', 'Status', 'Joined']];
+        
+        const body = users.map((u, i) => [
+          i + 1,
+          u.name,
+          u.email,
+          u.role,
+          u.role === 'retailer' && !u.isApproved ? 'Pending' : 'Active',
+          new Date(u.createdAt).toLocaleDateString()
+        ]);
+
+        autoTable(doc, {
+          startY: 65,
+          head: headers,
+          body: body,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [33, 150, 243],
+            textColor: 255,
+            fontStyle: 'bold'
+          }
+        });
+
+        doc.save(`Telogica-Users-${new Date().toISOString().split('T')[0]}.pdf`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export PDF');
+      }
+    };
+
+    const handleExportUsersExcel = async () => {
+      try {
+        const XLSX = await import('xlsx');
+        
+        const excelData = users.map((u, index) => ({
+          'No.': index + 1,
+          'Name': u.name,
+          'Email': u.email,
+          'Role': u.role,
+          'Status': u.role === 'retailer' && !u.isApproved ? 'Pending Approval' : 'Active',
+          'Joined': new Date(u.createdAt).toLocaleDateString()
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        ws['!cols'] = [
+          { wch: 5 },
+          { wch: 25 },
+          { wch: 30 },
+          { wch: 12 },
+          { wch: 15 },
+          { wch: 12 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Users');
+        XLSX.writeFile(wb, `Telogica-Users-${new Date().toISOString().split('T')[0]}.xlsx`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export Excel');
+      }
+    };
+
+    const handleChangeUserRole = async (userId: string, currentRole: string) => {
+      const roles = ['user', 'retailer', 'admin'];
+      const currentIndex = roles.indexOf(currentRole);
+      const nextRole = roles[(currentIndex + 1) % roles.length];
+      
+      if (!window.confirm(`Change user role from "${currentRole}" to "${nextRole}"?`)) {
+        return;
+      }
+
+      try {
+        await api.put(`/api/users/${userId}/role`, { role: nextRole });
+        await loadUsers();
+        alert(`User role updated to ${nextRole}`);
+      } catch (error: any) {
+        alert(error.response?.data?.message || 'Failed to update user role');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportUsersPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
+            <button
+              onClick={handleExportUsersExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700"
+            >
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Joined
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {user.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'admin'
+                          ? 'bg-purple-100 text-purple-800'
+                          : user.role === 'retailer'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                          }`}
+                      >
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {user.role === 'retailer' && !user.isApproved ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Pending Approval
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Active
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex gap-2">
+                        {user.role === 'retailer' && !user.isApproved && (
+                          <button
+                            onClick={() => handleApproveRetailer(user._id)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Approve Retailer"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleChangeUserRole(user._id, user.role)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Change Role"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        {user.role !== 'admin' && (
+                          <button
+                            onClick={() => handleDeleteUser(user._id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete User"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Render Quotes Tab
-  const renderQuotes = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
-        <button
-          onClick={exportQuotes}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
-      </div>
+  const renderQuotes = () => {
+    const handleExportQuotesPDF = async () => {
+      try {
+        const { default: jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default as any;
 
-      <div className="space-y-4">
-        {quotes.map((quote) => (
-          <div
-            key={quote._id}
-            className="bg-white p-6 rounded-lg shadow border border-gray-200"
-          >
-            <div className="flex justify-between items-start mb-4">
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFillColor(33, 150, 243);
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TELOGICA', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(18);
+        doc.text('QUOTE MANAGEMENT REPORT', 105, 30, { align: 'center' });
+
+        // Report details
+        doc.setFillColor(245, 245, 245);
+        doc.rect(10, 45, 190, 15, 'F');
+        
+        doc.setTextColor(33, 33, 33);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
+        doc.text(`Total Quotes: ${quotes.length}`, 100, 55);
+
+        // Table
+        const headers = [['No.', 'Customer', 'Products', 'Status', 'Quoted Price', 'Date']];
+        
+        const body = quotes.map((q, i) => [
+          i + 1,
+          q.user?.name || q.userId?.name || 'Unknown',
+          q.products.map(p => (p.product?.name || p.productId?.name || 'Unknown')).join(', '),
+          q.status || 'pending',
+          q.quotedPrice ? `₹${q.quotedPrice}` : '-',
+          q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
+        ]);
+
+        autoTable(doc, {
+          startY: 65,
+          head: headers,
+          body: body,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [33, 150, 243],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            2: { cellWidth: 50 }
+          }
+        });
+
+        doc.save(`Telogica-Quotes-${new Date().toISOString().split('T')[0]}.pdf`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export PDF');
+      }
+    };
+
+    const handleExportQuotesExcel = async () => {
+      try {
+        const XLSX = await import('xlsx');
+        
+        const excelData = quotes.map((q, index) => ({
+          'No.': index + 1,
+          'Customer': q.user?.name || q.userId?.name || 'Unknown',
+          'Email': q.user?.email || q.userId?.email || '',
+          'Products': q.products.map(p => `${p.product?.name || p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
+          'Message': q.message || '',
+          'Status': q.status || 'pending',
+          'Quoted Price': q.quotedPrice ? `₹${q.quotedPrice}` : '-',
+          'Admin Response': typeof q.adminResponse === 'string' ? q.adminResponse : (q.adminResponse?.message || ''),
+          'Date': q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        ws['!cols'] = [
+          { wch: 5 },
+          { wch: 20 },
+          { wch: 25 },
+          { wch: 40 },
+          { wch: 30 },
+          { wch: 12 },
+          { wch: 15 },
+          { wch: 30 },
+          { wch: 12 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Quotes');
+        XLSX.writeFile(wb, `Telogica-Quotes-${new Date().toISOString().split('T')[0]}.xlsx`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export Excel');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
+            <p className="text-sm text-gray-600 mt-1">Manage customer quote requests and provide pricing</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportQuotesPDF}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
+            <button
+              onClick={handleExportQuotesExcel}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button
+              onClick={exportQuotes}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-lg">
-                  {quote.user?.name || quote.userId?.name || 'Unknown User'}
-                </h3>
-                <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
+                <p className="text-sm font-medium text-yellow-800">Pending Quotes</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {quotes.filter(q => q.status === 'pending').length}
                 </p>
               </div>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : quote.status === 'approved'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                  }`}
-              >
-                {quote.status}
-              </span>
+              <Clock className="w-8 h-8 text-yellow-600" />
             </div>
-
-            <div className="mb-4">
-              <h4 className="font-medium text-sm text-gray-700 mb-2">Products:</h4>
-              <ul className="space-y-1">
-                {quote.products.map((item, idx) => (
-                  <li key={idx} className="text-sm text-gray-600">
-                    • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {quote.message && (
-              <div className="mb-4">
-                <h4 className="font-medium text-sm text-gray-700 mb-1">Message:</h4>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                  {quote.message}
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-800">Approved</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {quotes.filter(q => q.status === 'approved').length}
                 </p>
               </div>
-            )}
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Total Quotes</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{quotes.length}</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
+        </div>
 
-            {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
-              <div className="mb-4">
-                <h4 className="font-medium text-sm text-gray-700 mb-1">
-                  Admin Response:
-                </h4>
-                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                  {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
-                </p>
-                {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
-                  <p className="text-sm font-semibold text-gray-800 mt-2">
-                    Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
+        <div className="space-y-4">
+          {quotes.map((quote) => (
+            <div
+              key={quote._id}
+              className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {quote.user?.name || quote.userId?.name || 'Unknown User'}
+                  </h3>
+                  <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
                   </p>
-                )}
-              </div>
-            )}
-
-            {quote.status === 'pending' && (
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Response
-                  </label>
-                  <textarea
-                    value={
-                      quoteResponse.id === quote._id ? quoteResponse.response : ''
-                    }
-                    onChange={(e) =>
-                      setQuoteResponse({
-                        ...quoteResponse,
-                        id: quote._id,
-                        response: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter your response..."
-                  />
                 </div>
-                <div className="w-40">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Quoted Price (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={quoteResponse.id === quote._id ? quoteResponse.price : ''}
-                    onChange={(e) =>
-                      setQuoteResponse({
-                        ...quoteResponse,
-                        id: quote._id,
-                        price: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    placeholder="Price"
-                  />
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : quote.status === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                    }`}
+                >
+                  {quote.status}
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-medium text-sm text-gray-700 mb-2">Products:</h4>
+                <ul className="space-y-1">
+                  {quote.products.map((item, idx) => (
+                    <li key={idx} className="text-sm text-gray-600">
+                      • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {quote.message && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-sm text-gray-700 mb-1">Message:</h4>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    {quote.message}
+                  </p>
+                </div>
+              )}
+
+              {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-sm text-gray-700 mb-1">
+                    Admin Response:
+                  </h4>
+                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                    {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
+                  </p>
+                  {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
+                    <p className="text-sm font-semibold text-gray-800 mt-2">
+                      Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {quote.status === 'pending' && (
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Response
+                    </label>
+                    <textarea
+                      value={
+                        quoteResponse.id === quote._id ? quoteResponse.response : ''
+                      }
+                      onChange={(e) =>
+                        setQuoteResponse({
+                          ...quoteResponse,
+                          id: quote._id,
+                          response: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter your response..."
+                    />
+                  </div>
+                  <div className="w-40">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Quoted Price (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={quoteResponse.id === quote._id ? quoteResponse.price : ''}
+                      onChange={(e) =>
+                        setQuoteResponse({
+                          ...quoteResponse,
+                          id: quote._id,
+                          price: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      placeholder="Price"
+                    />
                 </div>
                 <button
                   onClick={() => handleRespondToQuote(quote._id)}
@@ -1488,109 +1775,298 @@ const AdminDashboard: React.FC = () => {
   );
 
   // Render Orders Tab
-  const renderOrders = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
-        <button
-          onClick={exportOrders}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
-      </div>
+  const renderOrders = () => {
+    const handleExportOrdersPDF = async () => {
+      try {
+        const { default: jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default as any;
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Order ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Products
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {orders.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                    {order.orderNumber || order._id.slice(-8)}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {order.userId?.name}
-                      </div>
-                      <div className="text-gray-600">{order.userId?.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {order.products.length} item(s)
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                    ₹{order.totalAmount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <select
-                      value={order.orderStatus}
-                      onChange={(e) =>
-                        handleUpdateOrderStatus(order._id, e.target.value)
-                      }
-                      className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.orderStatus === 'delivered'
-                        ? 'bg-green-100 text-green-800'
-                        : order.orderStatus === 'shipped'
-                          ? 'bg-blue-100 text-blue-800'
-                          : order.orderStatus === 'processing'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <button
-                      className="text-blue-600 hover:text-blue-800"
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </td>
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFillColor(33, 150, 243);
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TELOGICA', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(18);
+        doc.text('ORDER MANAGEMENT REPORT', 105, 30, { align: 'center' });
+
+        // Report details
+        doc.setFillColor(245, 245, 245);
+        doc.rect(10, 45, 190, 15, 'F');
+        
+        doc.setTextColor(33, 33, 33);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
+        doc.text(`Total Orders: ${orders.length}`, 100, 55);
+
+        // Table
+        const headers = [['Order ID', 'Customer', 'Items', 'Amount', 'Status', 'Date']];
+        
+        const body = orders.map((o) => [
+          o.orderNumber || o._id.slice(-8),
+          o.userId?.name || 'Unknown',
+          o.products.length,
+          `₹${o.totalAmount.toLocaleString()}`,
+          o.orderStatus,
+          new Date(o.createdAt).toLocaleDateString()
+        ]);
+
+        autoTable(doc, {
+          startY: 65,
+          head: headers,
+          body: body,
+          theme: 'striped',
+          headStyles: {
+            fillColor: [33, 150, 243],
+            textColor: 255,
+            fontStyle: 'bold'
+          }
+        });
+
+        // Summary
+        const finalY = (doc as any).lastAutoTable.finalY || 70;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SUMMARY', 15, finalY + 15);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+        doc.text(`Total Revenue: ₹${totalRevenue.toLocaleString()}`, 15, finalY + 25);
+        doc.text(`Total Orders: ${orders.length}`, 15, finalY + 32);
+
+        doc.save(`Telogica-Orders-${new Date().toISOString().split('T')[0]}.pdf`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export PDF');
+      }
+    };
+
+    const handleExportOrdersExcel = async () => {
+      try {
+        const XLSX = await import('xlsx');
+        
+        const excelData = orders.map((o, index) => ({
+          'No.': index + 1,
+          'Order ID': o.orderNumber || o._id,
+          'Customer Name': o.userId?.name || 'Unknown',
+          'Customer Email': o.userId?.email || '',
+          'Products': o.products.map(p => `${p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
+          'Total Items': o.products.length,
+          'Total Amount (₹)': o.totalAmount,
+          'Order Status': o.orderStatus,
+          'Payment Status': o.paymentStatus,
+          'Date': new Date(o.createdAt).toLocaleDateString()
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        ws['!cols'] = [
+          { wch: 5 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 25 },
+          { wch: 40 },
+          { wch: 10 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 15 },
+          { wch: 12 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+        
+        // Summary sheet
+        const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+        const summaryData = [
+          { Metric: 'Total Orders', Value: orders.length },
+          { Metric: 'Total Revenue', Value: `₹${totalRevenue.toLocaleString()}` },
+          { Metric: 'Pending Orders', Value: orders.filter(o => o.orderStatus === 'pending').length },
+          { Metric: 'Delivered Orders', Value: orders.filter(o => o.orderStatus === 'delivered').length }
+        ];
+        const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+        summaryWs['!cols'] = [{ wch: 25 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+        
+        XLSX.writeFile(wb, `Telogica-Orders-${new Date().toISOString().split('T')[0]}.xlsx`);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to export Excel');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
+            <p className="text-sm text-gray-600 mt-1">Track and manage customer orders efficiently</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleExportOrdersPDF}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </button>
+            <button
+              onClick={handleExportOrdersExcel}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button
+              onClick={exportOrders}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Total Orders</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{orders.length}</p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-800">Delivered</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {orders.filter(o => o.orderStatus === 'delivered').length}
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Processing</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {orders.filter(o => ['pending', 'processing', 'confirmed'].includes(o.orderStatus)).length}
+                </p>
+              </div>
+              <Clock className="w-8 h-8 text-yellow-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-800">Revenue</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  ₹{orders.reduce((sum, o) => sum + o.totalAmount, 0).toLocaleString()}
+                </p>
+              </div>
+              <DollarSign className="w-8 h-8 text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Order ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Products
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {orders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-mono text-gray-900">
+                      {order.orderNumber || order._id.slice(-8)}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {order.userId?.name}
+                        </div>
+                        <div className="text-gray-600">{order.userId?.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {order.products.length} item(s)
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      ₹{order.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <select
+                        value={order.orderStatus}
+                        onChange={(e) =>
+                          handleUpdateOrderStatus(order._id, e.target.value)
+                        }
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.orderStatus === 'delivered'
+                          ? 'bg-green-100 text-green-800'
+                          : order.orderStatus === 'shipped'
+                            ? 'bg-blue-100 text-blue-800'
+                            : order.orderStatus === 'processing'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        className="text-blue-600 hover:text-blue-800"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Render Warranties Tab
   const renderWarranties = () => (

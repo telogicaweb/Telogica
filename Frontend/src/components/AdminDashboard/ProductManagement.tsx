@@ -300,6 +300,71 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     document.body.removeChild(link);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      const XLSX = await import('xlsx');
+      
+      // Prepare data for Excel
+      const excelData = filteredProducts.map((p, index) => ({
+        'No.': index + 1,
+        'Product Name': p.name,
+        'Category': p.category,
+        'Description': p.description || '',
+        'Stock Quantity': resolveStock(p),
+        'Normal Price (₹)': resolvePrice(p) || 'Quote Only',
+        'Retailer Price (₹)': p.retailerPrice || '-',
+        'Warranty (months)': p.warrantyPeriodMonths || 12,
+        'Requires Quote': p.requiresQuote ? 'Yes' : 'No',
+        'Featured': p.isRecommended ? 'Yes' : 'No',
+        'Created At': (p as any).createdAt ? new Date((p as any).createdAt).toLocaleDateString() : '-'
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 5 },  // No.
+        { wch: 30 }, // Product Name
+        { wch: 15 }, // Category
+        { wch: 40 }, // Description
+        { wch: 12 }, // Stock
+        { wch: 15 }, // Normal Price
+        { wch: 15 }, // Retailer Price
+        { wch: 12 }, // Warranty
+        { wch: 12 }, // Requires Quote
+        { wch: 10 }, // Featured
+        { wch: 15 }  // Created At
+      ];
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Products');
+
+      // Add summary sheet
+      const summaryData = [
+        { Metric: 'Total Products', Value: stats.total },
+        { Metric: 'Total Stock', Value: stats.totalStock },
+        { Metric: 'Low Stock Items', Value: stats.lowStock },
+        { Metric: 'Out of Stock Items', Value: stats.outOfStock },
+        { Metric: 'Quote Only Products', Value: stats.quoteOnly },
+        { Metric: 'Featured Products', Value: stats.recommended },
+        { Metric: 'Categories', Value: stats.categories }
+      ];
+      const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+      summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+
+      // Generate file and download
+      XLSX.writeFile(wb, `Telogica-Products-${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Product operations
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -618,6 +683,13 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
               >
                 <Download className="w-4 h-4 inline mr-2" /> Export as CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                disabled={exporting}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Download className="w-4 h-4 inline mr-2" /> Export as Excel
               </button>
               <button
                 onClick={handleExportInventoryPDF}
