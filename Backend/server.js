@@ -15,10 +15,9 @@ connectDB();
 
 const app = express();
 
-// Apply comprehensive security middleware
-applySecurityMiddleware(app);
-
 // CORS Configuration for production
+// IMPORTANT: CORS must be applied FIRST before any other middleware
+// to ensure CORS headers are set even when errors occur in other middleware
 const corsOptions = {
   origin: function (origin, callback) {
     // If CORS_ORIGINS is set to '*', allow all origins
@@ -47,11 +46,14 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 };
 
-// Apply CORS middleware
+// Apply CORS middleware FIRST
 app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly for all routes
 app.options(/.*/, cors(corsOptions));
+
+// Apply comprehensive security middleware AFTER CORS
+applySecurityMiddleware(app);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
