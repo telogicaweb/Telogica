@@ -1856,7 +1856,7 @@ const AdminDashboard: React.FC = () => {
           'Order ID': o.orderNumber || o._id,
           'Customer Name': o.userId?.name || 'Unknown',
           'Customer Email': o.userId?.email || '',
-          'Products': o.products.map(p => `${p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
+          'Products': o.products.map(p => `${(p.productId || (p as any).product)?.name || 'Unknown'} (${p.quantity})`).join(', '),
           'Total Items': o.products.length,
           'Total Amount (₹)': o.totalAmount,
           'Order Status': o.orderStatus,

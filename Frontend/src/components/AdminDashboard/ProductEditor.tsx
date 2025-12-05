@@ -469,11 +469,12 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                         <label className="text-sm font-medium text-gray-700 mb-1 block">Extended Period (months)</label>
                         <input
                           type="number"
-                          min={form.warrantyPeriodMonths + 1}
+                          min={form.warrantyPeriodMonths + 6}
                           value={form.extendedWarrantyMonths}
-                          onChange={(e) => setForm((prev) => ({ ...prev, extendedWarrantyMonths: Number(e.target.value) }))}
+                          onChange={(e) => setForm((prev) => ({ ...prev, extendedWarrantyMonths: Math.max(prev.warrantyPeriodMonths + 6, Number(e.target.value)) }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                         />
+                        <p className="text-xs text-gray-500 mt-1">Must be at least 6 months more than base warranty</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700 mb-1 block">Additional Price (₹)</label>
