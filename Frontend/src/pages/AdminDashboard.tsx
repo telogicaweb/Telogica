@@ -264,6 +264,7 @@ const AdminDashboard: React.FC = () => {
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<ProductFormState>(() => getFreshProductFormState());
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
@@ -492,6 +493,72 @@ const AdminDashboard: React.FC = () => {
       loadProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete product');
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      normalPrice: product.normalPrice?.toString() || '',
+      retailerPrice: product.retailerPrice?.toString() || '',
+      quantity: 0, // Not used for editing
+      warrantyPeriodMonths: 12,
+      isRecommended: product.isRecommended || false,
+      requiresQuote: product.requiresQuote,
+      manualImageUrl: '',
+      images: product.images || [],
+    });
+    setShowProductForm(true);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    if (!productForm.images.length) {
+      alert('Please add at least one product image before saving.');
+      return;
+    }
+
+    if (productForm.images.length > MAX_PRODUCT_IMAGES) {
+      alert(`Only up to ${MAX_PRODUCT_IMAGES} images are allowed.`);
+      return;
+    }
+
+    try {
+      const productData = {
+        name: productForm.name,
+        description: productForm.description,
+        category: productForm.category,
+        price: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
+        retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
+        images: productForm.images,
+        requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
+        isRecommended: productForm.isRecommended,
+      };
+
+      await api.put(`/api/products/${editingProduct._id}`, productData);
+      alert('Product updated successfully');
+      setShowProductForm(false);
+      setEditingProduct(null);
+      setProductForm(getFreshProductFormState());
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update product');
+    }
+  };
+
+  const handleToggleRecommended = async (productId: string, currentValue: boolean) => {
+    try {
+      await api.put(`/api/products/${productId}`, {
+        isRecommended: !currentValue
+      });
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update recommendation status');
     }
   };
 
@@ -840,12 +907,18 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-xl font-semibold">Create New Product</h3>
-                <p className="text-sm text-gray-500">Add up to {MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.</p>
+                <h3 className="text-xl font-semibold">
+                  {editingProduct ? 'Edit Product' : 'Create New Product'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingProduct 
+                    ? 'Update product details and pricing.'
+                    : `Add up to ${MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.`}
+                </p>
               </div>
               <Sparkles className="text-indigo-600" />
             </div>
-            <form onSubmit={handleCreateProduct} className="space-y-4">
+            <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
@@ -945,17 +1018,30 @@ const AdminDashboard: React.FC = () => {
                   ))}
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isRecommended"
+                  checked={productForm.isRecommended}
+                  onChange={(e) => setProductForm({ ...productForm, isRecommended: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <label htmlFor="isRecommended" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Mark as Recommended Product
+                </label>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
                   className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
                 >
-                  Create Product
+                  {editingProduct ? 'Update Product' : 'Create Product'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowProductForm(false);
+                    setEditingProduct(null);
                     setProductForm(getFreshProductFormState());
                     setProductUnitsForm([]);
                   }}
@@ -1010,11 +1096,19 @@ const AdminDashboard: React.FC = () => {
                           )}
                           <div>
                             <div className="font-medium text-gray-900">{product.name}</div>
-                            {product.requiresQuote && (
-                              <span className="text-xs text-blue-600 font-medium">
-                                Quote Required
-                              </span>
-                            )}
+                            <div className="flex gap-2 mt-1">
+                              {product.requiresQuote && (
+                                <span className="text-xs text-blue-600 font-medium">
+                                  Quote Required
+                                </span>
+                              )}
+                              {product.isRecommended && (
+                                <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  Recommended
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1030,18 +1124,32 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.stockQuantity > 10
+                            (product.stock || product.stockQuantity || 0) > 10
                               ? 'bg-green-100 text-green-800'
-                              : product.stockQuantity > 0
+                              : (product.stock || product.stockQuantity || 0) > 0
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
-                          {product.stockQuantity}
+                          {product.stock || product.stockQuantity || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => handleToggleRecommended(product._id, product.isRecommended || false)}
+                            className={`${product.isRecommended ? 'text-yellow-600 hover:text-yellow-800' : 'text-gray-400 hover:text-yellow-600'}`}
+                            title="Toggle Recommended"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="text-indigo-600 hover:text-indigo-800"
+                            title="Edit Product"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => loadProductUnits(product._id)}
                             className="text-blue-600 hover:text-blue-800"

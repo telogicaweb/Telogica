@@ -13,7 +13,10 @@ const productSchema = new mongoose.Schema({
   isRecommended: { type: Boolean, default: false },
   requiresQuote: { type: Boolean, default: false }, // Auto-set if price is missing
   specifications: { type: Map, of: String }, // Key-value pairs for product specs
-  warrantyPeriodMonths: { type: Number, default: 12 } // Default warranty period
+  warrantyPeriodMonths: { type: Number, default: 12 }, // Default warranty period
+  modelNumberPrefix: { type: String }, // Default model number prefix/template (e.g., "TEL-2024-")
+  features: [{ type: String }], // Key features of the product
+  technicalSpecs: { type: Map, of: String } // Additional technical specifications
 }, { timestamps: true });
 
 // Auto-set requiresQuote if price is not provided
