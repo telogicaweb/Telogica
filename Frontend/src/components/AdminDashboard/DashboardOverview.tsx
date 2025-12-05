@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { FileDown } from 'lucide-react';
 import {
   DollarSign,
   ShoppingCart,
@@ -24,9 +25,69 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics }) => {
       ? analytics.quotes.conversionRate.toFixed(2)
       : analytics.quotes.conversionRate;
 
+  const [exporting, setExporting] = useState(false);
+
+  const exportSummaryPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Dashboard Summary', 14, 18);
+      doc.setFontSize(11);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 26);
+
+      autoTable(doc, {
+        startY: 34,
+        head: [['Metric', 'Value']],
+        body: [
+          ['Sales Total', formatCurrency(analytics.sales.total)],
+          ['Sales Direct', formatCurrency(analytics.sales.direct)],
+          ['Sales Quote', formatCurrency(analytics.sales.quote)],
+          ['Orders Total', formatNumber(analytics.orders.total)],
+          ['Quotes Pending', formatNumber(analytics.quotes.pending)],
+          ['Quotes Conversion', `${conversionRate}%`],
+          ['Users Total', formatNumber(analytics.users.total)],
+          ['Retailers Pending', formatNumber(analytics.users.pendingRetailers)],
+          ['Inventory Total', formatNumber(analytics.inventory.total)],
+          ['Inventory Online', formatNumber(analytics.inventory.online)],
+          ['Inventory Offline', formatNumber(analytics.inventory.offline)],
+          ['Warranties Pending', formatNumber(analytics.warranties.pending)],
+        ],
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [66, 66, 66] },
+      });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`dashboard_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export dashboard PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+        <button
+          onClick={exportSummaryPDF}
+          disabled={exporting}
+          className="bg-white border border-gray-300 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+        >
+          <FileDown className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export PDF'}
+        </button>
+      </div>
 
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

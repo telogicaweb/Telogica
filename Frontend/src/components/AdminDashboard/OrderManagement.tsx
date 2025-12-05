@@ -1,5 +1,5 @@
-import React from 'react';
-import { Eye, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Eye, Download, FileDown } from 'lucide-react';
 import api from '../../api';
 import { Order } from './types';
 
@@ -12,6 +12,20 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
   orders,
   onOrdersUpdated,
 }) => {
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
+
+  const filteredOrders = useMemo(() => {
+    if (!dateFrom && !dateTo) return orders;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+    return orders.filter((o) => {
+      const created = o.createdAt ? new Date(o.createdAt).getTime() : undefined;
+      if (created === undefined) return true;
+      return created >= fromTime && created <= toTime;
+    });
+  }, [orders, dateFrom, dateTo]);
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
     try {
       await api.put(`/api/orders/${orderId}`, { status });
@@ -55,7 +69,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
   };
 
   const exportOrders = () => {
-    const data = orders.map((o) => ({
+    const data = filteredOrders.map((o) => ({
       OrderNumber: o.orderNumber || o._id,
       User: o.userId?.name || 'Unknown',
       Email: o.userId?.email || 'Unknown',
@@ -78,17 +92,91 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
     downloadCSV(data, `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const exportOrdersPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Orders Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Orders: ${filteredOrders.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+
+      const head = [['Order #', 'Customer', 'Email', 'Amount (₹)', 'Status', 'Payment', 'Date', 'Items']];
+      const body = filteredOrders.map((o) => [
+        o.orderNumber || o._id,
+        o.userId?.name || 'Unknown',
+        o.userId?.email || 'Unknown',
+        String(o.totalAmount),
+        o.orderStatus,
+        o.paymentStatus,
+        new Date(o.createdAt).toLocaleDateString(),
+        String(o.products.length),
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [33, 150, 243] },
+      });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`orders_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
-        <button
-          onClick={exportOrders}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="From Date"
+          />
+          <span className="text-gray-500">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="To Date"
+          />
+          <button
+            onClick={exportOrders}
+            className="bg-white border border-gray-300 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button
+            onClick={exportOrdersPDF}
+            disabled={exporting}
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? 'Exporting…' : 'PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -120,7 +208,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">
                     {order.orderNumber || order._id.slice(-8)}

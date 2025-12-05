@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check, X, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Check, X, Download, FileDown } from 'lucide-react';
 import api from '../../api';
 import { Quote } from './types';
 
@@ -17,6 +17,20 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
     response: '',
     price: '',
   });
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
+
+  const filteredQuotes = useMemo(() => {
+    if (!dateFrom && !dateTo) return quotes;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+    return quotes.filter((q) => {
+      const created = q.createdAt ? new Date(q.createdAt).getTime() : undefined;
+      if (created === undefined) return true; // include if missing
+      return created >= fromTime && created <= toTime;
+    });
+  }, [quotes, dateFrom, dateTo]);
 
   const handleRespondToQuote = async (quoteId: string) => {
     if (!quoteResponse.response || !quoteResponse.price) {
@@ -82,7 +96,7 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
   };
 
   const exportQuotes = () => {
-    const data = quotes.map((q) => ({
+    const data = filteredQuotes.map((q) => ({
       ID: q._id,
       User: q.user?.name || q.userId?.name || 'Unknown',
       Email: q.user?.email || q.userId?.email || 'Unknown',
@@ -101,21 +115,93 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
     );
   };
 
+  const exportQuotesPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Quotes Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Quotes: ${filteredQuotes.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+
+      const head = [['ID', 'User', 'Email', 'Status', 'Date', 'Quoted Price']];
+      const body = filteredQuotes.map((q) => [
+        q._id,
+        q.user?.name || q.userId?.name || 'Unknown',
+        q.user?.email || q.userId?.email || 'Unknown',
+        q.status,
+        q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-',
+        String(q.quotedPrice || q.adminResponse?.totalPrice || 0),
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [76, 175, 80] },
+      });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`quotes_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
-        <button
-          onClick={exportQuotes}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="From Date"
+          />
+          <span className="text-gray-500">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg"
+            aria-label="To Date"
+          />
+          <button
+            onClick={exportQuotes}
+            className="bg-white border border-gray-300 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button
+            onClick={exportQuotesPDF}
+            disabled={exporting}
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? 'Exporting…' : 'PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
-        {quotes.map((quote) => (
+        {filteredQuotes.map((quote) => (
           <div
             key={quote._id}
             className="bg-white p-6 rounded-lg shadow border border-gray-200"
