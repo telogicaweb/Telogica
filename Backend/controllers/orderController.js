@@ -342,24 +342,24 @@ const updateOrderStatus = async (req, res) => {
       // When order is marked as 'delivered', add products to retailer inventory
       if (status === 'delivered' && previousStatus !== 'delivered' && updatedOrder.user && updatedOrder.user.role === 'retailer') {
         try {
-          // Add products to retailer inventory
+          // Fetch all product units for this order in a single query
+          const allUnits = await ProductUnit.find({ order: updatedOrder._id });
+          
+          // Fetch all existing inventory entries for this retailer and order to avoid duplicates
+          const existingInventories = await RetailerInventory.find({
+            retailer: updatedOrder.user._id,
+            purchaseOrder: updatedOrder._id
+          });
+          const existingProductUnitIds = new Set(existingInventories.map(inv => inv.productUnit.toString()));
+          
+          // Build inventory entries to create
+          const inventoryEntries = [];
           for (const item of updatedOrder.products) {
-            // Find product units assigned to this order
-            const units = await ProductUnit.find({
-              order: updatedOrder._id,
-              product: item.product._id
-            });
-
-            // Create inventory entries for each unit
-            for (const unit of units) {
-              // Check if inventory entry already exists to avoid duplicates
-              const existingInventory = await RetailerInventory.findOne({
-                retailer: updatedOrder.user._id,
-                productUnit: unit._id
-              });
-
-              if (!existingInventory) {
-                await RetailerInventory.create({
+            const productUnits = allUnits.filter(u => u.product.toString() === item.product._id.toString());
+            
+            for (const unit of productUnits) {
+              if (!existingProductUnitIds.has(unit._id.toString())) {
+                inventoryEntries.push({
                   retailer: updatedOrder.user._id,
                   productUnit: unit._id,
                   product: item.product._id,
@@ -371,7 +371,13 @@ const updateOrderStatus = async (req, res) => {
               }
             }
           }
-          console.log(`Retailer inventory updated for order ${updatedOrder.orderNumber || updatedOrder._id}`);
+          
+          // Bulk insert inventory entries
+          if (inventoryEntries.length > 0) {
+            await RetailerInventory.insertMany(inventoryEntries);
+          }
+          
+          console.log(`Retailer inventory updated for order ${updatedOrder.orderNumber || updatedOrder._id}: ${inventoryEntries.length} items added`);
         } catch (inventoryError) {
           console.error('Error updating retailer inventory:', inventoryError);
           // Continue with the status update even if inventory update fails
