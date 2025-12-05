@@ -74,6 +74,7 @@ exports.markAsSold = async (req, res) => {
       customerAddress,
       sellingPrice,
       customerInvoice,
+      invoiceNumber,
       soldDate
     } = req.body;
 
@@ -163,6 +164,7 @@ exports.markAsSold = async (req, res) => {
       purchasePrice: inventoryItem.purchasePrice,
       sellingPrice: sellingPrice || 0,
       invoiceUrl: customerInvoice,
+      invoiceNumber: invoiceNumber || '',
       warrantyRegistration: warranty._id,
       warrantyStatus: 'pending',
       productDetails: {
