@@ -107,6 +107,8 @@ interface Sale {
   profit: number;
   warrantyStatus: string;
   productDetails: any;
+  invoiceNumber?: string;
+  invoiceUrl?: string;
 }
 
 const RetailerDashboard = () => {
@@ -148,6 +150,7 @@ const RetailerDashboard = () => {
     customerAddress: '',
     sellingPrice: '',
     customerInvoice: '',
+    invoiceNumber: '',
     soldDate: new Date().toISOString().split('T')[0]
   });
 
@@ -336,6 +339,7 @@ const RetailerDashboard = () => {
       customerAddress: '',
       sellingPrice: '',
       customerInvoice: '',
+      invoiceNumber: '',
       soldDate: new Date().toISOString().split('T')[0]
     });
     setShowSellModal(true);
@@ -879,6 +883,8 @@ const RetailerDashboard = () => {
               Customer: s.customer?.name,
               Email: s.customer?.email,
               Phone: s.customer?.phone,
+              Address: s.customer?.address,
+              InvoiceNumber: s.invoiceNumber || '',
               Date: new Date(s.saleDate).toLocaleDateString(),
               Price: s.sellingPrice,
               Profit: s.profit
@@ -938,6 +944,7 @@ const RetailerDashboard = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
@@ -958,6 +965,23 @@ const RetailerDashboard = () => {
                         <p className="font-medium text-gray-900">{sale.customer?.name}</p>
                         <p className="text-gray-500">{sale.customer?.email}</p>
                         <p className="text-gray-500">{sale.customer?.phone}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm">
+                        {sale.invoiceNumber && (
+                          <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
+                        )}
+                        {sale.invoiceUrl && (
+                          <a 
+                            href={sale.invoiceUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            View Invoice
+                          </a>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
@@ -1121,6 +1145,16 @@ const RetailerDashboard = () => {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <input
+                    type="text"
+                    value={sellFormData.invoiceNumber}
+                    onChange={(e) => setSellFormData({ ...sellFormData, invoiceNumber: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., INV-2024-001"
+                  />
+                </div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Invoice URL *</label>
                   <input
                     type="url"
