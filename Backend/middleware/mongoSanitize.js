@@ -101,26 +101,19 @@ function mongoSanitize(options = {}) {
     }
 
     // Special handling for req.query in Express 5
-    // Express 5 makes req.query a getter-only property, so we need special handling
+    // Express 5 makes req.query a getter-only property on the prototype, so we need special handling
     if (req.query) {
       const { target, isSanitized } = sanitize(req.query, options);
       
       if (isSanitized) {
-        // Check if req.query is writable
-        const descriptor = Object.getOwnPropertyDescriptor(req, 'query');
-        
-        if (descriptor && !descriptor.writable && !descriptor.set) {
-          // req.query is read-only (Express 5), use defineProperty
-          Object.defineProperty(req, 'query', {
-            value: target,
-            writable: true,
-            enumerable: true,
-            configurable: true
-          });
-        } else {
-          // req.query is writable (Express 4 or already modified)
-          req.query = target;
-        }
+        // Always use Object.defineProperty to override the inherited getter
+        // This works for both Express 4 and Express 5
+        Object.defineProperty(req, 'query', {
+          value: target,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
         
         if (hasOnSanitize) {
           options.onSanitize({ req, key: 'query' });
