@@ -25,6 +25,9 @@ export interface Product {
   requiresQuote: boolean;
   isRecommended?: boolean;
   warrantyPeriodMonths?: number;
+  extendedWarrantyAvailable?: boolean;
+  extendedWarrantyMonths?: number;
+  extendedWarrantyPrice?: number;
   specifications?: Record<string, string>;
   createdAt?: string;
   updatedAt?: string;

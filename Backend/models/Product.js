@@ -15,7 +15,10 @@ const productSchema = new mongoose.Schema({
   recommendedProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   requiresQuote: { type: Boolean, default: false }, // Auto-set if price is missing
   specifications: { type: Map, of: String }, // Key-value pairs for product specs
-  warrantyPeriodMonths: { type: Number, default: 12 }, // Default warranty period
+  warrantyPeriodMonths: { type: Number, default: 12 }, // Default warranty period (1 year)
+  extendedWarrantyAvailable: { type: Boolean, default: true }, // Whether extended warranty is available
+  extendedWarrantyMonths: { type: Number, default: 24 }, // Extended warranty period (2 years)
+  extendedWarrantyPrice: { type: Number, default: 0 }, // Additional price for extended warranty
   modelNumberPrefix: { type: String }, // Default model number prefix/template (e.g., "TEL-2024-")
   features: [{ type: String }], // Key features of the product
   technicalSpecs: { type: Map, of: String } // Additional technical specifications

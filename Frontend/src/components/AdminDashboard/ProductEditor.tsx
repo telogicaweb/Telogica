@@ -34,6 +34,9 @@ interface ProductDetailsForm {
   requiresQuote: boolean;
   isRecommended: boolean;
   warrantyPeriodMonths: number;
+  extendedWarrantyAvailable: boolean;
+  extendedWarrantyMonths: number;
+  extendedWarrantyPrice: string;
   specifications: Record<string, string>;
   images: string[];
 }
@@ -75,6 +78,9 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     requiresQuote: product.requiresQuote,
     isRecommended: Boolean(product.isRecommended),
     warrantyPeriodMonths: product.warrantyPeriodMonths || 12,
+    extendedWarrantyAvailable: product.extendedWarrantyAvailable ?? true,
+    extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
+    extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
     specifications: product.specifications || {},
     images: product.images ? [...product.images] : []
   }));
@@ -89,6 +95,9 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
       requiresQuote: product.requiresQuote,
       isRecommended: Boolean(product.isRecommended),
       warrantyPeriodMonths: product.warrantyPeriodMonths || 12,
+      extendedWarrantyAvailable: product.extendedWarrantyAvailable ?? true,
+      extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
+      extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
       specifications: product.specifications || {},
       images: product.images ? [...product.images] : []
     });
@@ -127,6 +136,8 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
         requiresQuote: form.requiresQuote,
         isRecommended: form.isRecommended,
         warrantyPeriodMonths: form.warrantyPeriodMonths,
+        extendedWarrantyAvailable: form.extendedWarrantyAvailable,
+        extendedWarrantyMonths: form.extendedWarrantyMonths,
       };
 
       if (form.price !== '') {
@@ -138,6 +149,11 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
         payload.retailerPrice = Number(form.retailerPrice);
       } else {
         payload.retailerPrice = null;
+      }
+      if (form.extendedWarrantyPrice !== '') {
+        payload.extendedWarrantyPrice = Number(form.extendedWarrantyPrice);
+      } else {
+        payload.extendedWarrantyPrice = 0;
       }
 
       await api.put(`/api/products/${product._id}`, payload);
@@ -291,7 +307,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     setRecommendations((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  const recommendedProducts = useMemo(() => products.filter((p) => p._id !== product._id), [products, product._id]);
+  const recommendedProducts = useMemo(() => products.filter((p) => p && p._id && p.name && p._id !== product._id), [products, product._id]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -425,6 +441,54 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                     onChange={(e) => setForm((prev) => ({ ...prev, warrantyPeriodMonths: Number(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+              </div>
+
+              {/* Extended Warranty Options */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">Extended Warranty Options</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Offer Extended Warranty</label>
+                      <p className="text-xs text-gray-500">Allow customers to purchase extended warranty</p>
+                    </div>
+                    <label className="relative inline-block cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={form.extendedWarrantyAvailable}
+                        onChange={(e) => setForm((prev) => ({ ...prev, extendedWarrantyAvailable: e.target.checked }))}
+                      />
+                      <span className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-purple-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:h-5 after:w-5 after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
+                    </label>
+                  </div>
+                  {form.extendedWarrantyAvailable && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Extended Period (months)</label>
+                        <input
+                          type="number"
+                          min={form.warrantyPeriodMonths + 6}
+                          value={form.extendedWarrantyMonths}
+                          onChange={(e) => setForm((prev) => ({ ...prev, extendedWarrantyMonths: Math.max(prev.warrantyPeriodMonths + 6, Number(e.target.value)) }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Must be at least 6 months more than base warranty</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Additional Price (₹)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={form.extendedWarrantyPrice}
+                          onChange={(e) => setForm((prev) => ({ ...prev, extendedWarrantyPrice: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

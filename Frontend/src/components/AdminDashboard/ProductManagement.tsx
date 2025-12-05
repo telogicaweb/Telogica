@@ -84,13 +84,14 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   }, [products, editingProduct]);
   // Extract unique categories
   const categories = useMemo(() => {
-    const cats = products.map(p => p.category).filter(Boolean);
+    const cats = products.filter(p => p && p.category).map(p => p.category);
     return ['all', ...Array.from(new Set(cats))];
   }, [products]);
 
   // Enhanced filtering
   const filteredProducts = useMemo(() => {
-    let filtered = products;
+    // Filter out null/undefined products first
+    let filtered = products.filter(p => p && p.name && p.category);
 
     // Search filter
     if (productSearch) {
@@ -142,15 +143,18 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   }, [products, productSearch, selectedCategory, stockFilter, dateFrom, dateTo]);
 
   // Statistics
-  const stats = useMemo(() => ({
-    total: products.length,
-    totalStock: products.reduce((acc, p) => acc + resolveStock(p), 0),
-    lowStock: products.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5).length,
-    outOfStock: products.filter(p => resolveStock(p) === 0).length,
-    quoteOnly: products.filter(p => p.requiresQuote).length,
-    recommended: products.filter(p => p.isRecommended).length,
-    categories: categories.length - 1,
-  }), [products, categories]);
+  const stats = useMemo(() => {
+    const validProducts = products.filter(p => p && p.name);
+    return {
+      total: validProducts.length,
+      totalStock: validProducts.reduce((acc, p) => acc + resolveStock(p), 0),
+      lowStock: validProducts.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5).length,
+      outOfStock: validProducts.filter(p => resolveStock(p) === 0).length,
+      quoteOnly: validProducts.filter(p => p.requiresQuote).length,
+      recommended: validProducts.filter(p => p.isRecommended).length,
+      categories: categories.length - 1,
+    };
+  }, [products, categories]);
 
   // Export functions
   const handleExportInventoryPDF = async () => {
@@ -294,6 +298,97 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      const ExcelJS = await import('exceljs');
+      
+      // Create workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Telogica';
+      workbook.created = new Date();
+      
+      // Add Products worksheet
+      const worksheet = workbook.addWorksheet('Products');
+      
+      // Define columns
+      worksheet.columns = [
+        { header: 'No.', key: 'no', width: 5 },
+        { header: 'Product Name', key: 'name', width: 30 },
+        { header: 'Category', key: 'category', width: 15 },
+        { header: 'Description', key: 'description', width: 40 },
+        { header: 'Stock Quantity', key: 'stock', width: 12 },
+        { header: 'Normal Price (₹)', key: 'price', width: 15 },
+        { header: 'Retailer Price (₹)', key: 'retailerPrice', width: 15 },
+        { header: 'Warranty (months)', key: 'warranty', width: 12 },
+        { header: 'Requires Quote', key: 'requiresQuote', width: 12 },
+        { header: 'Featured', key: 'featured', width: 10 },
+        { header: 'Created At', key: 'createdAt', width: 15 }
+      ];
+      
+      // Style header row
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2196F3' }
+      };
+      
+      // Add data rows
+      filteredProducts.forEach((p, index) => {
+        worksheet.addRow({
+          no: index + 1,
+          name: p.name,
+          category: p.category,
+          description: p.description || '',
+          stock: resolveStock(p),
+          price: resolvePrice(p) || 'Quote Only',
+          retailerPrice: p.retailerPrice || '-',
+          warranty: p.warrantyPeriodMonths || 12,
+          requiresQuote: p.requiresQuote ? 'Yes' : 'No',
+          featured: p.isRecommended ? 'Yes' : 'No',
+          createdAt: (p as any).createdAt ? new Date((p as any).createdAt).toLocaleDateString() : '-'
+        });
+      });
+      
+      // Add Summary worksheet
+      const summaryWs = workbook.addWorksheet('Summary');
+      summaryWs.columns = [
+        { header: 'Metric', key: 'metric', width: 25 },
+        { header: 'Value', key: 'value', width: 15 }
+      ];
+      
+      summaryWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      summaryWs.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2196F3' }
+      };
+      
+      summaryWs.addRows([
+        { metric: 'Total Products', value: stats.total },
+        { metric: 'Total Stock', value: stats.totalStock },
+        { metric: 'Low Stock Items', value: stats.lowStock },
+        { metric: 'Out of Stock Items', value: stats.outOfStock },
+        { metric: 'Quote Only Products', value: stats.quoteOnly },
+        { metric: 'Featured Products', value: stats.recommended },
+        { metric: 'Categories', value: stats.categories }
+      ]);
+      
+      // Generate file and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Telogica-Products-${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export Excel');
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Product operations
@@ -614,6 +709,13 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
               >
                 <Download className="w-4 h-4 inline mr-2" /> Export as CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                disabled={exporting}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Download className="w-4 h-4 inline mr-2" /> Export as Excel
               </button>
               <button
                 onClick={handleExportInventoryPDF}
