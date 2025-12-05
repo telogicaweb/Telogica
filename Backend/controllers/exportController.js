@@ -8,6 +8,7 @@ const ProductUnit = require('../models/ProductUnit');
 const RetailerInventory = require('../models/RetailerInventory');
 
 const {
+  streamPDF,
   generatePDF,
   generateCSV,
   generateExcel,
@@ -503,10 +504,8 @@ async function handleExport(res, data, config, format, filename) {
   try {
     switch (format.toLowerCase()) {
       case 'pdf':
-        const pdfBuffer = await generatePDF(data, config);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}-${Date.now()}.pdf"`);
-        res.send(pdfBuffer);
+        // Use streaming for PDF to handle large datasets efficiently
+        streamPDF(res, data, config, filename);
         break;
         
       case 'csv':

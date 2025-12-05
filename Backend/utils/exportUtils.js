@@ -458,8 +458,124 @@ const INVOICE_EXPORT_CONFIG = {
   ]
 };
 
+/**
+ * Stream PDF directly to response (Memory Efficient)
+ * @param {Object} res - Express response object
+ * @param {Array} data - Array of objects to export
+ * @param {Object} config - Configuration object
+ * @param {String} filename - Base filename
+ */
+const streamPDF = (res, data, config, filename) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}-${Date.now()}.pdf"`);
+
+  const doc = new PDFDocument({ 
+    margin: 50,
+    size: 'A4',
+    layout: config.orientation || 'portrait',
+    bufferPages: false // Important: Disable buffering for memory efficiency
+  });
+
+  doc.pipe(res);
+
+  // Helper to draw footer
+  const drawFooter = () => {
+    const bottom = doc.page.height - 50;
+    doc.fontSize(8).fillColor('#999999');
+    doc.text(
+      `Generated on ${new Date().toLocaleString()}`,
+      50,
+      bottom,
+      { align: 'center', width: 500 }
+    );
+  };
+
+  // Helper to draw table header
+  const drawTableHeader = () => {
+    const tableTop = doc.y;
+    let currentX = 50;
+    
+    doc.fontSize(10).fillColor('#000000').font('Helvetica-Bold');
+    config.columns.forEach((col) => {
+      doc.text(col.header, currentX, tableTop, { 
+        width: col.width || 100, 
+        align: col.align || 'left' 
+      });
+      currentX += col.width || 100;
+    });
+    
+    doc.moveDown();
+    doc.strokeColor('#cccccc').lineWidth(1)
+      .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown(0.5);
+  };
+
+  // Document Header
+  doc
+    .fontSize(20)
+    .fillColor('#2563eb')
+    .text(config.title || 'Export Report', { align: 'center' })
+    .moveDown(0.5);
+
+  // Metadata
+  if (config.metadata) {
+    doc.fontSize(10).fillColor('#666666');
+    Object.entries(config.metadata).forEach(([key, value]) => {
+      doc.text(`${key}: ${value}`);
+    });
+    doc.moveDown();
+  }
+
+  // Draw line
+  doc.strokeColor('#cccccc').lineWidth(1)
+    .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+  doc.moveDown();
+
+  drawTableHeader();
+
+  // Table Rows
+  doc.font('Helvetica').fontSize(9);
+  data.forEach((row, index) => {
+    // Check if we need a new page
+    if (doc.y > 700) {
+      drawFooter();
+      doc.addPage();
+      drawTableHeader();
+    }
+
+    const rowY = doc.y;
+    let currentX = 50;
+    
+    config.columns.forEach((col) => {
+      const value = getNestedValue(row, col.key);
+      const displayValue = col.formatter ? col.formatter(value, row) : ((value || value === 0) ? String(value) : '-');
+      
+      doc.text(displayValue, currentX, rowY, { 
+        width: col.width || 100, 
+        align: col.align || 'left',
+        height: 20,
+        ellipsis: true
+      });
+      currentX += col.width || 100;
+    });
+    
+    doc.moveDown(0.8);
+    
+    // Light separator line every 5 rows
+    if ((index + 1) % 5 === 0) {
+      doc.strokeColor('#eeeeee').lineWidth(0.5)
+        .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown(0.3);
+    }
+  });
+
+  drawFooter();
+  doc.end();
+};
+
 module.exports = {
   // Main export functions
+  streamPDF,
   generatePDF,
   generateCSV,
   generateExcel,
