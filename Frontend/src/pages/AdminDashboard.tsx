@@ -675,6 +675,33 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Product Export Handlers
+  const handleExportProducts = async (format: 'pdf' | 'csv' | 'excel') => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/export/products?format=${format}`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const extension = format === 'excel' ? 'xlsx' : format;
+      link.download = `Telogica-Products-${new Date().toISOString().split('T')[0]}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Export error:', error);
+      alert(error.response?.data?.message || `Failed to export products as ${format.toUpperCase()}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Quote Management
   const handleRespondToQuote = async (quoteId: string) => {
     if (!quoteResponse.response) {
@@ -1027,6 +1054,47 @@ const AdminDashboard: React.FC = () => {
             <p className="text-xs uppercase tracking-widest text-gray-500">Low stock alerts</p>
             <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
             <p className="text-sm text-gray-500 mt-1">{recommendedCount} featured ready</p>
+          </div>
+        </div>
+
+        {/* Export Options */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 p-2 rounded-lg">
+                <Download className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Export Product Data</h3>
+                <p className="text-sm text-gray-600">Download complete product list with units and serial numbers</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExportProducts('pdf')}
+                disabled={loading || products.length === 0}
+                className="bg-white text-blue-700 px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as PDF
+              </button>
+              <button
+                onClick={() => handleExportProducts('excel')}
+                disabled={loading || products.length === 0}
+                className="bg-white text-green-700 px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExportProducts('csv')}
+                disabled={loading || products.length === 0}
+                className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as CSV
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1456,14 +1524,14 @@ const AdminDashboard: React.FC = () => {
       const currentIndex = roles.indexOf(currentRole);
       const nextRole = roles[(currentIndex + 1) % roles.length];
       
-      if (!window.confirm(`Change user role from "${currentRole}" to "${nextRole}"?`)) {
+      if (!window.confirm(`Change user role from "${currentRole}" to "${nextRole}"?\n\nThis will update the user's permissions immediately.`)) {
         return;
       }
 
       try {
-        await api.put(`/api/users/${userId}/role`, { role: nextRole });
+        await api.put(`/api/auth/users/${userId}`, { role: nextRole });
         await loadUsers();
-        alert(`User role updated to ${nextRole}`);
+        alert(`✓ User role successfully updated to "${nextRole}"`);
       } catch (error: any) {
         alert(error.response?.data?.message || 'Failed to update user role');
       }
@@ -1554,26 +1622,29 @@ const AdminDashboard: React.FC = () => {
                         {user.role === 'retailer' && !user.isApproved && (
                           <button
                             onClick={() => handleApproveRetailer(user._id)}
-                            className="text-green-600 hover:text-green-800"
-                            title="Approve Retailer"
+                            className="text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 border border-green-300 rounded hover:bg-green-50"
+                            title="Approve Retailer Access"
                           >
                             <Check className="w-4 h-4" />
+                            <span className="text-xs font-medium">Approve</span>
                           </button>
                         )}
                         <button
                           onClick={() => handleChangeUserRole(user._id, user.role)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Change Role"
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                          title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
                         >
                           <Edit className="w-4 h-4" />
+                          <span className="text-xs font-medium">Change Role</span>
                         </button>
                         {user.role !== 'admin' && (
                           <button
                             onClick={() => handleDeleteUser(user._id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete User"
+                            className="text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 border border-red-300 rounded hover:bg-red-50"
+                            title="Delete User Account"
                           >
                             <Trash2 className="w-4 h-4" />
+                            <span className="text-xs font-medium">Delete</span>
                           </button>
                         )}
                       </div>
@@ -1906,7 +1977,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="flex gap-3 items-end">
                     <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Message
+                        Admin Response Message
                       </label>
                       <textarea
                         value={
@@ -1922,22 +1993,22 @@ const AdminDashboard: React.FC = () => {
                         }
                         rows={2}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your response..."
+                        placeholder="Enter your response message to the customer..."
                       />
                     </div>
                     <button
                       onClick={() => handleRespondToQuote(quote._id)}
-                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2 h-10"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
                     >
                       <Check className="w-4 h-4" />
-                      Approve
+                      Approve Quote
                     </button>
                     <button
                       onClick={() => handleRejectQuote(quote._id)}
-                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2 h-10"
+                      className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
                     >
                       <X className="w-4 h-4" />
-                      Reject
+                      Reject Quote
                     </button>
                   </div>
                 </div>

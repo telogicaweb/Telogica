@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
@@ -9,6 +10,7 @@ import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 const Cart = () => {
   const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
+  const toast = useToast();
   const navigate = useNavigate();
   const [shippingAddress, setShippingAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,19 +38,19 @@ const Cart = () => {
 
     // If user is a regular user with more than 3 items, redirect to quote
     if (requiresQuote) {
-      alert('You have more than 3 items in your cart. Please request a quote for bulk orders.');
+      toast.warning('You have more than 3 items in your cart. Please request a quote for bulk orders.');
       navigate('/quote');
       return;
     }
 
     if (!shippingAddress.trim()) {
-      alert('Please enter a shipping address');
+      toast.error('Please enter a shipping address');
       return;
     }
 
     // Check if Razorpay is loaded
     if (typeof window.Razorpay === 'undefined') {
-      alert('Payment gateway is not loaded. Please refresh the page and try again.');
+      toast.error('Payment gateway is not loaded. Please refresh the page and try again.');
       return;
     }
 
@@ -86,13 +88,13 @@ const Cart = () => {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            alert('Payment Successful!');
+            toast.success('Payment completed successfully! Your order has been placed.');
             clearCart();
             // Redirect to appropriate dashboard based on user role
             navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
           } catch (verifyError) {
             console.error('Payment verification error:', verifyError);
-            alert('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
+            toast.error('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
           } finally {
             setIsProcessing(false);
           }
@@ -108,7 +110,7 @@ const Cart = () => {
 
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response: { error: { description: string } }){
-        alert('Payment failed: ' + response.error.description);
+        toast.error('Payment failed: ' + response.error.description);
         setIsProcessing(false);
       });
       rzp1.open();
@@ -117,11 +119,11 @@ const Cart = () => {
       console.error('Checkout error:', error);
       const axiosError = error as { response?: { data?: { requiresQuote?: boolean; message?: string } }; message?: string };
       if (axiosError.response?.data?.requiresQuote) {
-        alert(axiosError.response.data.message);
+        toast.warning(axiosError.response.data.message || 'This order requires a quote.');
         navigate('/quote');
       } else {
         const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Unknown error occurred';
-        alert('Checkout Failed: ' + errorMessage);
+        toast.error('Checkout Failed: ' + errorMessage);
       }
       setIsProcessing(false);
     }
