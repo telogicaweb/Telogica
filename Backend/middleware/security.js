@@ -1,5 +1,5 @@
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
+const mongoSanitize = require('./mongoSanitize');
 const helmet = require('helmet');
 const hpp = require('hpp');
 const compression = require('compression');
