@@ -27,6 +27,9 @@ const corsOptions = {
 
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
       'https://telogica-p7tf.vercel.app',
       'https://telogica.onrender.com',
       'https://telogica-lac.vercel.app'
@@ -38,19 +41,23 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked request from origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Disposition'],
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200
 };
 
 // Apply CORS middleware FIRST
 app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly for all routes
-app.options(/.*/, cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Apply comprehensive security middleware AFTER CORS
 
@@ -127,9 +134,14 @@ app.use((req, res) => {
   res.status(404).json({ message: 'API endpoint not found' });
 });
 
-// Error handling middleware
+// Error handling middleware - ensure CORS headers are set on errors
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
+
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ message: 'CORS policy violation' });
+  }
 
   // Handle specific error types
   if (err.name === 'ValidationError') {

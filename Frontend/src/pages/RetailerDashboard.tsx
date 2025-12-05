@@ -8,21 +8,15 @@ import {
   TrendingUp,
   ShoppingCart,
   FileText,
-  Users,
   BarChart3,
-  Eye,
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
   ThumbsUp,
   ThumbsDown,
   Plus,
   Download,
   Search,
-  Filter,
-  Calendar,
-  Store
+  Store,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -118,6 +112,8 @@ const RetailerDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -158,7 +154,12 @@ const RetailerDashboard = () => {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [checkoutAddress, setCheckoutAddress] = useState('');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
+  // Tabs that require data refresh
+  const dataRefreshTabs = ['dashboard', 'quotes', 'orders', 'inventory', 'sales'];
+
+  // Auto-refresh data every 30 seconds when on dashboard tab
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -169,10 +170,28 @@ const RetailerDashboard = () => {
       return;
     }
     loadDashboardData();
+
+    // Set up auto-refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && dataRefreshTabs.includes(activeTab)) {
+        silentRefresh();
+      }
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
+  // Refresh data when switching to data-dependent tabs
+  useEffect(() => {
+    if (user && user.role === 'retailer' && dataRefreshTabs.includes(activeTab)) {
+      silentRefresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const silentRefresh = async () => {
+    setRefreshing(true);
     try {
       await Promise.all([
         loadStats(),
@@ -182,8 +201,29 @@ const RetailerDashboard = () => {
         loadOrders(),
         loadSales()
       ]);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      setError(null);
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        loadStats(),
+        loadProducts(),
+        loadInventory(),
+        loadQuotes(),
+        loadOrders(),
+        loadSales()
+      ]);
+    } catch (err: any) {
+      console.error('Error loading dashboard data:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -284,8 +324,13 @@ const RetailerDashboard = () => {
       return;
     }
 
-    setLoading(true);
-    setShowCheckoutModal(false);
+    // Check if Razorpay is loaded and is a constructor function
+    if (typeof window.Razorpay !== 'function') {
+      alert('Payment gateway is not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    setCheckoutLoading(true);
 
     try {
       const quote = selectedQuote;
@@ -305,6 +350,12 @@ const RetailerDashboard = () => {
         shippingAddress: checkoutAddress
       });
 
+      if (!data.razorpayOrder || !data.order) {
+        throw new Error('Invalid order response from server');
+      }
+
+      setShowCheckoutModal(false);
+
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
         amount: data.razorpayOrder.amount,
@@ -312,7 +363,7 @@ const RetailerDashboard = () => {
         name: "Telogica",
         description: "Retailer Bulk Order",
         order_id: data.razorpayOrder.id,
-        handler: async function (response: any) {
+        handler: async function (response: { razorpay_payment_id: string; razorpay_signature: string }) {
           try {
             await api.post('/api/orders/verify', {
               orderId: data.order._id,
@@ -320,27 +371,36 @@ const RetailerDashboard = () => {
               razorpaySignature: response.razorpay_signature
             });
             alert('Payment Successful! Products will be added to your inventory after delivery.');
-            loadDashboardData();
-          } catch {
-            alert('Payment Verification Failed');
+            silentRefresh();
+          } catch (verifyError) {
+            console.error('Payment verification error:', verifyError);
+            alert('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
           }
         },
         prefill: {
-          name: user?.name,
-          email: user?.email,
+          name: user?.name || '',
+          email: user?.email || '',
         },
-        theme: { color: "#3399cc" }
+        theme: { color: "#3399cc" },
+        modal: {
+          ondismiss: function() {
+            setCheckoutLoading(false);
+          }
+        }
       };
 
-      const rzp1 = new (window as any).Razorpay(options);
-      rzp1.on('payment.failed', function (response: any) {
-        alert(response.error.description);
+      const rzp1 = new window.Razorpay(options);
+      rzp1.on('payment.failed', function (response: { error: { description: string } }) {
+        alert('Payment failed: ' + response.error.description);
+        setCheckoutLoading(false);
       });
       rzp1.open();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to create order');
-    } finally {
-      setLoading(false);
+    } catch (error: unknown) {
+      console.error('Checkout error:', error);
+      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Failed to create order';
+      alert('Checkout failed: ' + errorMessage);
+      setCheckoutLoading(false);
     }
   };
 
@@ -1036,11 +1096,43 @@ const RetailerDashboard = () => {
     <div className="min-h-screen bg-gray-100 pt-20">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-2xl font-bold">Retailer Dashboard</h1>
-          <p className="text-blue-100">Welcome back, {user.name}</p>
+        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Retailer Dashboard</h1>
+            <p className="text-blue-100">Welcome back, {user.name}</p>
+          </div>
+          <button
+            onClick={silentRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 max-w-7xl mx-auto mt-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="bg-white shadow sticky top-16 z-10">
@@ -1262,10 +1354,17 @@ const RetailerDashboard = () => {
               </button>
               <button
                 onClick={proceedToCheckout}
-                disabled={loading || !checkoutAddress.trim()}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                disabled={checkoutLoading || !checkoutAddress.trim()}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 flex items-center gap-2"
               >
-                {loading ? 'Processing...' : 'Pay Now'}
+                {checkoutLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Pay Now'
+                )}
               </button>
             </div>
           </div>

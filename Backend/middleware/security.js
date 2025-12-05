@@ -164,27 +164,42 @@ const validateRequestSize = (req, res, next) => {
  * Validate Content-Type for POST/PUT requests
  */
 const validateContentType = (req, res, next) => {
+  // Skip OPTIONS requests (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     const contentType = req.headers['content-type'];
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
     
-    if (!contentType) {
+    // Allow requests without body (no content-type and no content)
+    if (contentLength === 0 && !contentType) {
+      return next();
+    }
+    
+    // Require Content-Type when there's a body
+    if (!contentType && contentLength > 0) {
       return res.status(400).json({
         message: 'Content-Type header is required.',
       });
     }
 
-    const validTypes = [
-      'application/json',
-      'multipart/form-data',
-      'application/x-www-form-urlencoded',
-    ];
+    // Validate Content-Type if provided
+    if (contentType) {
+      const validTypes = [
+        'application/json',
+        'multipart/form-data',
+        'application/x-www-form-urlencoded',
+      ];
 
-    const isValid = validTypes.some(type => contentType.includes(type));
+      const isValid = validTypes.some(type => contentType.includes(type));
 
-    if (!isValid) {
-      return res.status(415).json({
-        message: 'Unsupported Media Type. Use application/json or multipart/form-data.',
-      });
+      if (!isValid) {
+        return res.status(415).json({
+          message: 'Unsupported Media Type. Use application/json or multipart/form-data.',
+        });
+      }
     }
   }
 

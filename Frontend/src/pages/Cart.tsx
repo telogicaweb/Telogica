@@ -67,6 +67,10 @@ const Cart = () => {
         isRetailerDirectPurchase: user?.role === 'retailer'
       });
 
+      if (!data.razorpayOrder || !data.order) {
+        throw new Error('Invalid order response from server');
+      }
+
       // Razorpay Integration
       const options: RazorpayOptions = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
@@ -86,8 +90,9 @@ const Cart = () => {
             clearCart();
             // Redirect to appropriate dashboard based on user role
             navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
-          } catch {
-            alert('Payment Verification Failed');
+          } catch (verifyError) {
+            console.error('Payment verification error:', verifyError);
+            alert('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
           } finally {
             setIsProcessing(false);
           }
@@ -103,19 +108,20 @@ const Cart = () => {
 
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response: { error: { description: string } }){
-        alert(response.error.description);
+        alert('Payment failed: ' + response.error.description);
         setIsProcessing(false);
       });
       rzp1.open();
 
     } catch (error: unknown) {
-      console.error(error);
+      console.error('Checkout error:', error);
       const axiosError = error as { response?: { data?: { requiresQuote?: boolean; message?: string } }; message?: string };
       if (axiosError.response?.data?.requiresQuote) {
         alert(axiosError.response.data.message);
         navigate('/quote');
       } else {
-        alert('Checkout Failed: ' + (axiosError.response?.data?.message || axiosError.message));
+        const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Unknown error occurred';
+        alert('Checkout Failed: ' + errorMessage);
       }
       setIsProcessing(false);
     }
