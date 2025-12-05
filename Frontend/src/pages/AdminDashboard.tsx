@@ -904,18 +904,19 @@ const AdminDashboard: React.FC = () => {
   // Render Products Tab
   const renderProducts = () => {
     const searchTerm = productSearch.trim().toLowerCase();
-    const filteredProducts = products.filter((product) => {
+    const validProducts = products.filter(product => product && product.name);
+    const filteredProducts = validProducts.filter((product) => {
       if (!searchTerm) return true;
-      const combined = `${product.name} ${product.category}`.toLowerCase();
+      const combined = `${product.name} ${product.category || ''}`.toLowerCase();
       return combined.includes(searchTerm);
     });
 
-    const totalStock = products.reduce(
+    const totalStock = validProducts.reduce(
       (acc, product) => acc + (product.stockQuantity ?? 0) + (product.stock ?? 0),
       0
     );
-    const lowStockCount = products.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
-    const quoteOnlyCount = products.filter((product) => product.requiresQuote).length;
+    const lowStockCount = validProducts.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
+    const quoteOnlyCount = validProducts.filter((product) => product.requiresQuote).length;
     const recommendedCount = filteredProducts.filter((product) => product.requiresQuote === false && (product.isRecommended ?? false)).length;
 
     return (

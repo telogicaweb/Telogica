@@ -84,13 +84,14 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   }, [products, editingProduct]);
   // Extract unique categories
   const categories = useMemo(() => {
-    const cats = products.map(p => p.category).filter(Boolean);
+    const cats = products.filter(p => p && p.category).map(p => p.category);
     return ['all', ...Array.from(new Set(cats))];
   }, [products]);
 
   // Enhanced filtering
   const filteredProducts = useMemo(() => {
-    let filtered = products;
+    // Filter out null/undefined products first
+    let filtered = products.filter(p => p && p.name && p.category);
 
     // Search filter
     if (productSearch) {
@@ -142,15 +143,18 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   }, [products, productSearch, selectedCategory, stockFilter, dateFrom, dateTo]);
 
   // Statistics
-  const stats = useMemo(() => ({
-    total: products.length,
-    totalStock: products.reduce((acc, p) => acc + resolveStock(p), 0),
-    lowStock: products.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5).length,
-    outOfStock: products.filter(p => resolveStock(p) === 0).length,
-    quoteOnly: products.filter(p => p.requiresQuote).length,
-    recommended: products.filter(p => p.isRecommended).length,
-    categories: categories.length - 1,
-  }), [products, categories]);
+  const stats = useMemo(() => {
+    const validProducts = products.filter(p => p && p.name);
+    return {
+      total: validProducts.length,
+      totalStock: validProducts.reduce((acc, p) => acc + resolveStock(p), 0),
+      lowStock: validProducts.filter(p => resolveStock(p) > 0 && resolveStock(p) <= 5).length,
+      outOfStock: validProducts.filter(p => resolveStock(p) === 0).length,
+      quoteOnly: validProducts.filter(p => p.requiresQuote).length,
+      recommended: validProducts.filter(p => p.isRecommended).length,
+      categories: categories.length - 1,
+    };
+  }, [products, categories]);
 
   // Export functions
   const handleExportInventoryPDF = async () => {

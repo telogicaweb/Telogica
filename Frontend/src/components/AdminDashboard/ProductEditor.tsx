@@ -291,7 +291,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     setRecommendations((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  const recommendedProducts = useMemo(() => products.filter((p) => p._id !== product._id), [products, product._id]);
+  const recommendedProducts = useMemo(() => products.filter((p) => p && p._id && p.name && p._id !== product._id), [products, product._id]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
