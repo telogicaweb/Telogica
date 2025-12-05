@@ -303,61 +303,87 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const handleExportExcel = async () => {
     try {
       setExporting(true);
-      const XLSX = await import('xlsx');
+      const ExcelJS = await import('exceljs');
       
-      // Prepare data for Excel
-      const excelData = filteredProducts.map((p, index) => ({
-        'No.': index + 1,
-        'Product Name': p.name,
-        'Category': p.category,
-        'Description': p.description || '',
-        'Stock Quantity': resolveStock(p),
-        'Normal Price (₹)': resolvePrice(p) || 'Quote Only',
-        'Retailer Price (₹)': p.retailerPrice || '-',
-        'Warranty (months)': p.warrantyPeriodMonths || 12,
-        'Requires Quote': p.requiresQuote ? 'Yes' : 'No',
-        'Featured': p.isRecommended ? 'Yes' : 'No',
-        'Created At': (p as any).createdAt ? new Date((p as any).createdAt).toLocaleDateString() : '-'
-      }));
-
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 5 },  // No.
-        { wch: 30 }, // Product Name
-        { wch: 15 }, // Category
-        { wch: 40 }, // Description
-        { wch: 12 }, // Stock
-        { wch: 15 }, // Normal Price
-        { wch: 15 }, // Retailer Price
-        { wch: 12 }, // Warranty
-        { wch: 12 }, // Requires Quote
-        { wch: 10 }, // Featured
-        { wch: 15 }  // Created At
+      // Create workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Telogica';
+      workbook.created = new Date();
+      
+      // Add Products worksheet
+      const worksheet = workbook.addWorksheet('Products');
+      
+      // Define columns
+      worksheet.columns = [
+        { header: 'No.', key: 'no', width: 5 },
+        { header: 'Product Name', key: 'name', width: 30 },
+        { header: 'Category', key: 'category', width: 15 },
+        { header: 'Description', key: 'description', width: 40 },
+        { header: 'Stock Quantity', key: 'stock', width: 12 },
+        { header: 'Normal Price (₹)', key: 'price', width: 15 },
+        { header: 'Retailer Price (₹)', key: 'retailerPrice', width: 15 },
+        { header: 'Warranty (months)', key: 'warranty', width: 12 },
+        { header: 'Requires Quote', key: 'requiresQuote', width: 12 },
+        { header: 'Featured', key: 'featured', width: 10 },
+        { header: 'Created At', key: 'createdAt', width: 15 }
       ];
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Products');
-
-      // Add summary sheet
-      const summaryData = [
-        { Metric: 'Total Products', Value: stats.total },
-        { Metric: 'Total Stock', Value: stats.totalStock },
-        { Metric: 'Low Stock Items', Value: stats.lowStock },
-        { Metric: 'Out of Stock Items', Value: stats.outOfStock },
-        { Metric: 'Quote Only Products', Value: stats.quoteOnly },
-        { Metric: 'Featured Products', Value: stats.recommended },
-        { Metric: 'Categories', Value: stats.categories }
+      
+      // Style header row
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2196F3' }
+      };
+      
+      // Add data rows
+      filteredProducts.forEach((p, index) => {
+        worksheet.addRow({
+          no: index + 1,
+          name: p.name,
+          category: p.category,
+          description: p.description || '',
+          stock: resolveStock(p),
+          price: resolvePrice(p) || 'Quote Only',
+          retailerPrice: p.retailerPrice || '-',
+          warranty: p.warrantyPeriodMonths || 12,
+          requiresQuote: p.requiresQuote ? 'Yes' : 'No',
+          featured: p.isRecommended ? 'Yes' : 'No',
+          createdAt: (p as any).createdAt ? new Date((p as any).createdAt).toLocaleDateString() : '-'
+        });
+      });
+      
+      // Add Summary worksheet
+      const summaryWs = workbook.addWorksheet('Summary');
+      summaryWs.columns = [
+        { header: 'Metric', key: 'metric', width: 25 },
+        { header: 'Value', key: 'value', width: 15 }
       ];
-      const summaryWs = XLSX.utils.json_to_sheet(summaryData);
-      summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
-      XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
-
+      
+      summaryWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      summaryWs.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2196F3' }
+      };
+      
+      summaryWs.addRows([
+        { metric: 'Total Products', value: stats.total },
+        { metric: 'Total Stock', value: stats.totalStock },
+        { metric: 'Low Stock Items', value: stats.lowStock },
+        { metric: 'Out of Stock Items', value: stats.outOfStock },
+        { metric: 'Quote Only Products', value: stats.quoteOnly },
+        { metric: 'Featured Products', value: stats.recommended },
+        { metric: 'Categories', value: stats.categories }
+      ]);
+      
       // Generate file and download
-      XLSX.writeFile(wb, `Telogica-Products-${new Date().toISOString().split('T')[0]}.xlsx`);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Telogica-Products-${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
     } catch (err: any) {
       alert(err?.message || 'Failed to export Excel');
     } finally {

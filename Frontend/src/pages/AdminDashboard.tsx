@@ -1316,29 +1316,45 @@ const AdminDashboard: React.FC = () => {
 
     const handleExportUsersExcel = async () => {
       try {
-        const XLSX = await import('xlsx');
+        const ExcelJS = await import('exceljs');
         
-        const excelData = users.map((u, index) => ({
-          'No.': index + 1,
-          'Name': u.name,
-          'Email': u.email,
-          'Role': u.role,
-          'Status': u.role === 'retailer' && !u.isApproved ? 'Pending Approval' : 'Active',
-          'Joined': new Date(u.createdAt).toLocaleDateString()
-        }));
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        ws['!cols'] = [
-          { wch: 5 },
-          { wch: 25 },
-          { wch: 30 },
-          { wch: 12 },
-          { wch: 15 },
-          { wch: 12 }
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Telogica';
+        
+        const worksheet = workbook.addWorksheet('Users');
+        worksheet.columns = [
+          { header: 'No.', key: 'no', width: 5 },
+          { header: 'Name', key: 'name', width: 25 },
+          { header: 'Email', key: 'email', width: 30 },
+          { header: 'Role', key: 'role', width: 12 },
+          { header: 'Status', key: 'status', width: 15 },
+          { header: 'Joined', key: 'joined', width: 12 }
         ];
-        XLSX.utils.book_append_sheet(wb, ws, 'Users');
-        XLSX.writeFile(wb, `Telogica-Users-${new Date().toISOString().split('T')[0]}.xlsx`);
+        
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2196F3' }
+        };
+        
+        users.forEach((u, index) => {
+          worksheet.addRow({
+            no: index + 1,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            status: u.role === 'retailer' && !u.isApproved ? 'Pending Approval' : 'Active',
+            joined: new Date(u.createdAt).toLocaleDateString()
+          });
+        });
+        
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Telogica-Users-${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
       } catch (err: any) {
         alert(err?.message || 'Failed to export Excel');
       }
@@ -1547,35 +1563,51 @@ const AdminDashboard: React.FC = () => {
 
     const handleExportQuotesExcel = async () => {
       try {
-        const XLSX = await import('xlsx');
+        const ExcelJS = await import('exceljs');
         
-        const excelData = quotes.map((q, index) => ({
-          'No.': index + 1,
-          'Customer': q.user?.name || q.userId?.name || 'Unknown',
-          'Email': q.user?.email || q.userId?.email || '',
-          'Products': q.products.map(p => `${p.product?.name || p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
-          'Message': q.message || '',
-          'Status': q.status || 'pending',
-          'Quoted Price': q.quotedPrice ? `₹${q.quotedPrice}` : '-',
-          'Admin Response': typeof q.adminResponse === 'string' ? q.adminResponse : (q.adminResponse?.message || ''),
-          'Date': q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
-        }));
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        ws['!cols'] = [
-          { wch: 5 },
-          { wch: 20 },
-          { wch: 25 },
-          { wch: 40 },
-          { wch: 30 },
-          { wch: 12 },
-          { wch: 15 },
-          { wch: 30 },
-          { wch: 12 }
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Telogica';
+        
+        const worksheet = workbook.addWorksheet('Quotes');
+        worksheet.columns = [
+          { header: 'No.', key: 'no', width: 5 },
+          { header: 'Customer', key: 'customer', width: 20 },
+          { header: 'Email', key: 'email', width: 25 },
+          { header: 'Products', key: 'products', width: 40 },
+          { header: 'Message', key: 'message', width: 30 },
+          { header: 'Status', key: 'status', width: 12 },
+          { header: 'Quoted Price', key: 'quotedPrice', width: 15 },
+          { header: 'Admin Response', key: 'adminResponse', width: 30 },
+          { header: 'Date', key: 'date', width: 12 }
         ];
-        XLSX.utils.book_append_sheet(wb, ws, 'Quotes');
-        XLSX.writeFile(wb, `Telogica-Quotes-${new Date().toISOString().split('T')[0]}.xlsx`);
+        
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2196F3' }
+        };
+        
+        quotes.forEach((q, index) => {
+          worksheet.addRow({
+            no: index + 1,
+            customer: q.user?.name || q.userId?.name || 'Unknown',
+            email: q.user?.email || q.userId?.email || '',
+            products: q.products.map(p => `${p.product?.name || p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
+            message: q.message || '',
+            status: q.status || 'pending',
+            quotedPrice: q.quotedPrice ? `₹${q.quotedPrice}` : '-',
+            adminResponse: typeof q.adminResponse === 'string' ? q.adminResponse : (q.adminResponse?.message || ''),
+            date: q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
+          });
+        });
+        
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Telogica-Quotes-${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
       } catch (err: any) {
         alert(err?.message || 'Failed to export Excel');
       }
@@ -1849,50 +1881,76 @@ const AdminDashboard: React.FC = () => {
 
     const handleExportOrdersExcel = async () => {
       try {
-        const XLSX = await import('xlsx');
+        const ExcelJS = await import('exceljs');
         
-        const excelData = orders.map((o, index) => ({
-          'No.': index + 1,
-          'Order ID': o.orderNumber || o._id,
-          'Customer Name': o.userId?.name || 'Unknown',
-          'Customer Email': o.userId?.email || '',
-          'Products': o.products.map(p => `${(p.productId || (p as any).product)?.name || 'Unknown'} (${p.quantity})`).join(', '),
-          'Total Items': o.products.length,
-          'Total Amount (₹)': o.totalAmount,
-          'Order Status': o.orderStatus,
-          'Payment Status': o.paymentStatus,
-          'Date': new Date(o.createdAt).toLocaleDateString()
-        }));
-
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        ws['!cols'] = [
-          { wch: 5 },
-          { wch: 20 },
-          { wch: 20 },
-          { wch: 25 },
-          { wch: 40 },
-          { wch: 10 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 15 },
-          { wch: 12 }
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Telogica';
+        
+        // Orders worksheet
+        const worksheet = workbook.addWorksheet('Orders');
+        worksheet.columns = [
+          { header: 'No.', key: 'no', width: 5 },
+          { header: 'Order ID', key: 'orderId', width: 20 },
+          { header: 'Customer Name', key: 'customerName', width: 20 },
+          { header: 'Customer Email', key: 'customerEmail', width: 25 },
+          { header: 'Products', key: 'products', width: 40 },
+          { header: 'Total Items', key: 'totalItems', width: 10 },
+          { header: 'Total Amount (₹)', key: 'totalAmount', width: 15 },
+          { header: 'Order Status', key: 'orderStatus', width: 15 },
+          { header: 'Payment Status', key: 'paymentStatus', width: 15 },
+          { header: 'Date', key: 'date', width: 12 }
         ];
-        XLSX.utils.book_append_sheet(wb, ws, 'Orders');
         
-        // Summary sheet
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2196F3' }
+        };
+        
+        orders.forEach((o, index) => {
+          worksheet.addRow({
+            no: index + 1,
+            orderId: o.orderNumber || o._id,
+            customerName: o.userId?.name || 'Unknown',
+            customerEmail: o.userId?.email || '',
+            products: o.products.map(p => `${(p.productId || (p as any).product)?.name || 'Unknown'} (${p.quantity})`).join(', '),
+            totalItems: o.products.length,
+            totalAmount: o.totalAmount,
+            orderStatus: o.orderStatus,
+            paymentStatus: o.paymentStatus,
+            date: new Date(o.createdAt).toLocaleDateString()
+          });
+        });
+        
+        // Summary worksheet
         const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-        const summaryData = [
-          { Metric: 'Total Orders', Value: orders.length },
-          { Metric: 'Total Revenue', Value: `₹${totalRevenue.toLocaleString()}` },
-          { Metric: 'Pending Orders', Value: orders.filter(o => o.orderStatus === 'pending').length },
-          { Metric: 'Delivered Orders', Value: orders.filter(o => o.orderStatus === 'delivered').length }
+        const summaryWs = workbook.addWorksheet('Summary');
+        summaryWs.columns = [
+          { header: 'Metric', key: 'metric', width: 25 },
+          { header: 'Value', key: 'value', width: 20 }
         ];
-        const summaryWs = XLSX.utils.json_to_sheet(summaryData);
-        summaryWs['!cols'] = [{ wch: 25 }, { wch: 20 }];
-        XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
         
-        XLSX.writeFile(wb, `Telogica-Orders-${new Date().toISOString().split('T')[0]}.xlsx`);
+        summaryWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        summaryWs.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2196F3' }
+        };
+        
+        summaryWs.addRows([
+          { metric: 'Total Orders', value: orders.length },
+          { metric: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}` },
+          { metric: 'Pending Orders', value: orders.filter(o => o.orderStatus === 'pending').length },
+          { metric: 'Delivered Orders', value: orders.filter(o => o.orderStatus === 'delivered').length }
+        ]);
+        
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Telogica-Orders-${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
       } catch (err: any) {
         alert(err?.message || 'Failed to export Excel');
       }
