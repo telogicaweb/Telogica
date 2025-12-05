@@ -16,7 +16,17 @@ import {
   Search,
   Sparkles,
   Store,
-  DollarSign
+  DollarSign,
+  Plus,
+  X,
+  Edit,
+  Eye,
+  Trash2,
+  Check,
+  Download,
+  CheckCircle,
+  Clock,
+  LogOut
 } from 'lucide-react';
 
 interface User {
@@ -270,7 +280,7 @@ const AdminDashboard: React.FC = () => {
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
-  
+
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [selectedProductForUnits, setSelectedProductForUnits] = useState<Product | null>(null);
@@ -278,6 +288,18 @@ const AdminDashboard: React.FC = () => {
   const [newUnits, setNewUnits] = useState<Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>>([]);
 
   const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('en-IN').format(num);
+  };
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -361,7 +383,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleAddUnits = async () => {
     if (!selectedProductForUnits) return;
-    
+
     // Validate all fields are filled
     const invalidUnits = newUnits.filter(u => !u.serialNumber || !u.modelNumber);
     if (invalidUnits.length > 0) {
@@ -461,6 +483,17 @@ const AdminDashboard: React.FC = () => {
       loadUsers();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete user');
+    }
+  };
+
+  const handleApproveRetailer = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to approve this retailer?')) return;
+    try {
+      await api.put(`/api/auth/users/${userId}/approve`);
+      alert('Retailer approved successfully');
+      loadUsers();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to approve retailer');
     }
   };
 
@@ -705,7 +738,7 @@ const AdminDashboard: React.FC = () => {
         return JSON.stringify(cell);
       }).join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
@@ -743,7 +776,7 @@ const AdminDashboard: React.FC = () => {
       PaymentStatus: o.paymentStatus,
       Date: new Date(o.createdAt).toLocaleDateString(),
       ItemsCount: o.products.length,
-      ProductsDetails: o.products.map(p => 
+      ProductsDetails: o.products.map(p =>
         `${p.productId?.name || 'Unknown'} (Qty: ${p.quantity}) ${p.serialNumbers?.length ? `[SN: ${p.serialNumbers.join(', ')}]` : ''}`
       ).join('; ')
     }));
@@ -757,9 +790,7 @@ const AdminDashboard: React.FC = () => {
         ? analytics.quotes.conversionRate.toFixed(2)
         : analytics.quotes.conversionRate;
 
-    function formatCurrency(total: number): import("react").ReactNode {
-      throw new Error('Function not implemented.');
-    }
+
 
     return (
       <div className="space-y-6">
@@ -956,7 +987,7 @@ const AdminDashboard: React.FC = () => {
                   {editingProduct ? 'Edit Product' : 'Create New Product'}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {editingProduct 
+                  {editingProduct
                     ? 'Update product details and pricing.'
                     : `Add up to ${MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.`}
                 </p>
@@ -1168,13 +1199,12 @@ const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            (product.stock || product.stockQuantity || 0) > 10
-                              ? 'bg-green-100 text-green-800'
-                              : (product.stock || product.stockQuantity || 0) > 0
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${(product.stock || product.stockQuantity || 0) > 10
+                            ? 'bg-green-100 text-green-800'
+                            : (product.stock || product.stockQuantity || 0) > 0
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
-                          }`}
+                            }`}
                         >
                           {product.stock || product.stockQuantity || 0}
                         </span>
@@ -1226,7 +1256,7 @@ const AdminDashboard: React.FC = () => {
   const renderUsers = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-      
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -1261,13 +1291,12 @@ const AdminDashboard: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
                   <td className="px-6 py-4 text-sm">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        user.role === 'admin'
-                          ? 'bg-purple-100 text-purple-800'
-                          : user.role === 'retailer'
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800'
+                        : user.role === 'retailer'
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-gray-100 text-gray-800'
-                      }`}
+                        }`}
                     >
                       {user.role}
                     </span>
@@ -1330,7 +1359,7 @@ const AdminDashboard: React.FC = () => {
           Export CSV
         </button>
       </div>
-      
+
       <div className="space-y-4">
         {quotes.map((quote) => (
           <div
@@ -1348,13 +1377,12 @@ const AdminDashboard: React.FC = () => {
                 </p>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  quote.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : quote.status === 'approved'
+                className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : quote.status === 'approved'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
-                }`}
+                  }`}
               >
                 {quote.status}
               </span>
@@ -1471,7 +1499,7 @@ const AdminDashboard: React.FC = () => {
           Export CSV
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -1526,15 +1554,14 @@ const AdminDashboard: React.FC = () => {
                       onChange={(e) =>
                         handleUpdateOrderStatus(order._id, e.target.value)
                       }
-                      className={`px-2 py-1 rounded text-xs font-medium border-0 ${
-                        order.orderStatus === 'delivered'
-                          ? 'bg-green-100 text-green-800'
-                          : order.orderStatus === 'shipped'
+                      className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.orderStatus === 'delivered'
+                        ? 'bg-green-100 text-green-800'
+                        : order.orderStatus === 'shipped'
                           ? 'bg-blue-100 text-blue-800'
                           : order.orderStatus === 'processing'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
                     >
                       <option value="pending">Pending</option>
                       <option value="processing">Processing</option>
@@ -1568,7 +1595,7 @@ const AdminDashboard: React.FC = () => {
   const renderWarranties = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
-      
+
       <div className="space-y-4">
         {warranties.map((warranty) => (
           <div
@@ -1586,13 +1613,12 @@ const AdminDashboard: React.FC = () => {
                 </p>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  warranty.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : warranty.status === 'approved'
+                className={`px-3 py-1 rounded-full text-sm font-medium ${warranty.status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : warranty.status === 'approved'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
-                }`}
+                  }`}
               >
                 {warranty.status}
               </span>
@@ -1661,7 +1687,7 @@ const AdminDashboard: React.FC = () => {
   const renderEmailLogs = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Email Logs</h2>
-      
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -1699,11 +1725,10 @@ const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        log.status === 'sent'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'sent'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                        }`}
                     >
                       {log.status}
                     </span>
@@ -1735,7 +1760,7 @@ const AdminDashboard: React.FC = () => {
   const renderContacts = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
-      
+
       <div className="space-y-4">
         {contacts.map((contact) => (
           <div
@@ -1759,13 +1784,12 @@ const AdminDashboard: React.FC = () => {
                 <select
                   value={contact.status}
                   onChange={(e) => handleUpdateContactStatus(contact._id, e.target.value)}
-                  className={`px-2 py-1 rounded text-xs font-medium border-0 ${
-                    contact.status === 'new'
-                      ? 'bg-blue-100 text-blue-800'
-                      : contact.status === 'read'
+                  className={`px-2 py-1 rounded text-xs font-medium border-0 ${contact.status === 'new'
+                    ? 'bg-blue-100 text-blue-800'
+                    : contact.status === 'read'
                       ? 'bg-gray-100 text-gray-800'
                       : 'bg-green-100 text-green-800'
-                  }`}
+                    }`}
                 >
                   <option value="new">New</option>
                   <option value="read">Read</option>
@@ -1784,15 +1808,15 @@ const AdminDashboard: React.FC = () => {
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-gray-800 whitespace-pre-wrap">{contact.message}</p>
             </div>
-            
+
             <div className="mt-4 flex justify-end">
-               <a 
-                 href={`mailto:${contact.email}?subject=Re: ${contact.subject}`}
-                 className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-               >
-                 <Mail className="w-4 h-4" />
-                 Reply via Email
-               </a>
+              <a
+                href={`mailto:${contact.email}?subject=Re: ${contact.subject}`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+              >
+                <Mail className="w-4 h-4" />
+                Reply via Email
+              </a>
             </div>
           </div>
         ))}
@@ -1819,7 +1843,7 @@ const AdminDashboard: React.FC = () => {
           <button onClick={() => navigate('/admin/stats-management')} className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">📈 Stats</button>
         </div>
       </div>
-      
+
       <div className="grid md:grid-cols-3 gap-6">
         {/* Blog Posts */}
         <div className="bg-white p-6 rounded-lg shadow">
@@ -1828,7 +1852,7 @@ const AdminDashboard: React.FC = () => {
             <Edit size={20} className="text-blue-600" />
           </div>
           <p className="text-gray-600 mb-4">Manage blog articles and publications</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/blog-management')}
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -1843,7 +1867,7 @@ const AdminDashboard: React.FC = () => {
             <Users size={20} className="text-green-600" />
           </div>
           <p className="text-gray-600 mb-4">Manage leadership and team profiles</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/team-management')}
             className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
@@ -1858,7 +1882,7 @@ const AdminDashboard: React.FC = () => {
             <Clock size={20} className="text-purple-600" />
           </div>
           <p className="text-gray-600 mb-4">Manage investor events and webinars</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/event-management')}
             className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
           >
@@ -1873,7 +1897,7 @@ const AdminDashboard: React.FC = () => {
             <FileText size={20} className="text-orange-600" />
           </div>
           <p className="text-gray-600 mb-4">Manage financial and investor reports</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/report-management')}
             className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors"
           >
@@ -1888,7 +1912,7 @@ const AdminDashboard: React.FC = () => {
             <FileText size={20} className="text-indigo-600" />
           </div>
           <p className="text-gray-600 mb-4">Edit About, Mission, Vision, etc.</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/page-content')}
             className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
           >
@@ -1903,7 +1927,7 @@ const AdminDashboard: React.FC = () => {
             <TrendingUp size={20} className="text-red-600" />
           </div>
           <p className="text-gray-600 mb-4">Update homepage statistics</p>
-          <button 
+          <button
             onClick={() => navigate('/admin/stats-management')}
             className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
           >
@@ -1975,11 +1999,10 @@ const AdminDashboard: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.name}
@@ -2037,7 +2060,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
                   <p className="text-indigo-800">
-                    Click "Open Full Dashboard" to access the comprehensive retailer management panel with analytics, 
+                    Click "Open Full Dashboard" to access the comprehensive retailer management panel with analytics,
                     individual retailer details, inventory tracking, and sales history.
                   </p>
                 </div>
@@ -2096,9 +2119,8 @@ const AdminDashboard: React.FC = () => {
                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{retailer.name}</td>
                             <td className="px-6 py-4 text-sm text-gray-600">{retailer.email}</td>
                             <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
                                 {retailer.isApproved ? 'Active' : 'Pending'}
                               </span>
                             </td>
@@ -2266,15 +2288,14 @@ const AdminDashboard: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  unit.status === 'available'
-                                    ? 'bg-green-100 text-green-800'
-                                    : unit.status === 'sold'
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${unit.status === 'available'
+                                  ? 'bg-green-100 text-green-800'
+                                  : unit.status === 'sold'
                                     ? 'bg-blue-100 text-blue-800'
                                     : unit.status === 'reserved'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-800'
+                                  }`}
                               >
                                 {unit.status}
                               </span>
