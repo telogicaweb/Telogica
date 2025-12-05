@@ -154,6 +154,11 @@ const RetailerDashboard = () => {
     soldDate: new Date().toISOString().split('T')[0]
   });
 
+  // Checkout modal for quotes
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [checkoutAddress, setCheckoutAddress] = useState('');
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -266,9 +271,24 @@ const RetailerDashboard = () => {
     }
   };
 
-  const proceedToCheckout = async (quote: Quote) => {
+  const openCheckoutModal = (quote: Quote) => {
+    setSelectedQuote(quote);
+    setCheckoutAddress(user?.address || '');
+    setShowCheckoutModal(true);
+  };
+
+  const proceedToCheckout = async () => {
+    if (!selectedQuote) return;
+    if (!checkoutAddress.trim()) {
+      alert('Please enter a shipping address');
+      return;
+    }
+    
     setLoading(true);
+    setShowCheckoutModal(false);
+    
     try {
+      const quote = selectedQuote;
       const totalPrice = quote.adminResponse?.totalPrice || 0;
       const totalQty = quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0);
 
@@ -278,17 +298,11 @@ const RetailerDashboard = () => {
         price: totalQty > 0 ? totalPrice / totalQty : 0
       }));
 
-      const shippingAddress = prompt("Enter shipping address:", user?.address || "");
-      if (!shippingAddress) {
-        setLoading(false);
-        return;
-      }
-
       const { data } = await api.post('/api/orders', {
         products,
         totalAmount: totalPrice,
         quoteId: quote._id,
-        shippingAddress
+        shippingAddress: checkoutAddress
       });
 
       const options = {
@@ -305,7 +319,7 @@ const RetailerDashboard = () => {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            alert('Payment Successful! Products will be added to your inventory.');
+            alert('Payment Successful! Products will be added to your inventory after delivery.');
             loadDashboardData();
           } catch {
             alert('Payment Verification Failed');
@@ -689,7 +703,7 @@ const RetailerDashboard = () => {
 
               {quote.status === 'accepted' && (
                 <button
-                  onClick={() => proceedToCheckout(quote)}
+                  onClick={() => openCheckoutModal(quote)}
                   disabled={loading}
                   className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
                 >
@@ -1191,6 +1205,71 @@ const RetailerDashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal for Quote Orders */}
+      {showCheckoutModal && selectedQuote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Complete Your Order</h2>
+            
+            <div className="mb-4 bg-indigo-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-indigo-900 mb-2">Order Summary</h3>
+              <ul className="text-sm text-indigo-800 space-y-1">
+                {selectedQuote.products.map((p: any, idx: number) => (
+                  <li key={idx}>• {p.product?.name || 'Product'} x {p.quantity}</li>
+                ))}
+              </ul>
+              <div className="mt-2 pt-2 border-t border-indigo-200">
+                <p className="text-lg font-bold text-indigo-900">
+                  Total: ₹{(selectedQuote.adminResponse?.totalPrice || 0).toLocaleString('en-IN')}
+                </p>
+                {selectedQuote.adminResponse?.discountPercentage > 0 && (
+                  <p className="text-sm text-green-600">
+                    {selectedQuote.adminResponse.discountPercentage}% discount applied
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Shipping Address *
+              </label>
+              <textarea
+                value={checkoutAddress}
+                onChange={(e) => setCheckoutAddress(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter your complete shipping address..."
+                required
+              />
+            </div>
+
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Once payment is complete, products will be added to your inventory after delivery confirmation by admin.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={() => setShowCheckoutModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={proceedToCheckout}
+                disabled={loading || !checkoutAddress.trim()}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+              >
+                {loading ? 'Processing...' : 'Pay Now'}
+              </button>
+            </div>
           </div>
         </div>
       )}

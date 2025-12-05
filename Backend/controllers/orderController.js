@@ -16,12 +16,13 @@ const razorpay = new Razorpay({
 });
 
 const MAX_DIRECT_PURCHASE = parseInt(process.env.MAX_DIRECT_PURCHASE_ITEMS) || 3;
+const PRICE_TOLERANCE = 0.01; // Tolerance for floating point price comparisons
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 const createOrder = async (req, res) => {
-  const { products, totalAmount, shippingAddress, quoteId } = req.body;
+  const { products, totalAmount, shippingAddress, quoteId, isRetailerDirectPurchase } = req.body;
 
   if (products && products.length === 0) {
     return res.status(400).json({ message: 'No order items' });
@@ -36,8 +37,8 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // Enforce TELECOM-only direct purchase rule
-    if (!quoteId) {
+    // Enforce TELECOM-only direct purchase rule for regular users (not retailers with retailer price)
+    if (!quoteId && req.user.role !== 'retailer') {
       const productIds = products.map(p => p.product);
       const dbProducts = await Product.find({ _id: { $in: productIds } });
       
@@ -50,6 +51,33 @@ const createOrder = async (req, res) => {
           message: 'Only TELECOM products can be purchased directly. Please request a quote for other items.',
           products: nonTelecomProducts.map(p => p.name)
         });
+      }
+    }
+
+    // For retailer direct purchases, validate retailer pricing
+    if (isRetailerDirectPurchase && req.user.role === 'retailer') {
+      const productIds = products.map(p => p.product);
+      const dbProducts = await Product.find({ _id: { $in: productIds } });
+      const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+      
+      // Validate prices match retailer pricing
+      for (const item of products) {
+        const dbProduct = productMap.get(item.product);
+        if (dbProduct && item.useRetailerPrice) {
+          if (!dbProduct.retailerPrice) {
+            return res.status(400).json({
+              message: `Product "${dbProduct.name}" does not have a retailer price set. Please request a quote.`,
+              product: dbProduct.name
+            });
+          }
+          // Verify price matches retailer price
+          if (Math.abs(item.price - dbProduct.retailerPrice) > PRICE_TOLERANCE) {
+            return res.status(400).json({
+              message: `Invalid price for product "${dbProduct.name}". Expected retailer price: ₹${dbProduct.retailerPrice}`,
+              product: dbProduct.name
+            });
+          }
+        }
       }
     }
 
