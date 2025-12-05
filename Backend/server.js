@@ -63,6 +63,7 @@ const teamRoutes = require('./routes/teamRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const exportRoutes = require('./routes/exportRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -81,6 +82,7 @@ app.use('/api/team', teamRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/export', exportRoutes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');
