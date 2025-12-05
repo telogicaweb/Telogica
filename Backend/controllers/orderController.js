@@ -31,7 +31,7 @@ const createOrder = async (req, res) => {
   try {
     // Check if user is a regular user and has more than allowed items without a quote
     if (req.user.role === 'user' && !quoteId && products.length > MAX_DIRECT_PURCHASE) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: `Regular users can only purchase up to ${MAX_DIRECT_PURCHASE} items directly. Please request a quote for larger orders.`,
         requiresQuote: true
       });
@@ -41,13 +41,13 @@ const createOrder = async (req, res) => {
     if (!quoteId && req.user.role !== 'retailer') {
       const productIds = products.map(p => p.product);
       const dbProducts = await Product.find({ _id: { $in: productIds } });
-      
-      const nonTelecomProducts = dbProducts.filter(p => 
+
+      const nonTelecomProducts = dbProducts.filter(p =>
         !p.category || p.category.toLowerCase() !== 'telecom'
       );
 
       if (nonTelecomProducts.length > 0) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'Only TELECOM products can be purchased directly. Please request a quote for other items.',
           products: nonTelecomProducts.map(p => p.name)
         });
@@ -59,7 +59,7 @@ const createOrder = async (req, res) => {
       const productIds = products.map(p => p.product);
       const dbProducts = await Product.find({ _id: { $in: productIds } });
       const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
-      
+
       // Validate prices match retailer pricing
       for (const item of products) {
         const dbProduct = productMap.get(item.product);
@@ -88,7 +88,7 @@ const createOrder = async (req, res) => {
     // If order is based on a quote, verify and use quote price
     if (quoteId) {
       const quote = await Quote.findById(quoteId);
-      
+
       if (!quote) {
         return res.status(404).json({ message: 'Quote not found' });
       }
@@ -170,19 +170,14 @@ const createOrder = async (req, res) => {
       await Quote.findByIdAndUpdate(quoteId, { orderId: createdOrder._id });
     }
 
-    // Send order confirmation email
-    try {
-      await sendEmail(
-        req.user.email,
-        'Order Created - Telogica',
-        `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
-        'order_confirmation',
-        { entityType: 'order', entityId: createdOrder._id }
-      );
-    } catch (emailError) {
-      console.error('Error sending email:', emailError);
-      // Continue even if email fails
-    }
+    // Send order confirmation email (Async - don't await)
+    sendEmail(
+      req.user.email,
+      'Order Created - Telogica',
+      `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
+      'order_confirmation',
+      { entityType: 'order', entityId: createdOrder._id }
+    ).catch(emailError => console.error('Error sending email:', emailError));
 
     res.status(201).json({ order: createdOrder, razorpayOrder });
   } catch (error) {
@@ -200,7 +195,7 @@ const verifyPayment = async (req, res) => {
   try {
     const order = await Order.findById(orderId);
     if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     const generated_signature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -218,15 +213,15 @@ const verifyPayment = async (req, res) => {
 
       // Assign product units to the order
       const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
-      
+
       // Use a for loop to allow updating the order object in place
       for (let i = 0; i < order.products.length; i++) {
         const item = order.products[i];
         try {
           // Assign units to order
-          const filter = { 
-            product: item.product._id, 
-            status: 'available' 
+          const filter = {
+            product: item.product._id,
+            status: 'available'
           };
 
           if (stockType === 'offline') {
@@ -242,7 +237,7 @@ const verifyPayment = async (req, res) => {
           }
 
           await Promise.all(
-            units.map(unit => 
+            units.map(unit =>
               ProductUnit.findByIdAndUpdate(
                 unit._id,
                 {
@@ -293,7 +288,7 @@ const verifyPayment = async (req, res) => {
         );
 
         const subtotal = order.products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
+
         invoice = await Invoice.create({
           user: order.user._id,
           order: order._id,
@@ -312,13 +307,13 @@ const verifyPayment = async (req, res) => {
 
         // Generate and upload PDF
         try {
-            const invoiceUrl = await generateAndUploadInvoice(order, invoice);
-            if (invoiceUrl) {
-              invoice.invoiceUrl = invoiceUrl;
-              await invoice.save();
-            }
+          const invoiceUrl = await generateAndUploadInvoice(order, invoice);
+          if (invoiceUrl) {
+            invoice.invoiceUrl = invoiceUrl;
+            await invoice.save();
+          }
         } catch (pdfError) {
-            console.error('Error generating/uploading PDF:', pdfError);
+          console.error('Error generating/uploading PDF:', pdfError);
         }
       } catch (error) {
         console.error('Error generating invoice:', error);
@@ -326,26 +321,26 @@ const verifyPayment = async (req, res) => {
 
       // Send payment confirmation email
       const invoiceLink = invoice && invoice.invoiceUrl ? `\n\nYou can download your invoice here: ${invoice.invoiceUrl}` : '';
-      
+
       if (order.user && order.user.email) {
-        await sendEmail(
+        sendEmail(
           order.user.email,
           'Payment Successful - Telogica',
           `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}.${invoiceLink}`,
           'payment_confirmation',
           { entityType: 'order', entityId: order._id }
-        );
+        ).catch(err => console.error('Error sending payment confirmation email:', err));
       }
 
-      // Notify admin
+      // Notify admin (Async)
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
-      await sendEmail(
+      sendEmail(
         adminEmail,
         'New Order Placed',
         `New order from ${order.user ? order.user.name : 'Unknown User'} (${order.user ? order.user.role : 'unknown'}). Order ID: ${order._id}. Amount: ₹${order.totalAmount}`,
         'order_confirmation',
         { entityType: 'order', entityId: order._id }
-      );
+      ).catch(err => console.error('Error sending admin notification email:', err));
 
       res.json({ message: 'Payment verified successfully' });
     } else {
@@ -394,28 +389,28 @@ const updateOrderStatus = async (req, res) => {
       const previousStatus = order.orderStatus;
       order.orderStatus = status;
       const updatedOrder = await order.save();
-      
+
       // Populate user and products for further processing
       await updatedOrder.populate('user products.product');
-      
+
       // When order is marked as 'delivered', add products to retailer inventory
       if (status === 'delivered' && previousStatus !== 'delivered' && updatedOrder.user && updatedOrder.user.role === 'retailer') {
         try {
           // Fetch all product units for this order in a single query
           const allUnits = await ProductUnit.find({ order: updatedOrder._id });
-          
+
           // Fetch all existing inventory entries for this retailer and order to avoid duplicates
           const existingInventories = await RetailerInventory.find({
             retailer: updatedOrder.user._id,
             purchaseOrder: updatedOrder._id
           });
           const existingProductUnitIds = new Set(existingInventories.map(inv => inv.productUnit.toString()));
-          
+
           // Build inventory entries to create
           const inventoryEntries = [];
           for (const item of updatedOrder.products) {
             const productUnits = allUnits.filter(u => u.product.toString() === item.product._id.toString());
-            
+
             for (const unit of productUnits) {
               if (!existingProductUnitIds.has(unit._id.toString())) {
                 inventoryEntries.push({
@@ -430,28 +425,28 @@ const updateOrderStatus = async (req, res) => {
               }
             }
           }
-          
+
           // Bulk insert inventory entries
           if (inventoryEntries.length > 0) {
             await RetailerInventory.insertMany(inventoryEntries);
           }
-          
+
           console.log(`Retailer inventory updated for order ${updatedOrder.orderNumber || updatedOrder._id}: ${inventoryEntries.length} items added`);
         } catch (inventoryError) {
           console.error('Error updating retailer inventory:', inventoryError);
           // Continue with the status update even if inventory update fails
         }
       }
-      
-      // Send email notification for status change
+
+      // Send email notification for status change (Async)
       if (updatedOrder.user && updatedOrder.user.email) {
-        await sendEmail(
+        sendEmail(
           updatedOrder.user.email,
           `Order Status Updated - ${status.toUpperCase()}`,
           `Your order ${order.orderNumber || order._id} status has been updated to ${status}.`,
           'order_status_update',
           { entityType: 'order', entityId: order._id }
-        );
+        ).catch(err => console.error('Error sending status update email:', err));
       }
 
       res.json(updatedOrder);

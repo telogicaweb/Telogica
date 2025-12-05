@@ -37,7 +37,7 @@ const apiLimiter = rateLimit({
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  max: 100, // Limit each IP to 100 login attempts per windowMs
   skipSuccessfulRequests: true,
   message: 'Too many login attempts, please try again after 15 minutes.',
   handler: (req, res) => {
@@ -168,16 +168,16 @@ const validateContentType = (req, res, next) => {
   if (req.method === 'OPTIONS') {
     return next();
   }
-  
+
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     const contentType = req.headers['content-type'];
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    
+
     // Allow requests without body (no content-type and no content)
     if (contentLength === 0 && !contentType) {
       return next();
     }
-    
+
     // Require Content-Type when there's a body
     if (!contentType && contentLength > 0) {
       return res.status(400).json({
@@ -278,10 +278,10 @@ const strictCorsOptions = {
     const allowedOrigins = process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
       : [
-          // Development defaults only
-          'http://localhost:5173',
-          'http://localhost:3000',
-        ];
+        // Development defaults only
+        'http://localhost:5173',
+        'http://localhost:3000',
+      ];
 
     // Allow requests with no origin (mobile apps, curl, postman) only in development
     if (!origin) {
@@ -346,7 +346,7 @@ module.exports = {
   authLimiter,
   exportLimiter,
   passwordResetLimiter,
-  
+
   // Security middleware
   helmetConfig,
   sanitizeData,
@@ -355,10 +355,10 @@ module.exports = {
   validateContentType,
   securityLogger,
   requestTimeout,
-  
+
   // CORS
   strictCorsOptions,
-  
+
   // Apply all
   applySecurityMiddleware,
 };

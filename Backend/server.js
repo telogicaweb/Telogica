@@ -88,10 +88,10 @@ const contactRoutes = require('./routes/contactRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 
 // Apply rate limiting to routes
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/export', exportLimiter);
-app.use('/api', apiLimiter); // General API rate limit
+// app.use('/api/auth/login', authLimiter);
+// app.use('/api/auth/register', authLimiter);
+// app.use('/api/export', exportLimiter);
+// app.use('/api', apiLimiter); // General API rate limit
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
