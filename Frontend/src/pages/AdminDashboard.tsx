@@ -702,6 +702,32 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleExportProductUnits = async (format: 'pdf' | 'csv' | 'excel') => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/export/product-units?format=${format}`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const extension = format === 'excel' ? 'xlsx' : format;
+      link.download = `Telogica-Product-Units-${new Date().toISOString().split('T')[0]}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Export error:', error);
+      alert(error.response?.data?.message || `Failed to export product units as ${format.toUpperCase()}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Quote Management
   const handleRespondToQuote = async (quoteId: string) => {
     if (!quoteResponse.response) {
@@ -1065,8 +1091,8 @@ const AdminDashboard: React.FC = () => {
                 <Download className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Export Product Data</h3>
-                <p className="text-sm text-gray-600">Download complete product list with units and serial numbers</p>
+                <h3 className="font-semibold text-gray-900">Export Product Catalog</h3>
+                <p className="text-sm text-gray-600">Download complete product list with pricing and stock info</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -1089,6 +1115,47 @@ const AdminDashboard: React.FC = () => {
               <button
                 onClick={() => handleExportProducts('csv')}
                 disabled={loading || products.length === 0}
+                className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as CSV
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Units Export */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-600 p-2 rounded-lg">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Export Product Units & Serial Numbers</h3>
+                <p className="text-sm text-gray-600">Download detailed inventory with all serial numbers and model info</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExportProductUnits('pdf')}
+                disabled={loading}
+                className="bg-white text-blue-700 px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as PDF
+              </button>
+              <button
+                onClick={() => handleExportProductUnits('excel')}
+                disabled={loading}
+                className="bg-white text-green-700 px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                Export as Excel
+              </button>
+              <button
+                onClick={() => handleExportProductUnits('csv')}
+                disabled={loading}
                 className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
