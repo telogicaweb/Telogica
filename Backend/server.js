@@ -16,17 +16,17 @@ const corsOptions = {
     if (process.env.CORS_ORIGINS === '*') {
       return callback(null, true);
     }
-    
+
     const allowedOrigins = [
       'http://localhost:5173',
       'https://telogica-p7tf.vercel.app',
       'https://telogica.onrender.com',
       'https://telogica-lac.vercel.app'
     ];
-    
+
     // Allow requests with no origin (like mobile apps, curl requests, or server-to-server)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -42,7 +42,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly for all routes
-app.options('*', cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 
