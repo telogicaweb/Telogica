@@ -89,7 +89,7 @@ const generatePDF = (data, config) => {
         
         config.columns.forEach((col) => {
           const value = getNestedValue(row, col.key);
-          const displayValue = col.formatter ? col.formatter(value, row) : String(value || '-');
+          const displayValue = col.formatter ? col.formatter(value, row) : ((value || value === 0) ? String(value) : '-');
           
           doc.text(displayValue, currentX, rowY, { 
             width: col.width || 100, 

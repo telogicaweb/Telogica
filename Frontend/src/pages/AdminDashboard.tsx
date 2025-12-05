@@ -886,6 +886,25 @@ const AdminDashboard: React.FC = () => {
     downloadCSV(data, `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const handleServerExport = async (entity: string, format: 'pdf' | 'csv' | 'excel') => {
+    try {
+      const response = await api.get(`/api/export/${entity}?format=${format}`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${entity}_export_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error('Export failed:', error);
+      alert('Failed to export data: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   // Render Dashboard/Analytics Tab
   const renderDashboard = () => {
     const conversionRate =
@@ -998,6 +1017,57 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
             <p className="text-xs uppercase tracking-wide text-yellow-600">Inventory Offline</p>
             <p className="text-2xl font-bold text-yellow-900">{formatNumber(analytics.inventory.offline)}</p>
+          </div>
+        </div>
+
+        {/* System Data Export Section */}
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Download className="w-6 h-6 text-indigo-600" />
+            <h3 className="text-lg font-bold text-gray-800">System Data Export</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-6">
+            Export comprehensive reports for all system data. Choose your preferred format (PDF, CSV, or Excel).
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[
+              { label: 'Orders Report', entity: 'orders', icon: ShoppingCart, color: 'text-blue-600' },
+              { label: 'Quotes Report', entity: 'quotes', icon: FileText, color: 'text-yellow-600' },
+              { label: 'Products Catalog', entity: 'products', icon: Package, color: 'text-indigo-600' },
+              { label: 'Users List', entity: 'users', icon: Users, color: 'text-purple-600' },
+              { label: 'Warranties', entity: 'warranties', icon: Shield, color: 'text-green-600' },
+              { label: 'Invoices', entity: 'invoices', icon: DollarSign, color: 'text-gray-600' },
+              { label: 'Sales Report', entity: 'sales-report', icon: TrendingUp, color: 'text-emerald-600' },
+              { label: 'Product Units', entity: 'product-units', icon: CheckCircle, color: 'text-orange-600' },
+            ].map((item) => (
+              <div key={item.entity} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3 mb-3">
+                  <item.icon className={`w-5 h-5 ${item.color}`} />
+                  <span className="font-medium text-gray-700">{item.label}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleServerExport(item.entity, 'pdf')}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                  >
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => handleServerExport(item.entity, 'csv')}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                  >
+                    CSV
+                  </button>
+                  <button
+                    onClick={() => handleServerExport(item.entity, 'excel')}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                  >
+                    Excel
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

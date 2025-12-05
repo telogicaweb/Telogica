@@ -325,7 +325,11 @@ exports.exportInvoices = async (req, res) => {
 
 exports.exportProductUnits = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    
+    // Enforce maximum export limit to prevent memory issues
+    const maxLimit = 10000;
+    const exportLimit = Math.min(parseInt(limit, 10) || maxLimit, maxLimit);
     
     // Build query from filters
     const query = {};
@@ -337,6 +341,7 @@ exports.exportProductUnits = async (req, res) => {
       .populate('product', 'name category')
       .populate('currentOwner', 'name email')
       .sort({ createdAt: -1 })
+      .limit(exportLimit)
       .lean();
     
     if (!units.length) {
@@ -381,7 +386,11 @@ exports.exportProductUnits = async (req, res) => {
 
 exports.exportRetailerInventory = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    
+    // Enforce maximum export limit to prevent memory issues
+    const maxLimit = 10000;
+    const exportLimit = Math.min(parseInt(limit, 10) || maxLimit, maxLimit);
     
     // Build query from filters
     const query = {};
@@ -393,6 +402,7 @@ exports.exportRetailerInventory = async (req, res) => {
       .populate('product', 'name')
       .populate('productUnit', 'serialNumber')
       .sort({ purchaseDate: -1 })
+      .limit(exportLimit)
       .lean();
     
     if (!inventory.length) {
