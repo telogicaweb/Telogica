@@ -11,7 +11,7 @@
  * @returns {boolean} - True if the key contains prohibited characters
  */
 function hasProhibited(key) {
-  return typeof key === 'string' && key.indexOf('$') !== -1;
+  return typeof key === 'string' && (key.includes('$') || key.includes('.'));
 }
 
 /**
@@ -44,7 +44,7 @@ function sanitize(payload, options = {}) {
           let sanitizedKey = key;
           
           // Check if key contains prohibited characters
-          if (hasProhibited(key) || key.indexOf('.') !== -1) {
+          if (hasProhibited(key)) {
             sanitizedKey = key.replace(/\$/g, replaceWith).replace(/\./g, replaceWith);
             isSanitized = true;
           }
@@ -101,33 +101,29 @@ function mongoSanitize(options = {}) {
     }
 
     // Special handling for req.query in Express 5
-    // We need to work around the read-only getter
+    // Express 5 makes req.query a getter-only property, so we need special handling
     if (req.query) {
       const { target, isSanitized } = sanitize(req.query, options);
       
-      // In Express 5, req.query is a getter, so we need to use Object.defineProperty
       if (isSanitized) {
-        try {
-          // Delete the getter first
-          delete req.query;
-          // Set the sanitized value
-          req.query = target;
-          
-          if (hasOnSanitize) {
-            options.onSanitize({ req, key: 'query' });
-          }
-        } catch (err) {
-          // If we can't delete/reassign, define a new property
+        // Check if req.query is writable
+        const descriptor = Object.getOwnPropertyDescriptor(req, 'query');
+        
+        if (descriptor && !descriptor.writable && !descriptor.set) {
+          // req.query is read-only (Express 5), use defineProperty
           Object.defineProperty(req, 'query', {
             value: target,
             writable: true,
             enumerable: true,
             configurable: true
           });
-          
-          if (hasOnSanitize) {
-            options.onSanitize({ req, key: 'query' });
-          }
+        } else {
+          // req.query is writable (Express 4 or already modified)
+          req.query = target;
+        }
+        
+        if (hasOnSanitize) {
+          options.onSanitize({ req, key: 'query' });
         }
       }
     }
