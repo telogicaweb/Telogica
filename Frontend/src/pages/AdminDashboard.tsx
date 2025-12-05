@@ -66,6 +66,8 @@ interface ProductFormState {
   images: string[];
 }
 
+const DEFAULT_WARRANTY_MONTHS = 12;
+
 const getFreshProductFormState = (): ProductFormState => ({
   name: '',
   description: '',
@@ -73,7 +75,7 @@ const getFreshProductFormState = (): ProductFormState => ({
   normalPrice: '',
   retailerPrice: '',
   quantity: 1,
-  warrantyPeriodMonths: 12,
+  warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
   isRecommended: false,
   requiresQuote: false,
   manualImageUrl: '',
@@ -249,6 +251,9 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Constants
+  const MAX_PRODUCT_IMAGES = 4;
+
   // State for different sections
   const [analytics, setAnalytics] = useState<Analytics>(() => getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
@@ -259,7 +264,6 @@ const AdminDashboard: React.FC = () => {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
-  const MAX_PRODUCT_IMAGES = 4;
   const [productSearch, setProductSearch] = useState('');
 
   // Form states
@@ -363,9 +367,16 @@ const AdminDashboard: React.FC = () => {
     if (!selectedProductForUnits) return;
     
     // Validate all fields are filled
-    const allFilled = newUnits.every(u => u.serialNumber && u.modelNumber);
-    if (!allFilled) {
-      alert('Please fill all serial numbers and model numbers');
+    const invalidUnits = newUnits.filter(u => !u.serialNumber || !u.modelNumber);
+    if (invalidUnits.length > 0) {
+      const missingFields = invalidUnits.map((_, idx) => {
+        const unitNumber = newUnits.indexOf(_) + 1;
+        const missing = [];
+        if (!_.serialNumber) missing.push('serial number');
+        if (!_.modelNumber) missing.push('model number');
+        return `Unit ${unitNumber}: ${missing.join(' and ')}`;
+      }).join(', ');
+      alert(`Please fill the following required fields:\n${missingFields}`);
       return;
     }
 
@@ -375,11 +386,11 @@ const AdminDashboard: React.FC = () => {
         units: newUnits.map(unit => ({
           serialNumber: unit.serialNumber,
           modelNumber: unit.modelNumber,
-          warrantyPeriodMonths: unit.warrantyPeriod || 12,
+          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
           stockType: 'both'
         }))
       });
-      alert('Units added successfully');
+      alert(`${newUnits.length} unit${newUnits.length > 1 ? 's' : ''} added successfully`);
       setNewUnits([]);
       setShowAddUnitsForm(false);
       // Reload product units and products
@@ -499,7 +510,7 @@ const AdminDashboard: React.FC = () => {
         stock: 0, // Will be updated after adding units
         offlineStock: 0,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
-        warrantyPeriodMonths: productForm.warrantyPeriodMonths || 12,
+        warrantyPeriodMonths: productForm.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
         isRecommended: productForm.isRecommended || false,
       };
 
@@ -512,7 +523,7 @@ const AdminDashboard: React.FC = () => {
         units: productUnitsForm.map(unit => ({
           serialNumber: unit.serialNumber,
           modelNumber: unit.modelNumber,
-          warrantyPeriodMonths: unit.warrantyPeriod || 12,
+          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
           stockType: 'both'
         }))
       });
@@ -546,8 +557,8 @@ const AdminDashboard: React.FC = () => {
       category: product.category,
       normalPrice: product.normalPrice?.toString() || '',
       retailerPrice: product.retailerPrice?.toString() || '',
-      quantity: 0, // Not used for editing
-      warrantyPeriodMonths: 12,
+      quantity: 0, // Quantity is managed separately via product units
+      warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
       isRecommended: product.isRecommended || false,
       requiresQuote: product.requiresQuote,
       manualImageUrl: '',
@@ -2249,7 +2260,7 @@ const AdminDashboard: React.FC = () => {
                             value={unit.warrantyPeriod}
                             onChange={(e) => {
                               const updated = [...newUnits];
-                              updated[idx].warrantyPeriod = parseInt(e.target.value) || 12;
+                              updated[idx].warrantyPeriod = parseInt(e.target.value) || DEFAULT_WARRANTY_MONTHS;
                               setNewUnits(updated);
                             }}
                             className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -2265,7 +2276,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <div className="flex gap-2 mt-3">
                       <button
-                        onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: 12 }])}
+                        onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: DEFAULT_WARRANTY_MONTHS }])}
                         className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
                       >
                         + Add Another Unit
@@ -2326,7 +2337,7 @@ const AdminDashboard: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              {unit.warrantyPeriod || 12} months
+                              {unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS} months
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
                               {unit.soldTo || '-'}
