@@ -8,6 +8,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
 const { generateAndUploadInvoice } = require('../utils/invoiceGenerator');
+const { recalculateProductInventory } = require('../utils/inventory');
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -79,6 +80,28 @@ const createOrder = async (req, res) => {
       isQuoteBased = true;
       finalAmount = quote.adminResponse.totalPrice;
       discountApplied = quote.adminResponse.discountPercentage || 0;
+    }
+
+    // Ensure stock availability before creating payment order
+    const userStockPreference = req.user.role === 'retailer' ? 'offline' : 'online';
+    for (const item of products) {
+      const availabilityFilter = {
+        product: item.product,
+        status: 'available',
+        stockType: userStockPreference === 'offline'
+          ? { $in: ['offline', 'both'] }
+          : { $in: ['online', 'both'] }
+      };
+
+      const availableUnits = await ProductUnit.countDocuments(availabilityFilter);
+      if (availableUnits < item.quantity) {
+        return res.status(400).json({
+          message: 'Insufficient stock available for this product',
+          product: item.product,
+          available: availableUnits,
+          required: item.quantity
+        });
+      }
     }
 
     // Create Razorpay Order
@@ -186,6 +209,10 @@ const verifyPayment = async (req, res) => {
 
           const units = await ProductUnit.find(filter).limit(item.quantity);
 
+          if (units.length < item.quantity) {
+            throw new Error('Insufficient stock while finalizing order');
+          }
+
           await Promise.all(
             units.map(unit => 
               ProductUnit.findByIdAndUpdate(
@@ -204,6 +231,8 @@ const verifyPayment = async (req, res) => {
 
           // Update order item with serial numbers
           order.products[i].serialNumbers = units.map(u => u.serialNumber);
+
+          await recalculateProductInventory(item.product._id);
 
           // Note: RetailerInventory is created when order is marked as 'delivered' by admin
           // This ensures products are added to retailer's inventory only after actual delivery
@@ -255,9 +284,11 @@ const verifyPayment = async (req, res) => {
 
         // Generate and upload PDF
         try {
-            const invoiceUrl = await generateAndUploadInvoice(order, invoice.invoiceNumber);
-            invoice.invoiceUrl = invoiceUrl;
-            await invoice.save();
+            const invoiceUrl = await generateAndUploadInvoice(order, invoice);
+            if (invoiceUrl) {
+              invoice.invoiceUrl = invoiceUrl;
+              await invoice.save();
+            }
         } catch (pdfError) {
             console.error('Error generating/uploading PDF:', pdfError);
         }

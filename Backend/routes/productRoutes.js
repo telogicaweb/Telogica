@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getProducts, getProductById, createProduct, updateProduct, deleteProduct, uploadProductImage } = require('../controllers/productController');
+const { getProducts, getProductById, createProduct, updateProduct, deleteProduct, uploadProductImage, updateRecommendations } = require('../controllers/productController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const multer = require('multer');
 
@@ -20,5 +20,8 @@ router.route('/:id')
   .get(getProductById)
   .put(protect, admin, updateProduct)
   .delete(protect, admin, deleteProduct);
+
+router.route('/:id/recommendations')
+  .put(protect, admin, updateRecommendations);
 
 module.exports = router;

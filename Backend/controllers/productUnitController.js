@@ -1,5 +1,6 @@
 const ProductUnit = require('../models/ProductUnit');
 const Product = require('../models/Product');
+const { recalculateProductInventory } = require('../utils/inventory');
 
 // Add product units (Admin)
 exports.addProductUnits = async (req, res) => {
@@ -44,22 +45,7 @@ exports.addProductUnits = async (req, res) => {
       }))
     );
 
-    // Update product stock count
-    const totalStock = await ProductUnit.countDocuments({ 
-      product: productId, 
-      status: 'available' 
-    });
-    
-    const offlineStock = await ProductUnit.countDocuments({ 
-      product: productId, 
-      status: 'available',
-      stockType: { $in: ['offline', 'both'] }
-    });
-
-    await Product.findByIdAndUpdate(productId, {
-      stock: totalStock,
-      offlineStock
-    });
+    const { totalStock, offlineStock } = await recalculateProductInventory(productId);
 
     res.status(201).json({
       message: `${productUnits.length} product units added successfully`,
@@ -143,6 +129,10 @@ exports.updateProductUnit = async (req, res) => {
       return res.status(404).json({ message: 'Product unit not found' });
     }
 
+    if (updates.status || updates.stockType) {
+      await recalculateProductInventory(unit.product?._id || unit.product);
+    }
+
     res.json({
       message: 'Product unit updated successfully',
       unit
@@ -196,22 +186,7 @@ exports.assignUnitsToOrder = async (req, res) => {
       )
     );
 
-    // Update product stock count
-    const totalStock = await ProductUnit.countDocuments({ 
-      product: productId, 
-      status: 'available' 
-    });
-    
-    const offlineStock = await ProductUnit.countDocuments({ 
-      product: productId, 
-      status: 'available',
-      stockType: { $in: ['offline', 'both'] }
-    });
-
-    await Product.findByIdAndUpdate(productId, {
-      stock: totalStock,
-      offlineStock
-    });
+    const { totalStock, offlineStock } = await recalculateProductInventory(productId);
 
     res.json({
       message: 'Units assigned successfully',

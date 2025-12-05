@@ -7,13 +7,15 @@ const {
   getInvoiceByOrder,
   getUserInvoices,
   getAllInvoices,
-  resendInvoice
+  resendInvoice,
+  downloadInvoice
 } = require('../controllers/invoiceController');
 
 // User routes
 router.get('/my-invoices', protect, getUserInvoices);
-router.get('/:id', protect, getInvoice);
 router.get('/order/:orderId', protect, getInvoiceByOrder);
+router.get('/:id/download', protect, downloadInvoice);
+router.get('/:id', protect, getInvoice);
 
 // Admin routes
 router.post('/generate', protect, admin, generateInvoice);

@@ -9,23 +9,14 @@ import {
   Shield,
   Mail,
   TrendingUp,
-  Plus,
-  Check,
-  X,
-  Edit,
-  Trash2,
-  Eye,
-  Download,
-  RefreshCw,
   BarChart3,
-  DollarSign,
   AlertCircle,
-  CheckCircle,
-  Clock,
+  RefreshCw,
   MessageSquare,
   Search,
   Sparkles,
-  Store
+  Store,
+  DollarSign
 } from 'lucide-react';
 
 interface User {
@@ -245,6 +236,12 @@ const getDefaultAnalytics = (): Analytics => ({
   },
 });
 
+interface TabConfig {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -255,7 +252,7 @@ const AdminDashboard: React.FC = () => {
   const MAX_PRODUCT_IMAGES = 4;
 
   // State for different sections
-  const [analytics, setAnalytics] = useState<Analytics>(() => getDefaultAnalytics());
+  const [analytics, setAnalytics] = useState<Analytics>(getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productUnits, setProductUnits] = useState<ProductUnit[]>([]);
@@ -313,7 +310,6 @@ const AdminDashboard: React.FC = () => {
       ]);
     } catch (error: any) {
       console.error('Error loading dashboard data:', error);
-      // Don't set error state, allow dashboard to render with available data
     } finally {
       setLoading(false);
     }
@@ -451,18 +447,10 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN')}`;
-  const formatNumber = (value: number) => value.toLocaleString('en-IN');
-
-  // User Management
-  const handleApproveRetailer = async (userId: string) => {
-    try {
-      await api.put(`/api/auth/approve/${userId}`);
-      alert('Retailer approved successfully');
-      loadUsers();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to approve retailer');
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    navigate('/login');
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -768,6 +756,10 @@ const AdminDashboard: React.FC = () => {
       typeof analytics.quotes.conversionRate === 'number'
         ? analytics.quotes.conversionRate.toFixed(2)
         : analytics.quotes.conversionRate;
+
+    function formatCurrency(total: number): import("react").ReactNode {
+      throw new Error('Function not implemented.');
+    }
 
     return (
       <div className="space-y-6">
@@ -1949,74 +1941,33 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-28 md:pt-32">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-white shadow fixed top-0 left-0 right-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+      <div className="bg-white shadow sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                navigate('/login');
-              }}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              onClick={loadDashboardData}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Refresh Data"
             >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
               Logout
             </button>
           </div>
         </div>
       </div>
 
-      {/* QUICK NAVIGATION - Content Management Pages */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg fixed top-16 md:top-20 left-0 right-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
-          <h2 className="text-white font-bold mb-2 md:mb-3 text-sm md:text-lg">🚀 Quick Access - Content Management</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            <button
-              onClick={() => navigate('/admin/blog-management')}
-              className="bg-white hover:bg-blue-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              📝 Blogs
-            </button>
-            <button
-              onClick={() => navigate('/admin/team-management')}
-              className="bg-white hover:bg-green-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              👥 Team
-            </button>
-            <button
-              onClick={() => navigate('/admin/event-management')}
-              className="bg-white hover:bg-purple-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              📅 Events
-            </button>
-            <button
-              onClick={() => navigate('/admin/report-management')}
-              className="bg-white hover:bg-orange-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              📊 Reports
-            </button>
-            <button
-              onClick={() => navigate('/admin/page-content')}
-              className="bg-white hover:bg-indigo-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              📄 Pages
-            </button>
-            <button
-              onClick={() => navigate('/admin/stats-management')}
-              className="bg-white hover:bg-red-50 text-gray-900 px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-all hover:scale-105 shadow"
-            >
-              📈 Stats
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Tabs */}
-      <div className="bg-white shadow sticky top-[200px] md:top-[220px] z-20">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+      <div className="bg-white shadow sticky top-16 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -2024,15 +1975,14 @@ const AdminDashboard: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="hidden sm:inline">{tab.name}</span>
-                  <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
+                  <Icon className="w-4 h-4" />
+                  {tab.name}
                 </button>
               );
             })}
@@ -2041,29 +1991,22 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 md:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error ? (
           <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
             <div className="flex items-start">
               <AlertCircle className="text-red-500 mt-1 flex-shrink-0" size={24} />
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Dashboard</h3>
+                <h3 className="text-lg font-semibold text-red-800 mb-2">
+                  Error Loading Dashboard
+                </h3>
                 <p className="text-red-700 mb-4">{error}</p>
-                <div className="space-y-2 text-sm text-red-600">
-                  <p><strong>Troubleshooting steps:</strong></p>
-                  <ol className="list-decimal ml-5 space-y-1">
-                    <li>Make sure the backend server is running on port 5000</li>
-                    <li>Check if MongoDB is connected</li>
-                    <li>Verify your .env file has correct configuration</li>
-                    <li>Check browser console for detailed errors</li>
-                  </ol>
-                </div>
                 <button
                   onClick={() => {
                     setError(null);
                     loadDashboardData();
                   }}
-                  className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
                 >
                   <RefreshCw size={16} />
                   Retry Loading

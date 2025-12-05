@@ -6,16 +6,21 @@ import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, 
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const UserDashboard = () => {
-  const { user } = useContext(AuthContext)!;
+  const auth = useContext(AuthContext);
+  if (!auth) {
+    throw new Error('AuthContext is unavailable. Ensure the component is wrapped in AuthProvider.');
+  }
+  const { user, loading: authLoading } = auth;
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [warranties, setWarranties] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'orders' | 'quotes' | 'warranties' | 'invoices'>('orders');
-  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchData = async () => {
+    if (!user) return;
     try {
       const [ordersRes, quotesRes, warrantiesRes, invoicesRes] = await Promise.all([
         api.get('/api/orders/myorders'),
@@ -34,13 +39,20 @@ const UserDashboard = () => {
   };
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+    if (!authLoading && !user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user) {
+      fetchData();
+    }
+  }, [authLoading, user, navigate]);
 
   const acceptQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to accept this quote?')) return;
     
-    setLoading(true);
+    setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/accept`);
       alert('Quote accepted! You can now proceed to checkout with this quote.');
@@ -50,14 +62,14 @@ const UserDashboard = () => {
       const axiosError = error as { response?: { data?: { message?: string } } };
       alert(axiosError.response?.data?.message || 'Failed to accept quote');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const rejectQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to reject this quote?')) return;
     
-    setLoading(true);
+    setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/reject`);
       alert('Quote rejected.');
@@ -67,7 +79,7 @@ const UserDashboard = () => {
       const axiosError = error as { response?: { data?: { message?: string } } };
       alert(axiosError.response?.data?.message || 'Failed to reject quote');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -79,6 +91,14 @@ const UserDashboard = () => {
     }
 
     setLoading(true);
+  const proceedToCheckout = async (quote: any) => {
+    if (!user) {
+      alert('Please login again to continue.');
+      navigate('/login');
+      return;
+    }
+
+    setActionLoading(true);
     try {
       const totalQty = quote.products.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0);
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
@@ -91,7 +111,7 @@ const UserDashboard = () => {
 
       const shippingAddress = prompt("Please enter your shipping address:", user?.address || "");
       if (!shippingAddress) {
-        setLoading(false);
+        setActionLoading(false);
         return;
       }
 
@@ -150,13 +170,13 @@ const UserDashboard = () => {
       }
       alert(axiosError.response?.data?.message || 'Failed to create order');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const downloadInvoice = async (invoiceId: string) => {
     try {
-      const response = await api.get(`/invoices/${invoiceId}/download`, {
+      const response = await api.get(`/api/invoices/${invoiceId}/download`, {
         responseType: 'blob'
       });
       
@@ -376,7 +396,7 @@ const UserDashboard = () => {
                           <div className="flex gap-2 mt-4">
                             <button
                               onClick={() => acceptQuote(quote._id)}
-                              disabled={loading}
+                              disabled={actionLoading}
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                             >
                               <ThumbsUp size={16} />
@@ -384,7 +404,7 @@ const UserDashboard = () => {
                             </button>
                             <button
                               onClick={() => rejectQuote(quote._id)}
-                              disabled={loading}
+                              disabled={actionLoading}
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                             >
                               <ThumbsDown size={16} />
@@ -398,6 +418,8 @@ const UserDashboard = () => {
                             onClick={() => proceedToCheckout(quote)}
                             disabled={loading}
                             className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
+                            disabled={actionLoading}
+                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                           >
                             {loading ? (
                               <>
@@ -563,7 +585,7 @@ const UserDashboard = () => {
                                 #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
                               </td>
                               <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                                #{invoice.orderId?._id?.slice(-8).toUpperCase() || 'N/A'}
+                                #{invoice.order?._id?.slice(-8).toUpperCase() || 'N/A'}
                               </td>
                               <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                                 ₹{invoice.totalAmount?.toLocaleString()}
@@ -572,8 +594,14 @@ const UserDashboard = () => {
                                 {new Date(invoice.createdAt).toLocaleDateString()}
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Paid
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  invoice.paymentStatus === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : invoice.paymentStatus === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800'
+                                      : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm">
