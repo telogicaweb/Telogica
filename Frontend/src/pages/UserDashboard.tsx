@@ -5,16 +5,21 @@ import { useNavigate } from 'react-router-dom';
 import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye } from 'lucide-react';
 
 const UserDashboard = () => {
-  const { user } = useContext(AuthContext)!;
+  const auth = useContext(AuthContext);
+  if (!auth) {
+    throw new Error('AuthContext is unavailable. Ensure the component is wrapped in AuthProvider.');
+  }
+  const { user, loading: authLoading } = auth;
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
   const [warranties, setWarranties] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'orders' | 'quotes' | 'warranties' | 'invoices'>('orders');
-  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchData = async () => {
+    if (!user) return;
     try {
       const [ordersRes, quotesRes, warrantiesRes, invoicesRes] = await Promise.all([
         api.get('/api/orders/myorders'),
@@ -33,13 +38,20 @@ const UserDashboard = () => {
   };
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+    if (!authLoading && !user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user) {
+      fetchData();
+    }
+  }, [authLoading, user, navigate]);
 
   const acceptQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to accept this quote?')) return;
     
-    setLoading(true);
+    setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/accept`);
       alert('Quote accepted! You can now proceed to checkout with this quote.');
@@ -48,14 +60,14 @@ const UserDashboard = () => {
       console.error('Error accepting quote', error);
       alert(error.response?.data?.message || 'Failed to accept quote');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const rejectQuote = async (quoteId: string) => {
     if (!confirm('Are you sure you want to reject this quote?')) return;
     
-    setLoading(true);
+    setActionLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/reject`);
       alert('Quote rejected.');
@@ -64,12 +76,18 @@ const UserDashboard = () => {
       console.error('Error rejecting quote', error);
       alert(error.response?.data?.message || 'Failed to reject quote');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const proceedToCheckout = async (quote: any) => {
-    setLoading(true);
+    if (!user) {
+      alert('Please login again to continue.');
+      navigate('/login');
+      return;
+    }
+
+    setActionLoading(true);
     try {
       const totalQty = quote.products.reduce((sum: number, p: any) => sum + p.quantity, 0);
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
@@ -82,7 +100,7 @@ const UserDashboard = () => {
 
       const shippingAddress = prompt("Please enter your shipping address:", user.address || "");
       if (!shippingAddress) {
-        setLoading(false);
+        setActionLoading(false);
         return;
       }
 
@@ -137,7 +155,7 @@ const UserDashboard = () => {
       }
       alert(error.response?.data?.message || 'Failed to create order');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -363,7 +381,7 @@ const UserDashboard = () => {
                           <div className="flex gap-2 mt-4">
                             <button
                               onClick={() => acceptQuote(quote._id)}
-                              disabled={loading}
+                              disabled={actionLoading}
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                             >
                               <ThumbsUp size={16} />
@@ -371,7 +389,7 @@ const UserDashboard = () => {
                             </button>
                             <button
                               onClick={() => rejectQuote(quote._id)}
-                              disabled={loading}
+                              disabled={actionLoading}
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                             >
                               <ThumbsDown size={16} />
@@ -383,7 +401,7 @@ const UserDashboard = () => {
                         {quote.status === 'accepted' && (
                           <button
                             onClick={() => proceedToCheckout(quote)}
-                            disabled={loading}
+                            disabled={actionLoading}
                             className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
                           >
                             Proceed to Checkout

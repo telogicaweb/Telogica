@@ -192,6 +192,8 @@ const RetailerManagement = () => {
       Customer: s.customer?.name || '',
       CustomerEmail: s.customer?.email || '',
       CustomerPhone: s.customer?.phone || '',
+      CustomerAddress: s.customer?.address || '',
+      InvoiceNumber: s.invoiceNumber || '',
       SaleDate: new Date(s.saleDate).toLocaleDateString(),
       SellingPrice: s.sellingPrice,
       Profit: s.profit || 0,
@@ -497,6 +499,7 @@ const RetailerManagement = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
@@ -523,6 +526,23 @@ const RetailerManagement = () => {
                         <p className="font-medium text-gray-900">{sale.customer?.name}</p>
                         <p className="text-gray-500">{sale.customer?.email}</p>
                         <p className="text-gray-500">{sale.customer?.phone}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm">
+                        {sale.invoiceNumber && (
+                          <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
+                        )}
+                        {sale.invoiceUrl && (
+                          <a 
+                            href={sale.invoiceUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            View Invoice
+                          </a>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
@@ -645,6 +665,7 @@ const RetailerManagement = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
@@ -655,6 +676,12 @@ const RetailerManagement = () => {
                         <tr key={sale._id}>
                           <td className="px-4 py-2 text-sm text-gray-900">{sale.productDetails?.name || sale.product?.name}</td>
                           <td className="px-4 py-2 text-sm text-gray-600">{sale.customer?.name}</td>
+                          <td className="px-4 py-2 text-sm">
+                            {sale.invoiceNumber && <span className="text-gray-900">{sale.invoiceNumber}</span>}
+                            {sale.invoiceUrl && (
+                              <a href={sale.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs block">View</a>
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-sm text-gray-600">{new Date(sale.saleDate).toLocaleDateString()}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(sale.sellingPrice)}</td>
                           <td className="px-4 py-2 text-sm text-green-600">{formatCurrency(sale.profit)}</td>

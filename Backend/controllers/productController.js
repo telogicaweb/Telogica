@@ -47,7 +47,10 @@ const createProduct = async (req, res) => {
     isRecommended,
     specifications,
     warrantyPeriodMonths,
-    requiresQuote
+    requiresQuote,
+    modelNumberPrefix,
+    features,
+    technicalSpecs
   } = req.body;
 
   try {
@@ -63,7 +66,10 @@ const createProduct = async (req, res) => {
       isRecommended,
       specifications,
       warrantyPeriodMonths: warrantyPeriodMonths || 12,
-      requiresQuote: requiresQuote || !price // Auto-set if price missing
+      requiresQuote: requiresQuote || !price, // Auto-set if price missing
+      modelNumberPrefix,
+      features,
+      technicalSpecs
     });
 
     const createdProduct = await product.save();
@@ -89,7 +95,10 @@ const updateProduct = async (req, res) => {
     isRecommended,
     specifications,
     warrantyPeriodMonths,
-    requiresQuote
+    requiresQuote,
+    modelNumberPrefix,
+    features,
+    technicalSpecs
   } = req.body;
 
   try {
@@ -108,6 +117,9 @@ const updateProduct = async (req, res) => {
       product.specifications = specifications || product.specifications;
       product.warrantyPeriodMonths = warrantyPeriodMonths || product.warrantyPeriodMonths;
       product.requiresQuote = requiresQuote !== undefined ? requiresQuote : (!product.price);
+      product.modelNumberPrefix = modelNumberPrefix !== undefined ? modelNumberPrefix : product.modelNumberPrefix;
+      product.features = features || product.features;
+      product.technicalSpecs = technicalSpecs || product.technicalSpecs;
 
       const updatedProduct = await product.save();
       res.json(updatedProduct);

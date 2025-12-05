@@ -13,36 +13,189 @@ import {
   AlertCircle,
   RefreshCw,
   MessageSquare,
-<<<<<<< HEAD
-  Archive,
-  LogOut,
-=======
   Search,
   Sparkles,
-  Store
->>>>>>> 85331f04392b7c0a46015c8d63fda4a14b2f115b
+  Store,
+  DollarSign
 } from 'lucide-react';
 
-// Import modular components
-import DashboardOverview from '../components/AdminDashboard/DashboardOverview';
-import ProductManagement from '../components/AdminDashboard/ProductManagement';
-import UserManagement from '../components/AdminDashboard/UserManagement';
-import QuoteManagement from '../components/AdminDashboard/QuoteManagement';
-import OrderManagement from '../components/AdminDashboard/OrderManagement';
-import WarrantyManagement from '../components/AdminDashboard/WarrantyManagement';
-import EmailLogs from '../components/AdminDashboard/EmailLogs';
-import ContactMessages from '../components/AdminDashboard/ContactMessages';
-import ContentManagement from '../components/AdminDashboard/ContentManagement';
-import {
-  User,
-  Product,
-  Quote,
-  Order,
-  Warranty,
-  EmailLog,
-  ContactMessage,
-  Analytics,
-} from '../components/AdminDashboard/types';
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isApproved: boolean;
+  createdAt: string;
+}
+
+interface Product {
+  stock: number;
+  _id: string;
+  name: string;
+  description: string;
+  category: string;
+  normalPrice?: number;
+  retailerPrice?: number;
+  stockQuantity: number;
+  imageUrl?: string;
+  images?: string[];
+  requiresQuote: boolean;
+  isRecommended?: boolean;
+}
+
+interface ProductFormState {
+  name: string;
+  description: string;
+  category: string;
+  normalPrice: string;
+  retailerPrice: string;
+  quantity: number;
+  warrantyPeriodMonths: number;
+  isRecommended: boolean;
+  requiresQuote: boolean;
+  manualImageUrl: string;
+  images: string[];
+}
+
+const DEFAULT_WARRANTY_MONTHS = 12;
+
+const getFreshProductFormState = (): ProductFormState => ({
+  name: '',
+  description: '',
+  category: '',
+  normalPrice: '',
+  retailerPrice: '',
+  quantity: 1,
+  warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
+  isRecommended: false,
+  requiresQuote: false,
+  manualImageUrl: '',
+  images: [],
+});
+
+interface ProductUnit {
+  _id: string;
+  productId: { _id: string; name: string };
+  serialNumber: string;
+  modelNumber: string;
+  warrantyPeriod: number;
+  status: string;
+  soldTo?: string;
+  soldDate?: Date;
+}
+
+interface Quote {
+  _id: string;
+  // backend may populate as `user` or older shape `userId`
+  userId?: { _id: string; name: string; email: string };
+  user?: { _id: string; name: string; email: string };
+  // products may be under `productId` or `product` when populated
+  products: Array<{
+    productId?: { _id: string; name: string };
+    product?: { _id: string; name: string };
+    quantity: number;
+  }>;
+  message?: string;
+  status?: string;
+  // adminResponse can be a string (legacy) or an object with details
+  adminResponse?: any;
+  quotedPrice?: number;
+  createdAt?: string;
+}
+
+interface Order {
+  _id: string;
+  orderNumber?: string;
+  userId: { _id: string; name: string; email: string };
+  products: Array<{
+    productId: { _id: string; name: string };
+    quantity: number;
+    price: number;
+    serialNumbers?: string[];
+  }>;
+  totalAmount: number;
+  orderStatus: string;
+  paymentStatus: string;
+  createdAt: string;
+}
+
+interface Warranty {
+  _id: string;
+  userId: { _id: string; name: string; email: string };
+  productName: string;
+  modelNumber: string;
+  serialNumber: string;
+  purchaseDate: string;
+  purchaseType: string;
+  invoiceUrl?: string;
+  status: string;
+  createdAt: string;
+}
+
+interface EmailLog {
+  _id: string;
+  recipient: string;
+  subject: string;
+  emailType: string;
+  sentAt: string;
+  status: string;
+}
+
+interface ContactMessage {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'replied';
+  createdAt: string;
+}
+
+interface Analytics {
+  sales: {
+    total: number;
+    direct: number;
+    quote: number;
+    byUserType: {
+      user: number;
+      retailer: number;
+    };
+  };
+  orders: {
+    total: number;
+    direct: number;
+    quote: number;
+    byUserType: {
+      user: number;
+      retailer: number;
+    };
+  };
+  quotes: {
+    total: number;
+    pending: number;
+    responded: number;
+    accepted: number;
+    rejected: number;
+    conversionRate: string | number;
+  };
+  users: {
+    total: number;
+    retailers: number;
+    pendingRetailers: number;
+  };
+  inventory: {
+    total: number;
+    online: number;
+    offline: number;
+  };
+  warranties: {
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+  };
+}
 
 const getDefaultAnalytics = (): Analytics => ({
   sales: {
@@ -95,28 +248,36 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Constants
+  const MAX_PRODUCT_IMAGES = 4;
+
   // State for different sections
   const [analytics, setAnalytics] = useState<Analytics>(getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productUnits, setProductUnits] = useState<ProductUnit[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
+  const [productSearch, setProductSearch] = useState('');
 
-  // Tab configuration
-  const tabs: TabConfig[] = [
-    { id: 'dashboard', name: 'Dashboard', icon: TrendingUp },
-    { id: 'products', name: 'Products', icon: Package },
-    { id: 'users', name: 'Users', icon: Users },
-    { id: 'quotes', name: 'Quotes', icon: FileText },
-    { id: 'orders', name: 'Orders', icon: ShoppingCart },
-    { id: 'warranties', name: 'Warranties', icon: Shield },
-    { id: 'messages', name: 'Messages', icon: MessageSquare },
-    { id: 'emails', name: 'Emails', icon: Mail },
-    { id: 'content', name: 'Content', icon: Archive },
-  ];
+  // Form states
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState<ProductFormState>(() => getFreshProductFormState());
+  const [productUnitsForm, setProductUnitsForm] = useState<
+    Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
+  >([]);
+  
+  // Product units modal state
+  const [showUnitsModal, setShowUnitsModal] = useState(false);
+  const [selectedProductForUnits, setSelectedProductForUnits] = useState<Product | null>(null);
+  const [showAddUnitsForm, setShowAddUnitsForm] = useState(false);
+  const [newUnits, setNewUnits] = useState<Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>>([]);
+
+  const [quoteResponse, setQuoteResponse] = useState({ id: '', response: '', price: '' });
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -184,6 +345,58 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadProductUnits = async (productId: string) => {
+    try {
+      const product = products.find(p => p._id === productId);
+      if (product) {
+        setSelectedProductForUnits(product);
+      }
+      const response = await api.get(`/api/product-units/product/${productId}`);
+      setProductUnits(response.data);
+      setShowUnitsModal(true);
+    } catch (error) {
+      console.error('Error loading product units:', error);
+    }
+  };
+
+  const handleAddUnits = async () => {
+    if (!selectedProductForUnits) return;
+    
+    // Validate all fields are filled
+    const invalidUnits = newUnits.filter(u => !u.serialNumber || !u.modelNumber);
+    if (invalidUnits.length > 0) {
+      const missingFields = invalidUnits.map((_, idx) => {
+        const unitNumber = newUnits.indexOf(_) + 1;
+        const missing = [];
+        if (!_.serialNumber) missing.push('serial number');
+        if (!_.modelNumber) missing.push('model number');
+        return `Unit ${unitNumber}: ${missing.join(' and ')}`;
+      }).join(', ');
+      alert(`Please fill the following required fields:\n${missingFields}`);
+      return;
+    }
+
+    try {
+      await api.post('/api/product-units/add', {
+        productId: selectedProductForUnits._id,
+        units: newUnits.map(unit => ({
+          serialNumber: unit.serialNumber,
+          modelNumber: unit.modelNumber,
+          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
+          stockType: 'both'
+        }))
+      });
+      alert(`${newUnits.length} unit${newUnits.length > 1 ? 's' : ''} added successfully`);
+      setNewUnits([]);
+      setShowAddUnitsForm(false);
+      // Reload product units and products
+      loadProductUnits(selectedProductForUnits._id);
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to add units');
+    }
+  };
+
   const loadQuotes = async () => {
     try {
       const response = await api.get('/api/quotes');
@@ -240,8 +453,6 @@ const AdminDashboard: React.FC = () => {
     navigate('/login');
   };
 
-<<<<<<< HEAD
-=======
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
@@ -287,7 +498,7 @@ const AdminDashboard: React.FC = () => {
         stock: 0, // Will be updated after adding units
         offlineStock: 0,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
-        warrantyPeriodMonths: productForm.warrantyPeriodMonths || 12,
+        warrantyPeriodMonths: productForm.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
         isRecommended: productForm.isRecommended || false,
       };
 
@@ -300,7 +511,7 @@ const AdminDashboard: React.FC = () => {
         units: productUnitsForm.map(unit => ({
           serialNumber: unit.serialNumber,
           modelNumber: unit.modelNumber,
-          warrantyPeriodMonths: unit.warrantyPeriod || 12,
+          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
           stockType: 'both'
         }))
       });
@@ -323,6 +534,72 @@ const AdminDashboard: React.FC = () => {
       loadProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete product');
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      normalPrice: product.normalPrice?.toString() || '',
+      retailerPrice: product.retailerPrice?.toString() || '',
+      quantity: 0, // Quantity is managed separately via product units
+      warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
+      isRecommended: product.isRecommended || false,
+      requiresQuote: product.requiresQuote,
+      manualImageUrl: '',
+      images: product.images || [],
+    });
+    setShowProductForm(true);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+
+    if (!productForm.images.length) {
+      alert('Please add at least one product image before saving.');
+      return;
+    }
+
+    if (productForm.images.length > MAX_PRODUCT_IMAGES) {
+      alert(`Only up to ${MAX_PRODUCT_IMAGES} images are allowed.`);
+      return;
+    }
+
+    try {
+      const productData = {
+        name: productForm.name,
+        description: productForm.description,
+        category: productForm.category,
+        price: productForm.normalPrice ? Number(productForm.normalPrice) : undefined,
+        retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
+        images: productForm.images,
+        requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
+        isRecommended: productForm.isRecommended,
+      };
+
+      await api.put(`/api/products/${editingProduct._id}`, productData);
+      alert('Product updated successfully');
+      setShowProductForm(false);
+      setEditingProduct(null);
+      setProductForm(getFreshProductFormState());
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update product');
+    }
+  };
+
+  const handleToggleRecommended = async (productId: string, currentValue: boolean) => {
+    try {
+      await api.put(`/api/products/${productId}`, {
+        isRecommended: !currentValue
+      });
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update recommendation status');
     }
   };
 
@@ -479,6 +756,10 @@ const AdminDashboard: React.FC = () => {
       typeof analytics.quotes.conversionRate === 'number'
         ? analytics.quotes.conversionRate.toFixed(2)
         : analytics.quotes.conversionRate;
+
+    function formatCurrency(total: number): import("react").ReactNode {
+      throw new Error('Function not implemented.');
+    }
 
     return (
       <div className="space-y-6">
@@ -671,12 +952,18 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-xl font-semibold">Create New Product</h3>
-                <p className="text-sm text-gray-500">Add up to {MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.</p>
+                <h3 className="text-xl font-semibold">
+                  {editingProduct ? 'Edit Product' : 'Create New Product'}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {editingProduct 
+                    ? 'Update product details and pricing.'
+                    : `Add up to ${MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.`}
+                </p>
               </div>
               <Sparkles className="text-indigo-600" />
             </div>
-            <form onSubmit={handleCreateProduct} className="space-y-4">
+            <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
@@ -776,17 +1063,30 @@ const AdminDashboard: React.FC = () => {
                   ))}
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isRecommended"
+                  checked={productForm.isRecommended}
+                  onChange={(e) => setProductForm({ ...productForm, isRecommended: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <label htmlFor="isRecommended" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Mark as Recommended Product
+                </label>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
                   className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
                 >
-                  Create Product
+                  {editingProduct ? 'Update Product' : 'Create Product'}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowProductForm(false);
+                    setEditingProduct(null);
                     setProductForm(getFreshProductFormState());
                     setProductUnitsForm([]);
                   }}
@@ -841,11 +1141,19 @@ const AdminDashboard: React.FC = () => {
                           )}
                           <div>
                             <div className="font-medium text-gray-900">{product.name}</div>
-                            {product.requiresQuote && (
-                              <span className="text-xs text-blue-600 font-medium">
-                                Quote Required
-                              </span>
-                            )}
+                            <div className="flex gap-2 mt-1">
+                              {product.requiresQuote && (
+                                <span className="text-xs text-blue-600 font-medium">
+                                  Quote Required
+                                </span>
+                              )}
+                              {product.isRecommended && (
+                                <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  Recommended
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -861,18 +1169,32 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.stockQuantity > 10
+                            (product.stock || product.stockQuantity || 0) > 10
                               ? 'bg-green-100 text-green-800'
-                              : product.stockQuantity > 0
+                              : (product.stock || product.stockQuantity || 0) > 0
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
-                          {product.stockQuantity}
+                          {product.stock || product.stockQuantity || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => handleToggleRecommended(product._id, product.isRecommended || false)}
+                            className={`${product.isRecommended ? 'text-yellow-600 hover:text-yellow-800' : 'text-gray-400 hover:text-yellow-600'}`}
+                            title="Toggle Recommended"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditProduct(product)}
+                            className="text-indigo-600 hover:text-indigo-800"
+                            title="Edit Product"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => loadProductUnits(product._id)}
                             className="text-blue-600 hover:text-blue-800"
@@ -1618,7 +1940,6 @@ const AdminDashboard: React.FC = () => {
     { id: 'emails', name: 'Email Logs', icon: Mail },
   ];
 
->>>>>>> 85331f04392b7c0a46015c8d63fda4a14b2f115b
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -1699,47 +2020,6 @@ const AdminDashboard: React.FC = () => {
           </div>
         ) : (
           <>
-<<<<<<< HEAD
-            {activeTab === 'dashboard' && (
-              <DashboardOverview analytics={analytics} />
-            )}
-            {activeTab === 'products' && (
-              <ProductManagement
-                products={products}
-                onProductsUpdated={loadProducts}
-              />
-            )}
-            {activeTab === 'users' && (
-              <UserManagement users={users} onUsersUpdated={loadUsers} />
-            )}
-            {activeTab === 'quotes' && (
-              <QuoteManagement quotes={quotes} onQuotesUpdated={loadQuotes} />
-            )}
-            {activeTab === 'orders' && (
-              <OrderManagement orders={orders} onOrdersUpdated={loadOrders} />
-            )}
-            {activeTab === 'warranties' && (
-              <WarrantyManagement
-                warranties={warranties}
-                onWarrantiesUpdated={loadWarranties}
-              />
-            )}
-            {activeTab === 'messages' && (
-              <ContactMessages
-                messages={contacts}
-                onMessagesUpdated={loadContacts}
-              />
-            )}
-            {activeTab === 'emails' && (
-              <EmailLogs
-                emailLogs={emailLogs}
-                onEmailLogsUpdated={loadEmailLogs}
-              />
-            )}
-            {activeTab === 'content' && (
-              <ContentManagement onNavigate={(section) => navigate(`/admin/${section}`)} />
-            )}
-=======
             {activeTab === 'dashboard' && renderDashboard()}
             {activeTab === 'products' && renderProducts()}
             {activeTab === 'users' && renderUsers()}
@@ -1847,8 +2127,173 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'messages' && renderContacts()}
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
->>>>>>> 85331f04392b7c0a46015c8d63fda4a14b2f115b
           </>
+        )}
+
+        {/* Product Units Modal */}
+        {showUnitsModal && selectedProductForUnits && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Product Units</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {selectedProductForUnits.name} - Total Units: {productUnits.length}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUnitsModal(false);
+                      setSelectedProductForUnits(null);
+                      setShowAddUnitsForm(false);
+                      setNewUnits([]);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Add Units Button */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowAddUnitsForm(!showAddUnitsForm)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {showAddUnitsForm ? 'Hide Add Units Form' : 'Add New Units'}
+                  </button>
+                </div>
+
+                {/* Add Units Form */}
+                {showAddUnitsForm && (
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
+                    <div className="space-y-3">
+                      {newUnits.map((unit, idx) => (
+                        <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded">
+                          <input
+                            type="text"
+                            placeholder="Serial Number"
+                            value={unit.serialNumber}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].serialNumber = e.target.value;
+                              setNewUnits(updated);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Model Number"
+                            value={unit.modelNumber}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].modelNumber = e.target.value;
+                              setNewUnits(updated);
+                            }}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Warranty (months)"
+                            value={unit.warrantyPeriod}
+                            onChange={(e) => {
+                              const updated = [...newUnits];
+                              updated[idx].warrantyPeriod = parseInt(e.target.value) || DEFAULT_WARRANTY_MONTHS;
+                              setNewUnits(updated);
+                            }}
+                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => setNewUnits(newUnits.filter((_, i) => i !== idx))}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: DEFAULT_WARRANTY_MONTHS }])}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                      >
+                        + Add Another Unit
+                      </button>
+                      {newUnits.length > 0 && (
+                        <button
+                          onClick={handleAddUnits}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                        >
+                          Save Units
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Units List */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model Number</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {productUnits.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                            No units found. Add units to this product.
+                          </td>
+                        </tr>
+                      ) : (
+                        productUnits.map((unit) => (
+                          <tr key={unit._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                              {unit.serialNumber}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.modelNumber}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  unit.status === 'available'
+                                    ? 'bg-green-100 text-green-800'
+                                    : unit.status === 'sold'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : unit.status === 'reserved'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {unit.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS} months
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {unit.soldTo || '-'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
