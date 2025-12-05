@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import {
   Users,
-  Store,
   DollarSign,
   TrendingUp,
   Package,
@@ -15,8 +14,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  ShoppingCart,
-  FileText
+  ShoppingCart
 } from 'lucide-react';
 
 interface RetailerSummary {
