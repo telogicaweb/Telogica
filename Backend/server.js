@@ -2,12 +2,21 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const {
+  applySecurityMiddleware,
+  apiLimiter,
+  authLimiter,
+  exportLimiter,
+} = require('./middleware/security');
 
 dotenv.config();
 
 connectDB();
 
 const app = express();
+
+// Apply comprehensive security middleware
+applySecurityMiddleware(app);
 
 // CORS Configuration for production
 const corsOptions = {
@@ -44,7 +53,8 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly for all routes
 app.options(/.*/, cors(corsOptions));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -63,6 +73,13 @@ const teamRoutes = require('./routes/teamRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const exportRoutes = require('./routes/exportRoutes');
+
+// Apply rate limiting to routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/export', exportLimiter);
+app.use('/api', apiLimiter); // General API rate limit
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -81,17 +98,73 @@ app.use('/api/team', teamRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/export', exportRoutes);
 
 app.get('/', (req, res) => {
-  res.send('API is running...');
+  res.json({
+    message: 'Telogica E-Commerce API',
+    version: '2.0.0',
+    status: 'running',
+    features: [
+      'Complete E-Commerce',
+      'Warranty Management',
+      'Invoice Generation',
+      'Export Functionality (PDF/CSV/Excel)',
+      'Rate Limiting & Security',
+      'Admin Dashboard',
+      'Retailer Portal',
+    ],
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: 'API endpoint not found' });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  res.status(500).json({ message: err.message || 'Something went wrong!' });
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      message: 'Validation Error',
+      errors: Object.values(err.errors).map(e => e.message),
+    });
+  }
+  
+  if (err.name === 'CastError') {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+  
+  if (err.code === 11000) {
+    return res.status(409).json({ message: 'Duplicate entry. Resource already exists.' });
+  }
+  
+  res.status(err.statusCode || 500).json({
+    message: err.message || 'Something went wrong!',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
 });
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🚀 Telogica E-Commerce Platform                         ║
+║                                                           ║
+║   Server running on port ${PORT}                          ║
+║   Environment: ${process.env.NODE_ENV || 'development'}  ║
+║                                                           ║
+║   ✓ Security middleware active                           ║
+║   ✓ Rate limiting enabled                                ║
+║   ✓ CORS configured                                      ║
+║   ✓ Input validation ready                               ║
+║   ✓ Export functionality available                       ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+  `);
+});
