@@ -54,9 +54,10 @@ const Quote = () => {
       alert('Quote Submitted Successfully! You will receive an email once admin responds.');
       clearQuote();
       clearCart();
-      navigate('/user-dashboard');
+      // Redirect to appropriate dashboard based on user role
+      navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
     } catch (error: any) {
-      console.error(error);
+      console.error('Quote submission error:', error);
       alert(error.response?.data?.message || 'Failed to submit quote');
     }
   };

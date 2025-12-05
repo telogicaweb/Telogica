@@ -73,8 +73,8 @@ const Products = () => {
     }
   };
 
-  const handleAddToCart = (product: Product) => {
-    addToCart(product, 1);
+  const handleAddToCart = (product: Product, useRetailerPrice?: boolean) => {
+    addToCart(product, 1, useRetailerPrice);
     alert('Added to Cart');
   };
 
@@ -275,14 +275,33 @@ const Products = () => {
                     </Link>
                     <div className="grid grid-cols-2 gap-2">
                       {user?.role === 'retailer' ? (
-                        // Retailers must request quote for all purchases
-                        <button 
-                          onClick={() => handleAddToQuote(product)} 
-                          className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Request Quote
-                        </button>
+                        // Retailers can buy with retailer price if available, or request quote
+                        product.retailerPrice ? (
+                          <>
+                            <button 
+                              onClick={() => handleAddToCart(product, true)} 
+                              className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                              Buy Now
+                            </button>
+                            <button 
+                              onClick={() => handleAddToQuote(product)} 
+                              className="flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Bulk Quote
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={() => handleAddToQuote(product)} 
+                            className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Request Quote
+                          </button>
+                        )
                       ) : (
                         <>
                           {product.category.toLowerCase() === 'telecom' && product.price && !product.requiresQuote && (

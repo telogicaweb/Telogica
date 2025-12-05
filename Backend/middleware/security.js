@@ -37,7 +37,7 @@ const apiLimiter = rateLimit({
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  max: 100, // Limit each IP to 100 login attempts per windowMs
   skipSuccessfulRequests: true,
   message: 'Too many login attempts, please try again after 15 minutes.',
   handler: (req, res) => {
@@ -164,27 +164,42 @@ const validateRequestSize = (req, res, next) => {
  * Validate Content-Type for POST/PUT requests
  */
 const validateContentType = (req, res, next) => {
+  // Skip OPTIONS requests (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     const contentType = req.headers['content-type'];
-    
-    if (!contentType) {
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+
+    // Allow requests without body (no content-type and no content)
+    if (contentLength === 0 && !contentType) {
+      return next();
+    }
+
+    // Require Content-Type when there's a body
+    if (!contentType && contentLength > 0) {
       return res.status(400).json({
         message: 'Content-Type header is required.',
       });
     }
 
-    const validTypes = [
-      'application/json',
-      'multipart/form-data',
-      'application/x-www-form-urlencoded',
-    ];
+    // Validate Content-Type if provided
+    if (contentType) {
+      const validTypes = [
+        'application/json',
+        'multipart/form-data',
+        'application/x-www-form-urlencoded',
+      ];
 
-    const isValid = validTypes.some(type => contentType.includes(type));
+      const isValid = validTypes.some(type => contentType.includes(type));
 
-    if (!isValid) {
-      return res.status(415).json({
-        message: 'Unsupported Media Type. Use application/json or multipart/form-data.',
-      });
+      if (!isValid) {
+        return res.status(415).json({
+          message: 'Unsupported Media Type. Use application/json or multipart/form-data.',
+        });
+      }
     }
   }
 
@@ -263,10 +278,10 @@ const strictCorsOptions = {
     const allowedOrigins = process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
       : [
-          // Development defaults only
-          'http://localhost:5173',
-          'http://localhost:3000',
-        ];
+        // Development defaults only
+        'http://localhost:5173',
+        'http://localhost:3000',
+      ];
 
     // Allow requests with no origin (mobile apps, curl, postman) only in development
     if (!origin) {
@@ -331,7 +346,7 @@ module.exports = {
   authLimiter,
   exportLimiter,
   passwordResetLimiter,
-  
+
   // Security middleware
   helmetConfig,
   sanitizeData,
@@ -340,10 +355,10 @@ module.exports = {
   validateContentType,
   securityLogger,
   requestTimeout,
-  
+
   // CORS
   strictCorsOptions,
-  
+
   // Apply all
   applySecurityMiddleware,
 };

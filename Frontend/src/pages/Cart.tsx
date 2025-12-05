@@ -13,7 +13,15 @@ const Cart = () => {
   const [shippingAddress, setShippingAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.product.price || 0) * item.quantity, 0);
+  // Calculate price based on whether retailer price should be used
+  const getItemPrice = (item: typeof cart[0]) => {
+    if (user?.role === 'retailer' && item.useRetailerPrice && item.product.retailerPrice) {
+      return item.product.retailerPrice;
+    }
+    return item.product.price || 0;
+  };
+
+  const subtotal = cart.reduce((acc, item) => acc + getItemPrice(item) * item.quantity, 0);
   const shipping = 0; // Free shipping for now
   const total = subtotal + shipping;
 
@@ -51,11 +59,17 @@ const Cart = () => {
         products: cart.map(item => ({
           product: item.product._id,
           quantity: item.quantity,
-          price: item.product.price || 0 // Ensure price is provided
+          price: getItemPrice(item),
+          useRetailerPrice: item.useRetailerPrice
         })),
         totalAmount: total,
-        shippingAddress
+        shippingAddress,
+        isRetailerDirectPurchase: user?.role === 'retailer'
       });
+
+      if (!data.razorpayOrder || !data.order) {
+        throw new Error('Invalid order response from server');
+      }
 
       // Razorpay Integration
       const options: RazorpayOptions = {
@@ -74,9 +88,11 @@ const Cart = () => {
             });
             alert('Payment Successful!');
             clearCart();
-            navigate('/user-dashboard');
-          } catch {
-            alert('Payment Verification Failed');
+            // Redirect to appropriate dashboard based on user role
+            navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
+          } catch (verifyError) {
+            console.error('Payment verification error:', verifyError);
+            alert('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
           } finally {
             setIsProcessing(false);
           }
@@ -92,19 +108,20 @@ const Cart = () => {
 
       const rzp1 = new window.Razorpay(options);
       rzp1.on('payment.failed', function (response: { error: { description: string } }){
-        alert(response.error.description);
+        alert('Payment failed: ' + response.error.description);
         setIsProcessing(false);
       });
       rzp1.open();
 
     } catch (error: unknown) {
-      console.error(error);
+      console.error('Checkout error:', error);
       const axiosError = error as { response?: { data?: { requiresQuote?: boolean; message?: string } }; message?: string };
       if (axiosError.response?.data?.requiresQuote) {
         alert(axiosError.response.data.message);
         navigate('/quote');
       } else {
-        alert('Checkout Failed: ' + (axiosError.response?.data?.message || axiosError.message));
+        const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Unknown error occurred';
+        alert('Checkout Failed: ' + errorMessage);
       }
       setIsProcessing(false);
     }
@@ -175,9 +192,12 @@ const Cart = () => {
                           <h3>
                             <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
                           </h3>
-                          <p className="ml-4">₹{(item.product.price || 0) * item.quantity}</p>
+                          <p className="ml-4">₹{getItemPrice(item) * item.quantity}</p>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
+                        {item.useRetailerPrice && item.product.retailerPrice && (
+                          <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
+                        )}
                       </div>
                       <div className="flex-1 flex items-end justify-between text-sm">
                         <p className="text-gray-500">Qty {item.quantity}</p>

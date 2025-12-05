@@ -15,10 +15,9 @@ connectDB();
 
 const app = express();
 
-// Apply comprehensive security middleware
-applySecurityMiddleware(app);
-
 // CORS Configuration for production
+// IMPORTANT: CORS must be applied FIRST before any other middleware
+// to ensure CORS headers are set even when errors occur in other middleware
 const corsOptions = {
   origin: function (origin, callback) {
     // If CORS_ORIGINS is set to '*', allow all origins
@@ -28,6 +27,9 @@ const corsOptions = {
 
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
       'https://telogica-p7tf.vercel.app',
       'https://telogica.onrender.com',
       'https://telogica-lac.vercel.app'
@@ -39,22 +41,32 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked request from origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Disposition'],
+  maxAge: 86400, // 24 hours
+  optionsSuccessStatus: 200
 };
 
-// Apply CORS middleware
+// Apply CORS middleware FIRST
 app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly for all routes
 app.options(/.*/, cors(corsOptions));
 
+// Apply comprehensive security middleware AFTER CORS
+
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Apply comprehensive security middleware - Must be after body parsers
+applySecurityMiddleware(app);
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -76,10 +88,10 @@ const contactRoutes = require('./routes/contactRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 
 // Apply rate limiting to routes
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/export', exportLimiter);
-app.use('/api', apiLimiter); // General API rate limit
+// app.use('/api/auth/login', authLimiter);
+// app.use('/api/auth/register', authLimiter);
+// app.use('/api/export', exportLimiter);
+// app.use('/api', apiLimiter); // General API rate limit
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -122,10 +134,15 @@ app.use((req, res) => {
   res.status(404).json({ message: 'API endpoint not found' });
 });
 
-// Error handling middleware
+// Error handling middleware - ensure CORS headers are set on errors
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  
+
+  // Handle CORS errors specifically
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ message: 'CORS policy violation' });
+  }
+
   // Handle specific error types
   if (err.name === 'ValidationError') {
     return res.status(400).json({
@@ -133,15 +150,15 @@ app.use((err, req, res, next) => {
       errors: Object.values(err.errors).map(e => e.message),
     });
   }
-  
+
   if (err.name === 'CastError') {
     return res.status(400).json({ message: 'Invalid ID format' });
   }
-  
+
   if (err.code === 11000) {
     return res.status(409).json({ message: 'Duplicate entry. Resource already exists.' });
   }
-  
+
   res.status(err.statusCode || 500).json({
     message: err.message || 'Something went wrong!',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
