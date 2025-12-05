@@ -32,8 +32,9 @@ const Quote = () => {
       return;
     }
 
-    // Minimum 4 products required for quote
-    if (itemsToQuote.length < 4) {
+    // Minimum 4 products required for quote (for regular users)
+    // Retailers can request quotes for any quantity for bulk pricing
+    if (user.role !== 'retailer' && itemsToQuote.length < 4) {
       alert('Quote requests must have at least 4 products. Please add more items.');
       return;
     }
@@ -50,15 +51,17 @@ const Quote = () => {
       alert('Quote Submitted Successfully! You will receive an email once admin responds.');
       clearQuote();
       clearCart();
-      navigate('/user-dashboard');
+      // Redirect to appropriate dashboard based on user role
+      navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
     } catch (error: any) {
-      console.error(error);
+      console.error('Quote submission error:', error);
       alert(error.response?.data?.message || 'Failed to submit quote');
     }
   };
 
   const displayItems = quoteItems.length > 0 ? quoteItems : cart;
-  const isMinimumMet = displayItems.length >= 4;
+  // Retailers can submit quotes with any number of items
+  const isMinimumMet = user?.role === 'retailer' || displayItems.length >= 4;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
@@ -84,9 +87,11 @@ const Quote = () => {
             </div>
             <div className="ml-3">
               <p className={`text-sm ${isMinimumMet ? 'text-green-700' : 'text-yellow-700'}`}>
-                {isMinimumMet 
-                  ? `✓ You have ${displayItems.length} items. Ready to submit quote request.`
-                  : `You have ${displayItems.length} items. Minimum 4 products required for quote requests. Add ${4 - displayItems.length} more.`}
+                {user?.role === 'retailer' 
+                  ? `✓ You have ${displayItems.length} items. Ready to submit quote request for bulk pricing.`
+                  : isMinimumMet 
+                    ? `✓ You have ${displayItems.length} items. Ready to submit quote request.`
+                    : `You have ${displayItems.length} items. Minimum 4 products required for quote requests. Add ${4 - displayItems.length} more.`}
               </p>
             </div>
           </div>

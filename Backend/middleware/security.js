@@ -164,10 +164,21 @@ const validateRequestSize = (req, res, next) => {
  * Validate Content-Type for POST/PUT requests
  */
 const validateContentType = (req, res, next) => {
+  // Skip OPTIONS requests (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
     const contentType = req.headers['content-type'];
     
-    if (!contentType) {
+    // Allow requests without body
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength === 0 && !contentType) {
+      return next();
+    }
+    
+    if (!contentType && contentLength > 0) {
       return res.status(400).json({
         message: 'Content-Type header is required.',
       });
@@ -179,7 +190,7 @@ const validateContentType = (req, res, next) => {
       'application/x-www-form-urlencoded',
     ];
 
-    const isValid = validTypes.some(type => contentType.includes(type));
+    const isValid = !contentType || validTypes.some(type => contentType.includes(type));
 
     if (!isValid) {
       return res.status(415).json({
