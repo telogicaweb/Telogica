@@ -156,6 +156,9 @@ const RetailerDashboard = () => {
   const [checkoutAddress, setCheckoutAddress] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
+  // Tabs that require data refresh
+  const dataRefreshTabs = ['dashboard', 'quotes', 'orders', 'inventory', 'sales'];
+
   // Auto-refresh data every 30 seconds when on dashboard tab
   useEffect(() => {
     if (!user) {
@@ -170,7 +173,7 @@ const RetailerDashboard = () => {
 
     // Set up auto-refresh every 30 seconds
     const refreshInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && dataRefreshTabs.includes(activeTab)) {
         silentRefresh();
       }
     }, 30000);
@@ -179,9 +182,9 @@ const RetailerDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
-  // Refresh data when tab changes
+  // Refresh data when switching to data-dependent tabs
   useEffect(() => {
-    if (user && user.role === 'retailer') {
+    if (user && user.role === 'retailer' && dataRefreshTabs.includes(activeTab)) {
       silentRefresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -321,8 +324,8 @@ const RetailerDashboard = () => {
       return;
     }
 
-    // Check if Razorpay is loaded
-    if (typeof window.Razorpay === 'undefined') {
+    // Check if Razorpay is loaded and is a constructor function
+    if (typeof window.Razorpay !== 'function') {
       alert('Payment gateway is not loaded. Please refresh the page and try again.');
       return;
     }
@@ -360,7 +363,7 @@ const RetailerDashboard = () => {
         name: "Telogica",
         description: "Retailer Bulk Order",
         order_id: data.razorpayOrder.id,
-        handler: async function (response: any) {
+        handler: async function (response: { razorpay_payment_id: string; razorpay_signature: string }) {
           try {
             await api.post('/api/orders/verify', {
               orderId: data.order._id,
@@ -369,7 +372,7 @@ const RetailerDashboard = () => {
             });
             alert('Payment Successful! Products will be added to your inventory after delivery.');
             silentRefresh();
-          } catch (verifyError: any) {
+          } catch (verifyError) {
             console.error('Payment verification error:', verifyError);
             alert('Payment verification failed. Please contact support with your payment ID: ' + response.razorpay_payment_id);
           }
@@ -392,9 +395,10 @@ const RetailerDashboard = () => {
         setCheckoutLoading(false);
       });
       rzp1.open();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Checkout error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create order';
+      const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Failed to create order';
       alert('Checkout failed: ' + errorMessage);
       setCheckoutLoading(false);
     }
