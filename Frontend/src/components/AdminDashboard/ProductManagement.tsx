@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Search, Trash2, Eye, X, Sparkles } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Search, Trash2, Eye, X, Sparkles, FileDown } from 'lucide-react';
 import api from '../../api';
 import { Product, ProductFormState } from './types';
 
@@ -36,13 +36,28 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const [productUnitsForm, setProductUnitsForm] = useState<
     Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>
   >([]);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const searchTerm = productSearch.trim().toLowerCase();
-  const filteredProducts = products.filter((product) => {
-    if (!searchTerm) return true;
-    const combined = `${product.name} ${product.category}`.toLowerCase();
-    return combined.includes(searchTerm);
-  });
+  const filteredProducts = useMemo(() => {
+    const bySearch = products.filter((product) => {
+      if (!searchTerm) return true;
+      const combined = `${product.name} ${product.category}`.toLowerCase();
+      return combined.includes(searchTerm);
+    });
+
+    // Date range filter against createdAt (fallback to always include if missing)
+    if (!dateFrom && !dateTo) return bySearch;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+    return bySearch.filter((p) => {
+      const created = (p as any).createdAt ? new Date((p as any).createdAt).getTime() : undefined;
+      if (created === undefined) return true; // when date missing, include
+      return created >= fromTime && created <= toTime;
+    });
+  }, [products, searchTerm, dateFrom, dateTo]);
 
   const totalStock = products.reduce(
     (acc, product) => acc + (product.stockQuantity ?? 0) + (product.stock ?? 0),
@@ -57,6 +72,70 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const recommendedCount = filteredProducts.filter(
     (product) => product.requiresQuote === false && (product.isRecommended ?? false)
   ).length;
+
+  const handleExportInventoryPDF = async () => {
+    try {
+      setExporting(true);
+      // Dynamically import to avoid hard dependency issues
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(16);
+      doc.text('Telogica Inventory Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Products: ${filteredProducts.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) {
+        doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+      }
+
+      // Table data
+      const head = [['Name', 'Category', 'Stock', 'Normal Price', 'Retailer Price', 'Quote Required', 'Recommended']];
+      const body = filteredProducts.map((p) => [
+        p.name,
+        p.category,
+        String(p.stockQuantity ?? p.stock ?? 0),
+        p.normalPrice ? `₹${p.normalPrice}` : '-',
+        p.retailerPrice ? `₹${p.retailerPrice}` : '-',
+        p.requiresQuote ? 'Yes' : 'No',
+        (p.isRecommended ?? false) ? 'Yes' : 'No',
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [33, 150, 243] },
+        columnStyles: {
+          0: { cellWidth: 50 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 18, halign: 'right' },
+          3: { cellWidth: 28, halign: 'right' },
+          4: { cellWidth: 30, halign: 'right' },
+          5: { cellWidth: 25 },
+          6: { cellWidth: 25 },
+        },
+      });
+
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`inventory_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,6 +246,22 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               size={16}
             />
           </div>
+          {/* Date range filter */}
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="From Date"
+          />
+          <span className="text-gray-500">to</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="To Date"
+          />
           {productSearch && (
             <button
               onClick={() => setProductSearch('')}
@@ -175,6 +270,15 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               Clear
             </button>
           )}
+          <button
+            onClick={handleExportInventoryPDF}
+            disabled={exporting}
+            className="bg-white border border-gray-300 text-gray-800 px-4 py-2 rounded-full flex items-center gap-2 hover:bg-gray-50 disabled:opacity-50"
+            title="Export filtered inventory as PDF"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? 'Exporting…' : 'Export PDF'}
+          </button>
           <button
             onClick={() => setShowProductForm(!showProductForm)}
             className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:from-blue-600 hover:to-indigo-700"
