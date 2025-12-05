@@ -1805,6 +1805,7 @@ const AdminDashboard: React.FC = () => {
       </div>
     </div>
   );
+};
 
   // Render Orders Tab
   const renderOrders = () => {
@@ -2851,8 +2852,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
