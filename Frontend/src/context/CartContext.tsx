@@ -1,9 +1,10 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
 interface Product {
   _id: string;
   name: string;
   price?: number;
+  retailerPrice?: number;
   images: string[];
   category?: string;
   description?: string;
@@ -12,51 +13,126 @@ interface Product {
 interface CartItem {
   product: Product;
   quantity: number;
+  useRetailerPrice?: boolean;
 }
 
 interface CartContextType {
   cart: CartItem[];
   quoteItems: CartItem[];
-  addToCart: (product: Product, quantity: number) => void;
+  addToCart: (product: Product, quantity: number, useRetailerPrice?: boolean) => void;
   addToQuote: (product: Product, quantity: number) => void;
   removeFromCart: (productId: string) => void;
   removeFromQuote: (productId: string) => void;
   clearCart: () => void;
   clearQuote: () => void;
+  setUserId: (userId: string | null) => void;
 }
 
 export const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Helper to get user-specific storage key
+const getStorageKey = (baseKey: string, userId: string | null) => {
+  return userId ? `${baseKey}_${userId}` : baseKey;
+};
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const [userId, setUserIdState] = useState<string | null>(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        return user._id || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('cart');
+    const key = getStorageKey('cart', userId);
+    const savedCart = localStorage.getItem(key);
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
   const [quoteItems, setQuoteItems] = useState<CartItem[]>(() => {
-    const savedQuote = localStorage.getItem('quoteItems');
+    const key = getStorageKey('quoteItems', userId);
+    const savedQuote = localStorage.getItem(key);
     return savedQuote ? JSON.parse(savedQuote) : [];
   });
 
+  // Listen for user changes in localStorage (login/logout)
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem('user');
+      let newUserId: string | null = null;
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          newUserId = user._id || null;
+        } catch {
+          newUserId = null;
+        }
+      }
+      if (newUserId !== userId) {
+        setUserIdState(newUserId);
+        // Load user-specific cart and quote items
+        const cartKey = getStorageKey('cart', newUserId);
+        const quoteKey = getStorageKey('quoteItems', newUserId);
+        const savedCart = localStorage.getItem(cartKey);
+        const savedQuote = localStorage.getItem(quoteKey);
+        setCart(savedCart ? JSON.parse(savedCart) : []);
+        setQuoteItems(savedQuote ? JSON.parse(savedQuote) : []);
+      }
+    };
+
+    // Check periodically for user changes (handles same-tab changes)
+    const interval = setInterval(handleStorageChange, 500);
+    
+    // Listen for storage changes from other tabs
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [userId]);
+
+  // Update cart when userId changes
+  const setUserId = useCallback((newUserId: string | null) => {
+    if (newUserId !== userId) {
+      setUserIdState(newUserId);
+      // Load user-specific cart and quote items
+      const cartKey = getStorageKey('cart', newUserId);
+      const quoteKey = getStorageKey('quoteItems', newUserId);
+      const savedCart = localStorage.getItem(cartKey);
+      const savedQuote = localStorage.getItem(quoteKey);
+      setCart(savedCart ? JSON.parse(savedCart) : []);
+      setQuoteItems(savedQuote ? JSON.parse(savedQuote) : []);
+    }
+  }, [userId]);
 
   useEffect(() => {
-    localStorage.setItem('quoteItems', JSON.stringify(quoteItems));
-  }, [quoteItems]);
+    const key = getStorageKey('cart', userId);
+    localStorage.setItem(key, JSON.stringify(cart));
+  }, [cart, userId]);
 
-  const addToCart = (product: Product, quantity: number) => {
+  useEffect(() => {
+    const key = getStorageKey('quoteItems', userId);
+    localStorage.setItem(key, JSON.stringify(quoteItems));
+  }, [quoteItems, userId]);
+
+  const addToCart = (product: Product, quantity: number, useRetailerPrice?: boolean) => {
     setCart(prev => {
       const existing = prev.find(item => item.product._id === product._id);
       if (existing) {
         return prev.map(item => 
           item.product._id === product._id 
-            ? { ...item, quantity: item.quantity + quantity } 
+            ? { ...item, quantity: item.quantity + quantity, useRetailerPrice: useRetailerPrice ?? item.useRetailerPrice } 
             : item
         );
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity, useRetailerPrice }];
     });
   };
 
@@ -86,7 +162,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const clearQuote = () => setQuoteItems([]);
 
   return (
-    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, removeFromQuote, clearCart, clearQuote }}>
+    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, removeFromQuote, clearCart, clearQuote, setUserId }}>
       {children}
     </CartContext.Provider>
   );

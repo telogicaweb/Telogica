@@ -2,15 +2,19 @@ import { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { CartContext } from '../context/CartContext';
+import { AuthContext } from '../context/AuthContext';
+import { ShoppingCart, FileText } from 'lucide-react';
 
 interface Product {
   _id: string;
   name: string;
   description: string;
   price?: number;
+  retailerPrice?: number;
   images: string[];
   category: string;
   isRecommended?: boolean;
+  requiresQuote?: boolean;
 }
 
 const ProductDetails = () => {
@@ -20,6 +24,7 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const { addToCart, addToQuote } = useContext(CartContext)!;
+  const { user } = useContext(AuthContext)!;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,17 +59,45 @@ const ProductDetails = () => {
   const displayedImages = product.images?.slice(0, 4) ?? [];
   const selectedImage = activeImage || displayedImages[0] || '';
 
+  const isRetailer = user?.role === 'retailer';
+  const hasRetailerPrice = isRetailer && product.retailerPrice;
+  const isTelecom = product.category?.toLowerCase() === 'telecom';
+
+  const handleAddToCart = (useRetailerPrice: boolean = false) => {
+    addToCart(product, quantity, useRetailerPrice);
+    alert('Added to Cart');
+  };
+
+  const handleAddToQuote = () => {
+    addToQuote(product, quantity);
+    alert('Added to Quote List');
+  };
+
   const handleAction = () => {
-    const isTelecom = product.category.toLowerCase() === 'telecom';
-    const requiresQuote = !isTelecom || quantity > 3 || !product.price;
+    // For retailers with retailer price, add to cart with retailer price
+    if (hasRetailerPrice) {
+      handleAddToCart(true);
+      return;
+    }
+    
+    // For regular users
+    const requiresQuote = !isTelecom || quantity > 3 || !product.price || product.requiresQuote;
 
     if (requiresQuote) {
-      addToQuote(product, quantity);
-      alert('Added to Quote List');
+      handleAddToQuote();
     } else {
-      addToCart(product, quantity);
-      alert('Added to Cart');
+      handleAddToCart(false);
     }
+  };
+
+  const getActionButtonText = () => {
+    if (hasRetailerPrice) {
+      return 'Add to Cart';
+    }
+    if (!product.price || !isTelecom || quantity > 3 || product.requiresQuote) {
+      return 'Add to Quote';
+    }
+    return 'Add to Cart';
   };
 
   return (
@@ -118,10 +151,26 @@ const ProductDetails = () => {
                 <p className="mt-4 text-lg text-gray-500">{product.description}</p>
                 
                 <div className="mt-6">
-                  {product.category.toLowerCase() === 'telecom' && product.price ? (
-                    <p className="text-3xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                  {isRetailer ? (
+                    // Retailer pricing display
+                    hasRetailerPrice ? (
+                      <div>
+                        <p className="text-3xl font-bold text-green-600">₹{product.retailerPrice?.toLocaleString()}</p>
+                        <p className="text-sm text-green-600 mt-1">Special Retailer Price</p>
+                        {product.price && (
+                          <p className="text-sm text-gray-400 line-through">Regular: ₹{product.price.toLocaleString()}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-bold text-blue-600">Request Quote for Pricing</p>
+                    )
                   ) : (
-                    <p className="text-3xl font-bold text-blue-600">Price on Request</p>
+                    // Regular user pricing display
+                    isTelecom && product.price && !product.requiresQuote ? (
+                      <p className="text-3xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                    ) : (
+                      <p className="text-3xl font-bold text-blue-600">Price on Request</p>
+                    )
                   )}
                 </div>
                 
@@ -133,18 +182,32 @@ const ProductDetails = () => {
                       type="number" 
                       min="1" 
                       value={quantity} 
-                      onChange={(e) => setQuantity(parseInt(e.target.value))} 
+                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} 
                       className="mt-1 block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
 
                   <button 
                     onClick={handleAction} 
-                    className="mt-6 w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 md:w-auto"
+                    className="mt-6 w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 md:w-auto gap-2"
                   >
-                    {(!product.price || product.category.toLowerCase() !== 'telecom' || quantity > 3) ? 'Add to Quote' : 'Add to Cart'}
+                    {getActionButtonText() === 'Add to Cart' ? <ShoppingCart size={18} /> : <FileText size={18} />}
+                    {getActionButtonText()}
                   </button>
                 </div>
+
+                {/* Additional options for retailers */}
+                {isRetailer && hasRetailerPrice && (
+                  <div className="mt-4">
+                    <button 
+                      onClick={handleAddToQuote} 
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      <FileText size={14} />
+                      Need bulk order? Request a quote instead
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -168,7 +231,9 @@ const ProductDetails = () => {
                     <h4 className="font-semibold text-gray-800 text-sm truncate">{recProduct.name}</h4>
                     <p className="text-xs text-gray-500 uppercase mt-1">{recProduct.category}</p>
                     <div className="mt-2">
-                      {recProduct.category.toLowerCase() === 'telecom' && recProduct.price ? (
+                      {isRetailer && recProduct.retailerPrice ? (
+                        <span className="text-sm font-bold text-green-600">₹{recProduct.retailerPrice.toLocaleString()}</span>
+                      ) : recProduct.category?.toLowerCase() === 'telecom' && recProduct.price ? (
                         <span className="text-sm font-bold text-gray-900">₹{recProduct.price.toLocaleString()}</span>
                       ) : (
                         <span className="text-xs font-bold text-blue-600">Price on Request</span>

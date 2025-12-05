@@ -13,7 +13,15 @@ const Cart = () => {
   const [shippingAddress, setShippingAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.product.price || 0) * item.quantity, 0);
+  // Calculate price based on whether retailer price should be used
+  const getItemPrice = (item: typeof cart[0]) => {
+    if (user?.role === 'retailer' && item.useRetailerPrice && item.product.retailerPrice) {
+      return item.product.retailerPrice;
+    }
+    return item.product.price || 0;
+  };
+
+  const subtotal = cart.reduce((acc, item) => acc + getItemPrice(item) * item.quantity, 0);
   const shipping = 0; // Free shipping for now
   const total = subtotal + shipping;
 
@@ -51,10 +59,12 @@ const Cart = () => {
         products: cart.map(item => ({
           product: item.product._id,
           quantity: item.quantity,
-          price: item.product.price || 0 // Ensure price is provided
+          price: getItemPrice(item),
+          useRetailerPrice: item.useRetailerPrice
         })),
         totalAmount: total,
-        shippingAddress
+        shippingAddress,
+        isRetailerDirectPurchase: user.role === 'retailer'
       });
 
       // Razorpay Integration
@@ -172,9 +182,12 @@ const Cart = () => {
                           <h3>
                             <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
                           </h3>
-                          <p className="ml-4">₹{(item.product.price || 0) * item.quantity}</p>
+                          <p className="ml-4">₹{getItemPrice(item) * item.quantity}</p>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
+                        {item.useRetailerPrice && item.product.retailerPrice && (
+                          <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
+                        )}
                       </div>
                       <div className="flex-1 flex items-end justify-between text-sm">
                         <p className="text-gray-500">Qty {item.quantity}</p>
