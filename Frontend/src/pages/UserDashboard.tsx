@@ -54,7 +54,7 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/accept`);
+      await api.put(`/api/quotes/${quoteId}/accept`, {});
       alert('Quote accepted! You can now proceed to checkout with this quote.');
       fetchData();
     } catch (error: unknown) {
@@ -71,7 +71,7 @@ const UserDashboard = () => {
 
     setActionLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`, {});
       alert('Quote rejected.');
       fetchData();
     } catch (error: unknown) {

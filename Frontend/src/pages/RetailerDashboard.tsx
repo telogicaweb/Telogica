@@ -115,31 +115,31 @@ const RetailerDashboard = () => {
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
-  
+
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  
+
   // Products
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productCategory, setProductCategory] = useState('');
-  
+
   // Inventory
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryFilter, setInventoryFilter] = useState('all');
-  
+
   // Quotes
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  
+
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
-  
+
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
-  
+
   // Sell modal
   const [showSellModal, setShowSellModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -247,7 +247,7 @@ const RetailerDashboard = () => {
     if (!confirm('Accept this quote?')) return;
     setLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/accept`);
+      await api.put(`/api/quotes/${quoteId}/accept`, {});
       alert('Quote accepted! Proceed to checkout.');
       loadQuotes();
     } catch (error: any) {
@@ -261,7 +261,7 @@ const RetailerDashboard = () => {
     if (!confirm('Reject this quote?')) return;
     setLoading(true);
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`);
+      await api.put(`/api/quotes/${quoteId}/reject`, {});
       alert('Quote rejected.');
       loadQuotes();
     } catch (error: any) {
@@ -283,10 +283,10 @@ const RetailerDashboard = () => {
       alert('Please enter a shipping address');
       return;
     }
-    
+
     setLoading(true);
     setShowCheckoutModal(false);
-    
+
     try {
       const quote = selectedQuote;
       const totalPrice = quote.adminResponse?.totalPrice || 0;
@@ -398,7 +398,7 @@ const RetailerDashboard = () => {
   // Filter products
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          p.description?.toLowerCase().includes(productSearch.toLowerCase());
+      p.description?.toLowerCase().includes(productSearch.toLowerCase());
     const matchesCategory = !productCategory || p.category === productCategory;
     return matchesSearch && matchesCategory;
   });
@@ -783,11 +783,10 @@ const RetailerDashboard = () => {
             <button
               key={filter}
               onClick={() => setInventoryFilter(filter)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                inventoryFilter === filter
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
             </button>
@@ -987,9 +986,9 @@ const RetailerDashboard = () => {
                           <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
                         )}
                         {sale.invoiceUrl && (
-                          <a 
-                            href={sale.invoiceUrl} 
-                            target="_blank" 
+                          <a
+                            href={sale.invoiceUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 text-xs"
                           >
@@ -1053,11 +1052,10 @@ const RetailerDashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <Icon size={18} />
                   {tab.name}
@@ -1092,10 +1090,10 @@ const RetailerDashboard = () => {
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Record Sale</h2>
             <p className="text-gray-600 mb-4">
-              Product: <strong>{selectedItem.product?.name}</strong> | 
+              Product: <strong>{selectedItem.product?.name}</strong> |
               Serial: <strong>{selectedItem.productUnit?.serialNumber}</strong>
             </p>
-            
+
             <form onSubmit={handleSellSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
@@ -1183,7 +1181,7 @@ const RetailerDashboard = () => {
 
               <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Once you record this sale, the warranty will be automatically registered for the customer. 
+                  <strong>Note:</strong> Once you record this sale, the warranty will be automatically registered for the customer.
                   Both you and the customer will receive email notifications.
                 </p>
               </div>
@@ -1214,7 +1212,7 @@ const RetailerDashboard = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Complete Your Order</h2>
-            
+
             <div className="mb-4 bg-indigo-50 p-4 rounded-lg">
               <h3 className="font-semibold text-indigo-900 mb-2">Order Summary</h3>
               <ul className="text-sm text-indigo-800 space-y-1">

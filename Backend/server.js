@@ -53,10 +53,13 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 // Apply comprehensive security middleware AFTER CORS
-applySecurityMiddleware(app);
+
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Apply comprehensive security middleware - Must be after body parsers
+applySecurityMiddleware(app);
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -127,7 +130,7 @@ app.use((req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  
+
   // Handle specific error types
   if (err.name === 'ValidationError') {
     return res.status(400).json({
@@ -135,15 +138,15 @@ app.use((err, req, res, next) => {
       errors: Object.values(err.errors).map(e => e.message),
     });
   }
-  
+
   if (err.name === 'CastError') {
     return res.status(400).json({ message: 'Invalid ID format' });
   }
-  
+
   if (err.code === 11000) {
     return res.status(409).json({ message: 'Duplicate entry. Resource already exists.' });
   }
-  
+
   res.status(err.statusCode || 500).json({
     message: err.message || 'Something went wrong!',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
