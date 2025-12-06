@@ -103,8 +103,8 @@ exports.getRetailerQuotedProducts = async (req, res) => {
   try {
     const { retailerId } = req.params;
 
-    const retailer = await User.findById(retailerId).select('name email phone');
-    if (!retailer || retailer.role === 'admin') {
+    const retailer = await User.findById(retailerId).select('name email phone role');
+    if (!retailer || retailer.role !== 'retailer') {
       return res.status(404).json({ message: 'Retailer not found' });
     }
 
@@ -132,7 +132,8 @@ exports.updateQuotedPrice = async (req, res) => {
     const { id } = req.params;
     const { quotedPrice, notes } = req.body;
 
-    if (!quotedPrice || quotedPrice <= 0) {
+    const parsedPrice = Number(quotedPrice);
+    if (!quotedPrice || isNaN(parsedPrice) || parsedPrice <= 0) {
       return res.status(400).json({ message: 'Valid quoted price is required' });
     }
 

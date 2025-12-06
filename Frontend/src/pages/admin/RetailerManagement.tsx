@@ -924,8 +924,10 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
                                       <button
                                         onClick={() => {
                                           const price = parseFloat(editPrice);
-                                          if (price > 0) {
+                                          if (!isNaN(price) && price > 0) {
                                             updateQuotedPrice(qp._id, price);
+                                          } else {
+                                            alert('Please enter a valid price');
                                           }
                                         }}
                                         className="text-green-600 hover:text-green-800"
