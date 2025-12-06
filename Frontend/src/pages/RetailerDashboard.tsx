@@ -8,20 +8,14 @@ import {
   TrendingUp,
   ShoppingCart,
   FileText,
-  Users,
   BarChart3,
-  Eye,
   Clock,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   ThumbsUp,
   ThumbsDown,
   Plus,
   Download,
   Search,
-  Filter,
-  Calendar,
   Store,
   Tag
 } from 'lucide-react';
@@ -87,6 +81,7 @@ interface Quote {
   status: string;
   adminResponse?: any;
   createdAt: string;
+  orderId?: string;
 }
 
 interface Order {
