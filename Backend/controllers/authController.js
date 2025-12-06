@@ -148,12 +148,12 @@ const getUserProfile = async (req, res) => {
 // @route   GET /api/auth/users
 // @access  Private/Admin
 const getUsers = async (req, res) => {
-    try {
-        const users = await User.find({});
-        res.json(users);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+  try {
+    const users = await User.find({}).lean();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }
 
 const adminCreateUser = async (req, res) => {
@@ -240,7 +240,7 @@ const approveRetailer = async (req, res) => {
     if (user) {
       user.isApproved = true;
       const updatedUser = await user.save();
-      
+
       await sendEmail(
         user.email,
         'Retailer Account Approved - Telogica',

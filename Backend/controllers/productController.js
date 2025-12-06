@@ -44,7 +44,8 @@ const normalizeRecommendationIds = async (ids, currentProductId = null) => {
 // @access  Public
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find({});
+    const limit = parseInt(req.query.limit) || 0; // 0 means no limit
+    const products = await Product.find({}).limit(limit).lean();
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -73,14 +74,14 @@ const getProductById = async (req, res) => {
 // @route   POST /api/products
 // @access  Private/Admin
 const createProduct = async (req, res) => {
-  const { 
-    name, 
-    description, 
-    images, 
-    price, 
+  const {
+    name,
+    description,
+    images,
+    price,
     retailerPrice,
-    category, 
-    stock, 
+    category,
+    stock,
     offlineStock,
     isRecommended,
     specifications,
@@ -132,14 +133,14 @@ const createProduct = async (req, res) => {
 // @route   PUT /api/products/:id
 // @access  Private/Admin
 const updateProduct = async (req, res) => {
-  const { 
-    name, 
-    description, 
-    images, 
-    price, 
+  const {
+    name,
+    description,
+    images,
+    price,
     retailerPrice,
-    category, 
-    stock, 
+    category,
+    stock,
     offlineStock,
     isRecommended,
     specifications,

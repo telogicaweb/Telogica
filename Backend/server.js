@@ -12,6 +12,17 @@ const {
 const { initializeSocket } = require('./services/socketService');
 const logger = require('./services/loggerService');
 
+// Prevent crash on unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
+  console.error(err.name, err.message, err.stack);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.error(err.name, err.message, err.stack);
+});
+
 dotenv.config();
 
 connectDB();

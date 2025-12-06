@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useContext } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { AuthContext } from '../context/AuthContext';
 import {
   Users,
   Package,
@@ -36,7 +37,7 @@ import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
 import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
-import UnitBatchEntry from '../components/AdminDashboard/UnitBatchEntry';
+
 import ProductUnitManager from '../components/AdminDashboard/ProductUnitManager';
 
 interface User {
@@ -96,16 +97,7 @@ const getFreshProductFormState = (): ProductFormState => ({
   recommendedProductIds: [],
 });
 
-interface ProductUnit {
-  _id: string;
-  productId: { _id: string; name: string };
-  serialNumber: string;
-  modelNumber: string;
-  warrantyPeriod: number;
-  status: string;
-  soldTo?: string;
-  soldDate?: Date;
-}
+
 
 interface Quote {
   _id: string;
@@ -260,6 +252,7 @@ const getDefaultAnalytics = (): Analytics => ({
 });
 
 const AdminDashboard: React.FC = () => {
+  const authContext = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -279,7 +272,7 @@ const AdminDashboard: React.FC = () => {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  
+
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
@@ -302,28 +295,7 @@ const AdminDashboard: React.FC = () => {
     return Array.from(cats).sort();
   }, [products]);
 
-  const selectedRecommendationDetails = useMemo(
-    () =>
-      availableRecommendationProducts.filter(product =>
-        productForm.recommendedProductIds.includes(product._id)
-      ),
-    [availableRecommendationProducts, productForm.recommendedProductIds]
-  );
 
-  const handleRecommendationSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = Array.from(event.target.selectedOptions, option => option.value);
-    setProductForm(prev => ({
-      ...prev,
-      recommendedProductIds: selected,
-    }));
-  };
-
-  const handleRemoveRecommendation = (id: string) => {
-    setProductForm(prev => ({
-      ...prev,
-      recommendedProductIds: prev.recommendedProductIds.filter(existingId => existingId !== id),
-    }));
-  };
 
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
@@ -348,18 +320,20 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
+    if (authContext?.loading) {
+      return; // Wait for auth to load
+    }
+    const user = authContext?.user;
     if (!user) {
       navigate('/login');
       return;
     }
-    const userData = JSON.parse(user);
-    if (userData.role !== 'admin') {
+    if (user.role !== 'admin') {
       navigate('/');
       return;
     }
     loadDashboardData();
-  }, [navigate]);
+  }, [authContext?.loading, authContext?.user, navigate]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -389,7 +363,7 @@ const AdminDashboard: React.FC = () => {
       setAnalytics(response.data);
     } catch (error) {
       console.error('Error loading analytics:', error);
-      setAnalytics(getDefaultAnalytics());
+      // Keep existing data on error
     }
   };
 
@@ -399,7 +373,7 @@ const AdminDashboard: React.FC = () => {
       setUsers(response.data);
     } catch (error) {
       console.error('Error loading users:', error);
-      setUsers([]);
+      // Keep existing data on error
     }
   };
 
@@ -409,7 +383,7 @@ const AdminDashboard: React.FC = () => {
       setProducts(response.data);
     } catch (error) {
       console.error('Error loading products:', error);
-      setProducts([]);
+      // Keep existing data on error
     }
   };
 
@@ -433,7 +407,7 @@ const AdminDashboard: React.FC = () => {
       setQuotes(response.data);
     } catch (error) {
       console.error('Error loading quotes:', error);
-      setQuotes([]);
+      // Keep existing data on error
     }
   };
 
@@ -443,7 +417,7 @@ const AdminDashboard: React.FC = () => {
       setOrders(response.data);
     } catch (error) {
       console.error('Error loading orders:', error);
-      setOrders([]);
+      // Keep existing data on error
     }
   };
 
@@ -453,7 +427,7 @@ const AdminDashboard: React.FC = () => {
       setWarranties(response.data);
     } catch (error) {
       console.error('Error loading warranties:', error);
-      setWarranties([]);
+      // Keep existing data on error
     }
   };
 
@@ -463,7 +437,7 @@ const AdminDashboard: React.FC = () => {
       setEmailLogs(response.data);
     } catch (error) {
       console.error('Error loading email logs:', error);
-      setEmailLogs([]);
+      // Keep existing data on error
     }
   };
 
@@ -473,7 +447,7 @@ const AdminDashboard: React.FC = () => {
       setContacts(response.data);
     } catch (error) {
       console.error('Error loading contacts:', error);
-      setContacts([]);
+      // Keep existing data on error
     }
   };
 
@@ -561,8 +535,8 @@ const AdminDashboard: React.FC = () => {
         });
       }
 
-      alert(productUnitsForm.length > 0 
-        ? 'Product created successfully with all units' 
+      alert(productUnitsForm.length > 0
+        ? 'Product created successfully with all units'
         : 'Product created successfully');
       setShowProductForm(false);
       setProductForm(getFreshProductFormState());
@@ -809,62 +783,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const downloadCSV = (data: any[], filename: string) => {
-    if (!data.length) {
-      alert('No data to export');
-      return;
-    }
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => {
-        const cell = row[header] === null || row[header] === undefined ? '' : row[header];
-        return JSON.stringify(cell);
-      }).join(','))
-    ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const exportQuotes = () => {
-    const data = quotes.map(q => ({
-      ID: q._id,
-      User: q.user?.name || q.userId?.name || 'Unknown',
-      Email: q.user?.email || q.userId?.email || 'Unknown',
-      Status: q.status,
-      Date: new Date(q.createdAt || '').toLocaleDateString(),
-      Message: q.message || '',
-      AdminResponse: typeof q.adminResponse === 'string' ? q.adminResponse : q.adminResponse?.message || '',
-      QuotedPrice: q.quotedPrice || q.adminResponse?.totalPrice || 0
-    }));
-    downloadCSV(data, `quotes_export_${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  const exportOrders = () => {
-    const data = orders.map(o => ({
-      OrderNumber: o.orderNumber || o._id,
-      User: o.userId?.name || 'Unknown',
-      Email: o.userId?.email || 'Unknown',
-      Amount: o.totalAmount,
-      PaymentStatus: o.paymentStatus,
-      Date: new Date(o.createdAt).toLocaleDateString(),
-      ItemsCount: o.products.length,
-      ProductsDetails: o.products.map(p =>
-        `${p.productId?.name || 'Unknown'} (Qty: ${p.quantity}) ${p.serialNumbers?.length ? `[SN: ${p.serialNumbers.join(', ')}]` : ''}`
-      ).join('; ')
-    }));
-    downloadCSV(data, `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
-  };
 
   const handleServerExport = async (entity: string, format: 'pdf' | 'csv' | 'excel') => {
     try {
@@ -2572,13 +2491,12 @@ const AdminDashboard: React.FC = () => {
                         onChange={(e) =>
                           handleUpdatePaymentStatus(order._id, e.target.value)
                         }
-                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${
-                          order.paymentStatus === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : order.paymentStatus === 'failed'
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.paymentStatus === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : order.paymentStatus === 'failed'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
-                        }`}
+                          }`}
                       >
                         <option value="pending">Pending</option>
                         <option value="completed">Completed</option>

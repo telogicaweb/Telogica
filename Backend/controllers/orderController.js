@@ -363,7 +363,10 @@ const verifyPayment = async (req, res) => {
 // @access  Private
 const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).populate('products.product');
+    const orders = await Order.find({ user: req.user._id })
+      .populate('products.product')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -375,7 +378,11 @@ const getMyOrders = async (req, res) => {
 // @access  Private/Admin
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({}).populate('user', 'id name').populate('products.product');
+    const orders = await Order.find({})
+      .populate('user', 'id name')
+      .populate('products.product')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -392,7 +399,7 @@ const updateOrderStatus = async (req, res) => {
 
     if (order) {
       const previousStatus = order.orderStatus;
-      
+
       if (status) {
         order.orderStatus = status;
       }

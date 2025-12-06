@@ -9,10 +9,10 @@ const quoteSchema = new mongoose.Schema({
     offeredPrice: { type: Number } // Price offered by admin per unit
   }],
   message: { type: String },
-  status: { 
-    type: String, 
-    enum: ['pending', 'responded', 'accepted', 'rejected', 'completed'], 
-    default: 'pending' 
+  status: {
+    type: String,
+    enum: ['pending', 'responded', 'accepted', 'rejected', 'completed'],
+    default: 'pending'
   },
   adminResponse: {
     totalPrice: { type: Number }, // Total discounted price for all products
@@ -24,5 +24,9 @@ const quoteSchema = new mongoose.Schema({
   rejectionReason: { type: String }, // Reason for rejection (by admin or user)
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' } // Link to order if quote is converted
 }, { timestamps: true });
+
+// Add indexes for performance
+quoteSchema.index({ user: 1, createdAt: -1 });
+quoteSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Quote', quoteSchema);
