@@ -9,6 +9,11 @@ interface Product {
   category?: string;
   description?: string;
   isTelecom?: boolean;
+  maxDirectPurchaseQty?: number;
+  warrantyPeriodMonths?: number;
+  extendedWarrantyAvailable?: boolean;
+  extendedWarrantyMonths?: number;
+  extendedWarrantyPrice?: number;
 }
 
 interface CartItem {

@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
+import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2 } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const Cart = () => {
@@ -12,8 +12,19 @@ const Cart = () => {
   const { user } = useContext(AuthContext)!;
   const toast = useToast();
   const navigate = useNavigate();
-  const [shippingAddress, setShippingAddress] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [warrantyOptions, setWarrantyOptions] = useState<{ [key: string]: 'standard' | 'extended' }>({});
+  
+  // Address form fields
+  const [addressForm, setAddressForm] = useState({
+    fullName: user?.name || '',
+    phone: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
+    landmark: ''
+  });
 
   // Calculate price based on whether retailer price should be used
   const getItemPrice = (item: typeof cart[0]) => {
@@ -23,12 +34,45 @@ const Cart = () => {
     return item.product.price || 0;
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + getItemPrice(item) * item.quantity, 0);
+  // Get warranty price for an item
+  const getWarrantyPrice = (item: typeof cart[0]) => {
+    const warrantyOption = warrantyOptions[item.product._id] || 'standard';
+    if (warrantyOption === 'extended' && item.product.extendedWarrantyAvailable) {
+      return item.product.extendedWarrantyPrice || 0;
+    }
+    return 0;
+  };
+
+  // Calculate item total including warranty
+  const getItemTotal = (item: typeof cart[0]) => {
+    const basePrice = getItemPrice(item) * item.quantity;
+    const warrantyPrice = getWarrantyPrice(item) * item.quantity;
+    return basePrice + warrantyPrice;
+  };
+
+  const subtotal = cart.reduce((acc, item) => acc + getItemTotal(item), 0);
   const shipping = 0; // Free shipping for now
   const total = subtotal + shipping;
 
   // Check if user needs to request a quote (regular user with >3 items)
   const requiresQuote = user?.role === 'user' && cart.length > 3;
+
+  // Validate address form
+  const isAddressValid = () => {
+    return (
+      addressForm.fullName.trim() &&
+      addressForm.phone.trim() &&
+      addressForm.streetAddress.trim() &&
+      addressForm.city.trim() &&
+      addressForm.state.trim() &&
+      addressForm.pincode.trim()
+    );
+  };
+
+  // Format address for backend
+  const formatAddress = () => {
+    return `${addressForm.fullName}, ${addressForm.phone}\n${addressForm.streetAddress}${addressForm.landmark ? ', ' + addressForm.landmark : ''}\n${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`;
+  };
 
   const handleCheckout = async () => {
     if (!user) {
@@ -43,8 +87,23 @@ const Cart = () => {
       return;
     }
 
-    if (!shippingAddress.trim()) {
-      toast.error('Please enter a shipping address');
+    // Check for Telecommunication products exceeding quantity limits (non-retailers only)
+    if (user.role !== 'retailer') {
+      const telecomOverLimit = cart.find(item => {
+        const isTelecom = item.product.isTelecom || item.product.category?.toLowerCase() === 'telecommunication';
+        const maxDirectPurchase = item.product.maxDirectPurchaseQty ?? null;
+        return isTelecom && maxDirectPurchase !== null && item.quantity > maxDirectPurchase;
+      });
+
+      if (telecomOverLimit) {
+        const maxQty = telecomOverLimit.product.maxDirectPurchaseQty;
+        toast.warning(`Telecommunication product "${telecomOverLimit.product.name}" quantity (${telecomOverLimit.quantity}) exceeds the maximum direct purchase limit of ${maxQty}. Please request a quote for bulk orders.`);
+        return;
+      }
+    }
+
+    if (!isAddressValid()) {
+      toast.error('Please fill in all required address fields');
       return;
     }
 
@@ -62,10 +121,12 @@ const Cart = () => {
           product: item.product._id,
           quantity: item.quantity,
           price: getItemPrice(item),
-          useRetailerPrice: item.useRetailerPrice
+          useRetailerPrice: item.useRetailerPrice,
+          warrantyOption: warrantyOptions[item.product._id] || 'standard',
+          warrantyPrice: getWarrantyPrice(item)
         })),
         totalAmount: total,
-        shippingAddress,
+        shippingAddress: formatAddress(),
         isRetailerDirectPurchase: user?.role === 'retailer'
       });
 
@@ -197,12 +258,51 @@ const Cart = () => {
                           <h3>
                             <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
                           </h3>
-                          <p className="ml-4">₹{getItemPrice(item) * item.quantity}</p>
+                          <p className="ml-4">₹{getItemTotal(item).toFixed(2)}</p>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
                         {item.useRetailerPrice && item.product.retailerPrice && (
                           <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
                         )}
+                        
+                        {/* Warranty Selection */}
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-medium text-gray-700">Warranty Option:</p>
+                          <div className="flex flex-col gap-2">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`warranty-${item.product._id}`}
+                                checked={(warrantyOptions[item.product._id] || 'standard') === 'standard'}
+                                onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'standard' }))}
+                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">
+                                Standard - {item.product.warrantyPeriodMonths || 12} months (Free)
+                              </span>
+                            </label>
+                            
+                            {item.product.extendedWarrantyAvailable && (
+                              <label className="flex items-center space-x-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`warranty-${item.product._id}`}
+                                  checked={warrantyOptions[item.product._id] === 'extended'}
+                                  onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'extended' }))}
+                                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  Extended - {item.product.extendedWarrantyMonths || 24} months (+₹{(item.product.extendedWarrantyPrice || 0).toFixed(2)})
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                          {warrantyOptions[item.product._id] === 'extended' && (
+                            <p className="text-xs text-green-600 mt-1">
+                              Extended warranty: +₹{((item.product.extendedWarrantyPrice || 0) * item.quantity).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex-1 flex items-end justify-between text-sm">
                         <p className="text-gray-500">Qty {item.quantity}</p>
@@ -242,19 +342,127 @@ const Cart = () => {
                 </div>
               </dl>
 
-              <div className="mt-6 space-y-3">
-                <div className="mb-4">
-                  <label htmlFor="shippingAddress" className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="mt-6 space-y-4">
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-4 flex items-center">
+                    <MapPin size={18} className="mr-2 text-indigo-600" />
                     Shipping Address
-                  </label>
-                  <textarea
-                    id="shippingAddress"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Enter your full shipping address"
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
-                  />
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {/* Full Name and Phone */}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="fullName" className="block text-xs font-medium text-gray-700 mb-1">
+                          <User size={14} className="inline mr-1" />
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          id="fullName"
+                          required
+                          value={addressForm.fullName}
+                          onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phone" className="block text-xs font-medium text-gray-700 mb-1">
+                          <Phone size={14} className="inline mr-1" />
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          required
+                          value={addressForm.phone}
+                          onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="+91 98765 43210"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Street Address */}
+                    <div>
+                      <label htmlFor="streetAddress" className="block text-xs font-medium text-gray-700 mb-1">
+                        <Building2 size={14} className="inline mr-1" />
+                        Street Address *
+                      </label>
+                      <input
+                        type="text"
+                        id="streetAddress"
+                        required
+                        value={addressForm.streetAddress}
+                        onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        placeholder="House No, Building Name, Street"
+                      />
+                    </div>
+
+                    {/* Landmark */}
+                    <div>
+                      <label htmlFor="landmark" className="block text-xs font-medium text-gray-700 mb-1">
+                        Landmark (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="landmark"
+                        value={addressForm.landmark}
+                        onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        placeholder="Near Park, Behind Mall, etc."
+                      />
+                    </div>
+
+                    {/* City, State, Pincode */}
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      <div>
+                        <label htmlFor="city" className="block text-xs font-medium text-gray-700 mb-1">
+                          City *
+                        </label>
+                        <input
+                          type="text"
+                          id="city"
+                          required
+                          value={addressForm.city}
+                          onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="Mumbai"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="state" className="block text-xs font-medium text-gray-700 mb-1">
+                          State *
+                        </label>
+                        <input
+                          type="text"
+                          id="state"
+                          required
+                          value={addressForm.state}
+                          onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="Maharashtra"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="pincode" className="block text-xs font-medium text-gray-700 mb-1">
+                          Pincode *
+                        </label>
+                        <input
+                          type="text"
+                          id="pincode"
+                          required
+                          value={addressForm.pincode}
+                          onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="400001"
+                          maxLength={6}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {requiresQuote ? (

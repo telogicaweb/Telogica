@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2 } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const UserDashboard = () => {
@@ -18,6 +18,17 @@ const UserDashboard = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'orders' | 'quotes' | 'warranties' | 'invoices'>('orders');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [addressForm, setAddressForm] = useState({
+    fullName: '',
+    phone: '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
+    landmark: ''
+  });
 
   const fetchData = async () => {
     if (!user) return;
@@ -110,27 +121,55 @@ const UserDashboard = () => {
         }
       }
 
-      const totalQty = validItems.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0);
       const totalPrice = quote.adminResponse?.totalPrice || quote.quotedPrice || 0;
 
-      const products = validItems.map((item: { product: { _id: string }; quantity: number }) => ({
-        product: item.product._id, // Changed from productId to product to match backend schema
-        quantity: item.quantity,
-        price: totalQty > 0 ? totalPrice / totalQty : 0
-      }));
+      // Open address modal instead of using prompt
+      setSelectedQuote({ ...quote, products: validItems, totalPrice });
+      setAddressForm({
+        fullName: user?.name || '',
+        phone: '',
+        streetAddress: '',
+        city: '',
+        state: '',
+        pincode: '',
+        landmark: ''
+      });
+      setShowAddressModal(true);
+      setActionLoading(false);
+    } catch (error) {
+      console.error('Error preparing checkout:', error);
+      alert('Failed to prepare checkout. Please try again.');
+      setActionLoading(false);
+    }
+  };
 
-      const shippingAddress = prompt("Please enter your shipping address:", user?.address || "");
-      if (!shippingAddress) {
-        setActionLoading(false);
-        return;
-      }
+  const handleAddressSubmit = async () => {
+    // Validate address
+    if (!addressForm.fullName.trim() || !addressForm.phone.trim() || 
+        !addressForm.streetAddress.trim() || !addressForm.city.trim() || 
+        !addressForm.state.trim() || !addressForm.pincode.trim()) {
+      alert('Please fill in all required address fields');
+      return;
+    }
+
+    const shippingAddress = `${addressForm.fullName}, ${addressForm.phone}\n${addressForm.streetAddress}${addressForm.landmark ? ', ' + addressForm.landmark : ''}\n${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`;
+    
+    setActionLoading(true);
+    try {
+      const products = selectedQuote.products.map((item: { product: { _id: string }; quantity: number }) => ({
+        product: item.product._id,
+        quantity: item.quantity,
+        price: selectedQuote.totalPrice / selectedQuote.products.reduce((sum: number, p: { quantity: number }) => sum + p.quantity, 0)
+      }));
 
       const { data } = await api.post('/api/orders', {
         products,
-        totalAmount: totalPrice,
-        quoteId: quote._id,
+        totalAmount: selectedQuote.totalPrice,
+        quoteId: selectedQuote._id,
         shippingAddress
       });
+
+      setShowAddressModal(false);
 
       // Razorpay Integration
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
@@ -730,6 +769,172 @@ const UserDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Address Modal */}
+      {showAddressModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <MapPin size={24} className="mr-2 text-indigo-600" />
+                Enter Shipping Address
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddressModal(false);
+                  setActionLoading(false);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Full Name and Phone */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="modal-fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                    <User size={16} className="inline mr-1" />
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="modal-fullName"
+                    required
+                    value={addressForm.fullName}
+                    onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="modal-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <Phone size={16} className="inline mr-1" />
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    id="modal-phone"
+                    required
+                    value={addressForm.phone}
+                    onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+              </div>
+
+              {/* Street Address */}
+              <div>
+                <label htmlFor="modal-streetAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                  <Building2 size={16} className="inline mr-1" />
+                  Street Address *
+                </label>
+                <input
+                  type="text"
+                  id="modal-streetAddress"
+                  required
+                  value={addressForm.streetAddress}
+                  onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="House No, Building Name, Street"
+                />
+              </div>
+
+              {/* Landmark */}
+              <div>
+                <label htmlFor="modal-landmark" className="block text-sm font-medium text-gray-700 mb-1">
+                  Landmark (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="modal-landmark"
+                  value={addressForm.landmark}
+                  onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Near Park, Behind Mall, etc."
+                />
+              </div>
+
+              {/* City, State, Pincode */}
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="modal-city" className="block text-sm font-medium text-gray-700 mb-1">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    id="modal-city"
+                    required
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Mumbai"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="modal-state" className="block text-sm font-medium text-gray-700 mb-1">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    id="modal-state"
+                    required
+                    value={addressForm.state}
+                    onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Maharashtra"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="modal-pincode" className="block text-sm font-medium text-gray-700 mb-1">
+                    Pincode *
+                  </label>
+                  <input
+                    type="text"
+                    id="modal-pincode"
+                    required
+                    value={addressForm.pincode}
+                    onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="400001"
+                    maxLength={6}
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleAddressSubmit}
+                  disabled={actionLoading}
+                  className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed font-medium flex items-center justify-center"
+                >
+                  {actionLoading ? (
+                    <>
+                      <Loader2 size={18} className="mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Proceed to Payment'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddressModal(false);
+                    setActionLoading(false);
+                  }}
+                  disabled={actionLoading}
+                  className="px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

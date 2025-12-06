@@ -7,8 +7,13 @@ const orderSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     price: { type: Number, required: true }, // Price at time of purchase
     serialNumbers: [{ type: String }], // Assigned serial numbers
-    extendedWarranty: { type: Boolean, default: false }, // Whether extended warranty was purchased
-    warrantyMonths: { type: Number, default: 12 } // Warranty period for this product
+    warrantyOption: { 
+      type: String, 
+      enum: ['standard', 'extended'], 
+      default: 'standard' 
+    }, // Warranty option chosen by user
+    warrantyMonths: { type: Number, default: 12 }, // Actual warranty period (12 or extended)
+    warrantyPrice: { type: Number, default: 0 } // Additional price paid for extended warranty
   }],
   totalAmount: { type: Number, required: true },
   shippingAddress: { type: String, required: true },

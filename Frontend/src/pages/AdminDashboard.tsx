@@ -67,6 +67,10 @@ interface Product {
   requiresQuote: boolean;
   isRecommended?: boolean;
   recommendedProductIds?: Array<string | { _id: string }>;
+  warrantyPeriodMonths?: number;
+  extendedWarrantyAvailable?: boolean;
+  extendedWarrantyMonths?: number;
+  extendedWarrantyPrice?: number;
 }
 
 interface ProductFormState {
@@ -77,6 +81,9 @@ interface ProductFormState {
   retailerPrice: string;
   quantity: number;
   warrantyPeriodMonths: number;
+  extendedWarrantyAvailable: boolean;
+  extendedWarrantyMonths: number;
+  extendedWarrantyPrice: string;
   isRecommended: boolean;
   requiresQuote: boolean;
   manualImageUrl: string;
@@ -94,6 +101,9 @@ const getFreshProductFormState = (): ProductFormState => ({
   retailerPrice: '',
   quantity: 1,
   warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
+  extendedWarrantyAvailable: true,
+  extendedWarrantyMonths: 24,
+  extendedWarrantyPrice: '',
   isRecommended: false,
   requiresQuote: false,
   manualImageUrl: '',
@@ -543,6 +553,9 @@ const AdminDashboard: React.FC = () => {
         offlineStock: 0,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
         warrantyPeriodMonths: productForm.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
+        extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
+        extendedWarrantyMonths: productForm.extendedWarrantyMonths || 24,
+        extendedWarrantyPrice: productForm.extendedWarrantyPrice ? Number(productForm.extendedWarrantyPrice) : 0,
         isRecommended: productForm.isRecommended || false,
         recommendedProductIds: recommendations,
       };
@@ -595,7 +608,10 @@ const AdminDashboard: React.FC = () => {
       normalPrice: product.normalPrice?.toString() || '',
       retailerPrice: product.retailerPrice?.toString() || '',
       quantity: 0, // Quantity is managed separately via product units
-      warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
+      warrantyPeriodMonths: product.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
+      extendedWarrantyAvailable: product.extendedWarrantyAvailable !== false,
+      extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
+      extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
       isRecommended: product.isRecommended || false,
       requiresQuote: product.requiresQuote,
       manualImageUrl: '',
@@ -633,6 +649,10 @@ const AdminDashboard: React.FC = () => {
         retailerPrice: productForm.retailerPrice ? Number(productForm.retailerPrice) : undefined,
         images: productForm.images,
         requiresQuote: productForm.requiresQuote || !productForm.normalPrice,
+        warrantyPeriodMonths: productForm.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
+        extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
+        extendedWarrantyMonths: productForm.extendedWarrantyMonths || 24,
+        extendedWarrantyPrice: productForm.extendedWarrantyPrice ? Number(productForm.extendedWarrantyPrice) : 0,
         isRecommended: productForm.isRecommended,
         recommendedProductIds: recommendations,
       };
@@ -1512,6 +1532,73 @@ const AdminDashboard: React.FC = () => {
                   onChange={(ids) => setProductForm({ ...productForm, recommendedProductIds: ids })}
                 />
               </div>
+              
+              {/* Warranty Configuration */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Warranty Options</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Standard Warranty (months) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={productForm.warrantyPeriodMonths}
+                      onChange={(e) => setProductForm({ ...productForm, warrantyPeriodMonths: parseInt(e.target.value) || 12 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="12"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Free warranty period (default: 12 months)</p>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={productForm.extendedWarrantyAvailable}
+                        onChange={(e) => setProductForm({ ...productForm, extendedWarrantyAvailable: e.target.checked })}
+                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Offer Extended Warranty</span>
+                    </label>
+                  </div>
+                </div>
+                
+                {productForm.extendedWarrantyAvailable && (
+                  <div className="grid md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Extended Warranty (months) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={productForm.extendedWarrantyMonths}
+                        onChange={(e) => setProductForm({ ...productForm, extendedWarrantyMonths: parseInt(e.target.value) || 24 })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="24"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Extended warranty period (default: 24 months)</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Extended Warranty Price (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={productForm.extendedWarrantyPrice}
+                        onChange={(e) => setProductForm({ ...productForm, extendedWarrantyPrice: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter additional price"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Additional cost for extended warranty</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"

@@ -151,14 +151,14 @@ const Home = () => {
                           <p className="text-lg font-semibold text-blue-600">Request Quote</p>
                         )
                       ) : (
-                        // Regular user pricing - Only show price for TELECOM products
-                        product.category.toLowerCase() === 'telecom' && product.price ? (
+                        // Regular user pricing - Only show price for Telecommunication products without quote requirement
+                        (product.isTelecom || product.category?.toLowerCase() === 'telecommunication') && product.price && !product.requiresQuote ? (
                           <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
                             <span className="text-sm text-gray-500">+ GST</span>
                           </div>
                         ) : (
-                          <p className="text-lg font-semibold text-blue-600">Price on Request</p>
+                          <p className="text-lg font-semibold text-blue-600">Request Quote</p>
                         )
                       )}
                     </div>

@@ -22,6 +22,7 @@ interface RecommendedProductSummary {
 interface Product extends RecommendedProductSummary {
   description?: string;
   recommendedProductIds?: Array<string | RecommendedProductSummary>;
+  maxDirectPurchaseQty?: number;
 }
 
 const ProductDetails = () => {
@@ -115,9 +116,17 @@ const ProductDetails = () => {
 
   const isRetailer = user?.role === 'retailer';
   const hasRetailerPrice = isRetailer && product.retailerPrice;
-  const isTelecom = product.category?.toLowerCase() === 'telecom';
+  const isTelecom = product.isTelecom || product.category?.toLowerCase() === 'telecommunication';
+  const maxDirectPurchase = product.maxDirectPurchaseQty ?? null;
 
   const handleAddToCart = (useRetailerPrice: boolean = false) => {
+    // Check quantity limits for Telecommunication products (non-retailers)
+    if (isTelecom && !isRetailer && maxDirectPurchase !== null) {
+      if (quantity > maxDirectPurchase) {
+        alert(`You can buy maximum ${maxDirectPurchase} Telecommunication products directly. For ${maxDirectPurchase + 1} or more, please request a quote for bulk discount.`);
+        return;
+      }
+    }
     addToCart(product, quantity, useRetailerPrice);
     alert('Added to Cart');
   };
@@ -125,38 +134,6 @@ const ProductDetails = () => {
   const handleAddToQuote = () => {
     addToQuote(product, quantity);
     alert('Added to Quote List');
-  };
-
-  const handleAction = () => {
-    // For retailers with retailer price, add to cart with retailer price
-    if (hasRetailerPrice) {
-      handleAddToCart(true);
-      return;
-    }
-
-    // For regular users
-    const requiresQuote = !isTelecom || !product.price || product.requiresQuote;
-
-    if (requiresQuote) {
-      handleAddToQuote();
-    } else {
-      // Enforce minimum quantity for Telecom
-      if (isTelecom && quantity < 3) {
-        alert('Telecom products require a minimum quantity of 3.');
-        return;
-      }
-      handleAddToCart(false);
-    }
-  };
-
-  const getActionButtonText = () => {
-    if (hasRetailerPrice) {
-      return 'Add to Cart';
-    }
-    if (!product.price || !isTelecom || product.requiresQuote) {
-      return 'Add to Quote';
-    }
-    return 'Add to Cart';
   };
 
   return (
@@ -225,51 +202,107 @@ const ProductDetails = () => {
                     )
                   ) : (
                     // Regular user pricing display
+                    // Only show price for Telecommunication products without quote requirement
                     isTelecom && product.price && !product.requiresQuote ? (
-                      <p className="text-3xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                        <p className="text-sm text-green-600 mt-1">Available for Direct Purchase</p>
+                      </div>
                     ) : (
-                      <p className="text-3xl font-bold text-blue-600">Price on Request</p>
+                      <div>
+                        <p className="text-3xl font-bold text-blue-600">Request Quote</p>
+                        {!isTelecom && (
+                          <p className="text-sm text-gray-600 mt-1">Pricing available on quote request</p>
+                        )}
+                      </div>
                     )
                   )}
                 </div>
 
-                <div className="mt-8 flex items-center gap-4">
-                  <div>
-                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
-                    <input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => {
-                        const parsed = parseInt(e.target.value);
-                        setQuantity(isNaN(parsed) || parsed < 1 ? 1 : parsed);
-                      }}
-                      className="mt-1 block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
+                <div className="mt-8">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
+                      <input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value);
+                          setQuantity(isNaN(parsed) || parsed < 1 ? 1 : parsed);
+                        }}
+                        className="mt-1 block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      />
+                      {isTelecom && !isRetailer && maxDirectPurchase !== null && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {quantity > maxDirectPurchase 
+                            ? `${maxDirectPurchase + 1}+ requires quote` 
+                            : `Max ${maxDirectPurchase} for direct purchase`}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <button
-                    onClick={handleAction}
-                    className="mt-6 w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 md:w-auto gap-2"
-                  >
-                    {getActionButtonText() === 'Add to Cart' ? <ShoppingCart size={18} /> : <FileText size={18} />}
-                    {getActionButtonText()}
-                  </button>
-                </div>
-
-                {/* Additional options for retailers */}
-                {isRetailer && hasRetailerPrice && (
-                  <div className="mt-4">
+                  {/* Action buttons based on product type and user role */}
+                  {isRetailer && hasRetailerPrice ? (
+                    // Retailer with special pricing
+                    <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => handleAddToCart(true)}
+                        className="flex-1 bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 gap-2"
+                      >
+                        <ShoppingCart size={18} />
+                        Add to Cart
+                      </button>
+                      <button
+                        onClick={handleAddToQuote}
+                        className="flex-1 bg-white border border-indigo-600 rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 gap-2"
+                      >
+                        <FileText size={18} />
+                        Request Quote
+                      </button>
+                    </div>
+                  ) : isTelecom && product.price && !product.requiresQuote ? (
+                    // Telecommunication products - show both options
+                    <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => {
+                          if (maxDirectPurchase !== null && quantity > maxDirectPurchase) {
+                            alert(`You can buy maximum ${maxDirectPurchase} Telecommunication products directly. For ${maxDirectPurchase + 1} or more, please request a quote for bulk discount.`);
+                            return;
+                          }
+                          handleAddToCart(false);
+                        }}
+                        disabled={maxDirectPurchase !== null && quantity > maxDirectPurchase}
+                        className={`flex-1 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 gap-2 ${
+                          maxDirectPurchase !== null && quantity > maxDirectPurchase
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
+                      >
+                        <ShoppingCart size={18} />
+                        Buy Now
+                      </button>
+                      <button
+                        onClick={handleAddToQuote}
+                        className="flex-1 bg-white border border-indigo-600 rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 gap-2"
+                      >
+                        <FileText size={18} />
+                        Request Quote
+                      </button>
+                    </div>
+                  ) : (
+                    // Non-Telecommunication products - quote only
                     <button
                       onClick={handleAddToQuote}
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                      className="mt-6 w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 gap-2"
                     >
-                      <FileText size={14} />
-                      Need bulk order? Request a quote instead
+                      <FileText size={18} />
+                      Request Quote
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -282,8 +315,8 @@ const ProductDetails = () => {
             <div className="space-y-4 max-h-[calc(100vh-150px)] overflow-y-auto pr-2">
               {recommendedProducts.map((recProduct) => {
                 const thumbnail = recProduct.images.length ? recProduct.images[0] : FALLBACK_PRODUCT_IMAGE;
-                const isTelecom = recProduct.category?.toLowerCase() === 'telecom';
-                const canShowPrice = isTelecom && typeof recProduct.price === 'number' && !recProduct.requiresQuote;
+                const recIsTelecom = recProduct.isTelecom || recProduct.category?.toLowerCase() === 'telecommunication';
+                const canShowPrice = recIsTelecom && typeof recProduct.price === 'number' && !recProduct.requiresQuote;
 
                 return (
                   <Link to={`/product/${recProduct._id}`} key={recProduct._id} className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden">

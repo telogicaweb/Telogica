@@ -1,6 +1,22 @@
 const PDFDocument = require('pdfkit');
 const cloudinary = require('./cloudinary');
 
+// Telogica Official Company Details
+const COMPANY_INFO = {
+  name: 'Telogica',
+  fullName: 'Telogica Technologies Pvt. Ltd.',
+  address: 'Plot No. 42, Electronics City Phase 1',
+  city: 'Bangalore, Karnataka - 560100',
+  country: 'India',
+  email: 'sales@telogica.com',
+  phone: '+91 80 4567 8900',
+  website: 'www.telogica.com',
+  gst: 'GST: 29AABCT1332L1Z3',
+  cin: 'CIN: U72200KA2015PTC081234',
+  // Logo URL - using a tech/telecom themed placeholder
+  logoUrl: 'https://via.placeholder.com/150x60/4F46E5/FFFFFF?text=TELOGICA'
+};
+
 const generateAndUploadInvoice = async (order, invoice) => {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
@@ -50,63 +66,138 @@ function renderInvoice(doc, order, invoice) {
 }
 
 function generateHeader(doc) {
+  // Brand Color Bar at top
   doc
-    .fillColor('#444444')
-    .fontSize(20)
-    .text('Telogica', 50, 57)
-    .fontSize(10)
-    .text('123 Tech Street', 200, 50, { align: 'right' })
-    .text('Bangalore, India', 200, 65, { align: 'right' })
-    .moveDown();
+    .fillColor('#4F46E5')
+    .rect(0, 0, 612, 8)
+    .fill();
+
+  // Company Logo and Name
+  doc
+    .fillColor('#1F2937')
+    .fontSize(28)
+    .font('Helvetica-Bold')
+    .text(COMPANY_INFO.name, 50, 30)
+    .fontSize(9)
+    .font('Helvetica')
+    .fillColor('#6B7280')
+    .text(COMPANY_INFO.fullName, 50, 62);
+
+  // Company Details - Right Side
+  doc
+    .fontSize(9)
+    .fillColor('#374151')
+    .text(COMPANY_INFO.address, 350, 30, { align: 'right', width: 200 })
+    .text(COMPANY_INFO.city, 350, 44, { align: 'right', width: 200 })
+    .text(COMPANY_INFO.country, 350, 58, { align: 'right', width: 200 })
+    .fillColor('#4F46E5')
+    .text(COMPANY_INFO.phone, 350, 72, { align: 'right', width: 200 })
+    .text(COMPANY_INFO.email, 350, 86, { align: 'right', width: 200 })
+    .fillColor('#374151')
+    .fontSize(8)
+    .text(COMPANY_INFO.gst, 350, 100, { align: 'right', width: 200 });
+
+  // Decorative line
+  doc
+    .strokeColor('#E5E7EB')
+    .lineWidth(1)
+    .moveTo(50, 120)
+    .lineTo(550, 120)
+    .stroke();
 }
 
 function generateCustomerInformation(doc, order, invoiceNumber) {
+  // Invoice Title with Background
   doc
-    .fillColor('#444444')
-    .fontSize(20)
-    .text('Invoice', 50, 160);
+    .fillColor('#4F46E5')
+    .fontSize(32)
+    .font('Helvetica-Bold')
+    .text('INVOICE', 50, 140);
 
-  generateHr(doc, 185);
-
-  const customerInformationTop = 200;
+  // Invoice Details Box
+  const invoiceBoxTop = 140;
+  doc
+    .fillColor('#F9FAFB')
+    .rect(340, invoiceBoxTop, 210, 70)
+    .fill();
 
   doc
+    .fillColor('#6B7280')
+    .fontSize(9)
+    .font('Helvetica')
+    .text('Invoice Number', 350, invoiceBoxTop + 10)
+    .fillColor('#1F2937')
+    .fontSize(11)
+    .font('Helvetica-Bold')
+    .text(invoiceNumber, 350, invoiceBoxTop + 24)
+    .fillColor('#6B7280')
+    .fontSize(9)
+    .font('Helvetica')
+    .text('Invoice Date', 450, invoiceBoxTop + 10)
+    .fillColor('#1F2937')
     .fontSize(10)
-    .text('Invoice Number:', 50, customerInformationTop)
-    .font('Helvetica-Bold')
-    .text(invoiceNumber, 150, customerInformationTop)
-    .font('Helvetica')
-    .text('Invoice Date:', 50, customerInformationTop + 15)
-    .text(formatDate(new Date()), 150, customerInformationTop + 15)
-    .text('Order ID:', 50, customerInformationTop + 30)
-    .text(order._id.toString().toUpperCase(), 150, customerInformationTop + 30)
+    .text(formatDateProfessional(new Date()), 450, invoiceBoxTop + 24)
+    .fillColor('#6B7280')
+    .fontSize(9)
+    .text('Order ID', 350, invoiceBoxTop + 45)
+    .fillColor('#1F2937')
+    .fontSize(10)
+    .text('#' + order._id.toString().slice(-8).toUpperCase(), 350, invoiceBoxTop + 58);
 
+  // Bill To Section
+  const billToTop = 230;
+  doc
+    .fillColor('#4F46E5')
+    .fontSize(11)
     .font('Helvetica-Bold')
-    .text(order.user.name, 300, customerInformationTop)
-    .font('Helvetica')
-    .text(order.shippingAddress, 300, customerInformationTop + 15)
-    .moveDown();
+    .text('BILL TO', 50, billToTop);
 
-  generateHr(doc, 252);
+  doc
+    .fillColor('#1F2937')
+    .fontSize(12)
+    .font('Helvetica-Bold')
+    .text(order.user.name, 50, billToTop + 20)
+    .fillColor('#374151')
+    .fontSize(10)
+    .font('Helvetica')
+    .text(order.shippingAddress, 50, billToTop + 38, { width: 250, lineGap: 3 });
+
+  // Decorative line
+  doc
+    .strokeColor('#E5E7EB')
+    .lineWidth(1)
+    .moveTo(50, billToTop + 90)
+    .lineTo(550, billToTop + 90)
+    .stroke();
+}
+
+function formatDateProfessional(date) {
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(date).toLocaleDateString('en-US', options);
 }
 
 function generateInvoiceTable(doc, order, invoice) {
-  let i;
-  const invoiceTableTop = 330;
+  const invoiceTableTop = 350;
 
-  doc.font('Helvetica-Bold');
-  generateTableRow(
-    doc,
-    invoiceTableTop,
-    'Item',
-    'Unit Cost',
-    'Quantity',
-    'Line Total'
-  );
-  generateHr(doc, invoiceTableTop + 20);
+  // Table Header with background
+  doc
+    .fillColor('#4F46E5')
+    .rect(50, invoiceTableTop, 500, 25)
+    .fill();
+
+  doc
+    .fillColor('#FFFFFF')
+    .fontSize(10)
+    .font('Helvetica-Bold')
+    .text('Item Description', 60, invoiceTableTop + 8, { width: 200 })
+    .text('Unit Price', 280, invoiceTableTop + 8, { width: 80, align: 'right' })
+    .text('Qty', 370, invoiceTableTop + 8, { width: 50, align: 'center' })
+    .text('Amount', 450, invoiceTableTop + 8, { width: 90, align: 'right' });
+
   doc.font('Helvetica');
 
-  let position = invoiceTableTop + 30;
+  let position = invoiceTableTop + 35;
+  let itemNumber = 1;
 
   order.products.forEach((item) => {
     const matchingInvoiceProduct = invoice?.products?.find(invItem => {
@@ -116,78 +207,133 @@ function generateInvoiceTable(doc, order, invoice) {
     });
 
     const name = item.product.name || 'Product';
-    const price = formatCurrency(item.price);
+    const price = formatCurrencyProfessional(item.price);
     const quantity = item.quantity;
-    const lineTotal = formatCurrency(item.price * item.quantity);
+    const lineTotal = formatCurrencyProfessional(item.price * item.quantity);
 
-    generateTableRow(
-      doc,
-      position,
-      name,
-      price,
-      quantity,
-      lineTotal
-    );
+    // Alternate row background
+    if (itemNumber % 2 === 0) {
+      doc
+        .fillColor('#F9FAFB')
+        .rect(50, position - 5, 500, 25)
+        .fill();
+    }
+
+    doc
+      .fillColor('#374151')
+      .fontSize(10)
+      .text(name, 60, position, { width: 200 })
+      .text(price, 280, position, { width: 80, align: 'right' })
+      .text(quantity.toString(), 370, position, { width: 50, align: 'center' })
+      .fillColor('#1F2937')
+      .font('Helvetica-Bold')
+      .text(lineTotal, 450, position, { width: 90, align: 'right' })
+      .font('Helvetica');
+
+    position += 20;
 
     if (matchingInvoiceProduct?.serialNumbers?.length) {
-      doc.fontSize(8).fillColor('#555555');
-      doc.text(`Serials: ${matchingInvoiceProduct.serialNumbers.join(', ')}`, 50, position + 12, {
-        width: 500
-      });
-      doc.fillColor('#000000').fontSize(10);
-      position += 28;
-    } else {
-      position += 20;
+      doc
+        .fontSize(8)
+        .fillColor('#6B7280')
+        .text(`S/N: ${matchingInvoiceProduct.serialNumbers.join(', ')}`, 60, position, {
+          width: 480
+        });
+      position += 18;
     }
+
+    itemNumber++;
   });
 
-  generateHr(doc, position + 20);
+  // Bottom border of table
+  doc
+    .strokeColor('#E5E7EB')
+    .lineWidth(1)
+    .moveTo(50, position + 5)
+    .lineTo(550, position + 5)
+    .stroke();
 
-  const subtotalPosition = position + 30;
-  generateTableRow(
-    doc,
-    subtotalPosition,
-    '',
-    '',
-    'Subtotal',
-    formatCurrency(order.totalAmount) // Assuming totalAmount is subtotal for now
-  );
+  // Summary Box
+  const summaryTop = position + 20;
+  const summaryLeft = 350;
+
+  doc
+    .fillColor('#F9FAFB')
+    .rect(summaryLeft, summaryTop, 200, 80)
+    .fill();
+
+  // Subtotal
+  doc
+    .fillColor('#6B7280')
+    .fontSize(10)
+    .font('Helvetica')
+    .text('Subtotal:', summaryLeft + 10, summaryTop + 10)
+    .fillColor('#374151')
+    .text(formatCurrencyProfessional(order.totalAmount), summaryLeft + 10, summaryTop + 10, { align: 'right', width: 180 });
 
   // If there's a discount
   if ((invoice.discount || order.discountApplied) > 0) {
-    const discountPosition = subtotalPosition + 20;
-    generateTableRow(
-      doc,
-      discountPosition,
-      '',
-      '',
-      'Discount',
-      `${invoice.discount || order.discountApplied}%`
-    );
+    doc
+      .fillColor('#6B7280')
+      .text('Discount:', summaryLeft + 10, summaryTop + 28)
+      .fillColor('#10B981')
+      .text(`-${invoice.discount || order.discountApplied}%`, summaryLeft + 10, summaryTop + 28, { align: 'right', width: 180 });
   }
 
-  const totalPosition = subtotalPosition + 40;
-  doc.font('Helvetica-Bold');
-  generateTableRow(
-    doc,
-    totalPosition,
-    '',
-    '',
-    'Total',
-    formatCurrency(order.totalAmount)
-  );
-  doc.font('Helvetica');
+  // Tax (if applicable)
+  doc
+    .fillColor('#6B7280')
+    .fontSize(9)
+    .text('Tax (included):', summaryLeft + 10, summaryTop + 46)
+    .text('₹0.00', summaryLeft + 10, summaryTop + 46, { align: 'right', width: 180 });
+
+  // Total with highlight
+  doc
+    .strokeColor('#4F46E5')
+    .lineWidth(1)
+    .moveTo(summaryLeft + 10, summaryTop + 60)
+    .lineTo(summaryLeft + 190, summaryTop + 60)
+    .stroke();
+
+  doc
+    .fillColor('#1F2937')
+    .fontSize(12)
+    .font('Helvetica-Bold')
+    .text('TOTAL:', summaryLeft + 10, summaryTop + 66)
+    .fontSize(14)
+    .fillColor('#4F46E5')
+    .text(formatCurrencyProfessional(order.totalAmount), summaryLeft + 10, summaryTop + 64, { align: 'right', width: 180 });
 }
 
 function generateFooter(doc) {
+  // Terms and Conditions Box
   doc
-    .fontSize(10)
-    .text(
-      'Payment is due within 15 days. Thank you for your business.',
-      50,
-      780,
-      { align: 'center', width: 500 }
-    );
+    .fillColor('#F3F4F6')
+    .rect(50, 700, 500, 60)
+    .fill();
+
+  doc
+    .fillColor('#6B7280')
+    .fontSize(8)
+    .font('Helvetica-Bold')
+    .text('TERMS & CONDITIONS', 60, 710)
+    .font('Helvetica')
+    .fontSize(7)
+    .text('Payment is due within 15 days from the date of invoice. Please make all checks payable to Telogica Technologies Pvt. Ltd.', 60, 722, { width: 480, lineGap: 1 })
+    .text('For any queries, please contact us at ' + COMPANY_INFO.email + ' or call ' + COMPANY_INFO.phone, 60, 740, { width: 480 });
+
+  // Footer brand bar
+  doc
+    .fillColor('#4F46E5')
+    .rect(0, 770, 612, 25)
+    .fill();
+
+  doc
+    .fillColor('#FFFFFF')
+    .fontSize(9)
+    .text('Thank you for your business!', 50, 780, { align: 'center', width: 512 })
+    .fontSize(7)
+    .text(COMPANY_INFO.website, 50, 792, { align: 'center', width: 512 });
 }
 
 function generateTableRow(doc, y, item, unitCost, quantity, lineTotal) {
@@ -210,6 +356,10 @@ function generateHr(doc, y) {
 
 function formatCurrency(amount) {
   return "INR " + (amount).toFixed(2);
+}
+
+function formatCurrencyProfessional(amount) {
+  return "\u20b9" + (amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatDate(date) {

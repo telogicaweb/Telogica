@@ -56,31 +56,69 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // For retailer direct purchases, validate retailer pricing
-    if (isRetailerDirectPurchase && req.user.role === 'retailer') {
-      const productIds = products.map(p => p.product);
-      const dbProducts = await Product.find({ _id: { $in: productIds } });
-      const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+    // Get product details for validation
+    const productIds = products.map(p => p.product);
+    const dbProducts = await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
 
-      // Validate prices match retailer pricing
-      for (const item of products) {
-        const dbProduct = productMap.get(item.product);
-        if (dbProduct && item.useRetailerPrice) {
-          if (!dbProduct.retailerPrice) {
-            return res.status(400).json({
-              message: `Product "${dbProduct.name}" does not have a retailer price set. Please request a quote.`,
-              product: dbProduct.name
-            });
-          }
-          // Verify price matches retailer price
-          if (Math.abs(item.price - dbProduct.retailerPrice) > PRICE_TOLERANCE) {
-            return res.status(400).json({
-              message: `Invalid price for product "${dbProduct.name}". Expected retailer price: ₹${dbProduct.retailerPrice}`,
-              product: dbProduct.name
-            });
-          }
+    // Calculate total with warranty costs and validate pricing
+    let calculatedTotal = 0;
+    const processedProducts = [];
+
+    for (const item of products) {
+      const dbProduct = productMap.get(item.product);
+      if (!dbProduct) {
+        return res.status(400).json({ message: `Product not found: ${item.product}` });
+      }
+
+      let itemPrice = item.price;
+      let warrantyPrice = 0;
+      let warrantyMonths = dbProduct.warrantyPeriodMonths || 12;
+
+      // For retailer direct purchases, validate retailer pricing
+      if (isRetailerDirectPurchase && req.user.role === 'retailer' && item.useRetailerPrice) {
+        if (!dbProduct.retailerPrice) {
+          return res.status(400).json({
+            message: `Product "${dbProduct.name}" does not have a retailer price set. Please request a quote.`,
+            product: dbProduct.name
+          });
+        }
+        if (Math.abs(item.price - dbProduct.retailerPrice) > PRICE_TOLERANCE) {
+          return res.status(400).json({
+            message: `Invalid price for product "${dbProduct.name}". Expected retailer price: ₹${dbProduct.retailerPrice}`,
+            product: dbProduct.name
+          });
         }
       }
+
+      // Handle warranty option
+      if (item.warrantyOption === 'extended') {
+        if (!dbProduct.extendedWarrantyAvailable) {
+          return res.status(400).json({
+            message: `Extended warranty is not available for product "${dbProduct.name}"`,
+            product: dbProduct.name
+          });
+        }
+        warrantyPrice = dbProduct.extendedWarrantyPrice || 0;
+        warrantyMonths = dbProduct.extendedWarrantyMonths || 24;
+      }
+
+      calculatedTotal += (itemPrice * item.quantity) + (warrantyPrice * item.quantity);
+
+      processedProducts.push({
+        ...item,
+        warrantyMonths,
+        warrantyPrice
+      });
+    }
+
+    // Validate total amount (allow small tolerance for floating point)
+    if (!quoteId && Math.abs(calculatedTotal - totalAmount) > PRICE_TOLERANCE) {
+      return res.status(400).json({
+        message: `Price mismatch. Expected: ₹${calculatedTotal}, Received: ₹${totalAmount}`,
+        calculatedTotal,
+        receivedTotal: totalAmount
+      });
     }
 
     let isQuoteBased = false;
@@ -155,7 +193,7 @@ const createOrder = async (req, res) => {
 
     const order = new Order({
       user: req.user._id,
-      products,
+      products: quoteId ? products : processedProducts,
       totalAmount: finalAmount,
       shippingAddress,
       razorpayOrderId: razorpayOrder.id,
