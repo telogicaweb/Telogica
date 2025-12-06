@@ -86,6 +86,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const exportRoutes = require('./routes/exportRoutes');
+const retailerQuotedProductRoutes = require('./routes/retailerQuotedProductRoutes');
 
 // Apply rate limiting to routes
 // app.use('/api/auth/login', authLimiter);
@@ -111,6 +112,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/quoted-products', retailerQuotedProductRoutes);
 
 app.get('/', (req, res) => {
   res.json({
