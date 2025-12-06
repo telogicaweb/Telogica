@@ -845,7 +845,6 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -856,11 +855,6 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(order.totalAmount)}</td>
-                          <td className="px-4 py-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
-                              {order.orderStatus}
-                            </span>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
