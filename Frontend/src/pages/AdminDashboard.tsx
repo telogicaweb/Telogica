@@ -2076,13 +2076,13 @@ const AdminDashboard: React.FC = () => {
                                   type="number"
                                   value={quoteResponse.id === quote._id ? (quoteResponse.products[productId] ?? '') : ''}
                                   onChange={(e) => {
-                                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                    const val = e.target.value;
                                     setQuoteResponse(prev => ({
                                       ...prev,
                                       id: quote._id,
                                       products: {
                                         ...prev.products,
-                                        [productId]: val === '' ? 0 : val
+                                        [productId]: val
                                       }
                                     }));
                                   }}
