@@ -1,5 +1,6 @@
 const Quote = require('../models/Quote');
 const Product = require('../models/Product');
+const RetailerQuotedProduct = require('../models/RetailerQuotedProduct');
 const { sendEmail } = require('../utils/mailer');
 
 // @desc    Create a new quote
@@ -167,7 +168,7 @@ const respondToQuote = async (req, res) => {
 // @access  Private
 const acceptQuote = async (req, res) => {
   try {
-    const quote = await Quote.findById(req.params.id);
+    const quote = await Quote.findById(req.params.id).populate('products.product');
 
     if (!quote) {
       return res.status(404).json({ message: 'Quote not found' });
@@ -186,6 +187,32 @@ const acceptQuote = async (req, res) => {
     quote.acceptedAt = new Date();
     
     const updatedQuote = await quote.save();
+
+    // Save quoted products for retailer
+    if (req.user.role === 'retailer') {
+      for (const item of quote.products) {
+        if (item.product && item.offeredPrice) {
+          try {
+            await RetailerQuotedProduct.findOneAndUpdate(
+              { retailer: req.user._id, product: item.product._id || item.product },
+              {
+                retailer: req.user._id,
+                product: item.product._id || item.product,
+                quotedPrice: item.offeredPrice,
+                originalPrice: item.originalPrice,
+                quoteId: quote._id,
+                isActive: true,
+                lastUpdatedBy: req.user._id
+              },
+              { upsert: true, new: true }
+            );
+          } catch (err) {
+            console.error('Error saving quoted product:', err);
+          }
+        }
+      }
+    }
+
     res.json(updatedQuote);
   } catch (error) {
     res.status(500).json({ message: error.message });

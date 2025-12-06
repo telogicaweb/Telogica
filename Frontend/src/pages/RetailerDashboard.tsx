@@ -22,7 +22,8 @@ import {
   Search,
   Filter,
   Calendar,
-  Store
+  Store,
+  Tag
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -111,6 +112,21 @@ interface Sale {
   invoiceUrl?: string;
 }
 
+interface QuotedProduct {
+  _id: string;
+  product: {
+    _id: string;
+    name: string;
+    description?: string;
+    category?: string;
+    images?: string[];
+    stock: number;
+  };
+  quotedPrice: number;
+  originalPrice?: number;
+  updatedAt: string;
+}
+
 const RetailerDashboard = () => {
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
@@ -139,6 +155,9 @@ const RetailerDashboard = () => {
   
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
+  
+  // Quoted Products
+  const [quotedProducts, setQuotedProducts] = useState<QuotedProduct[]>([]);
   
   // Sell modal
   const [showSellModal, setShowSellModal] = useState(false);
@@ -175,7 +194,8 @@ const RetailerDashboard = () => {
         loadInventory(),
         loadQuotes(),
         loadOrders(),
-        loadSales()
+        loadSales(),
+        loadQuotedProducts()
       ]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -238,13 +258,23 @@ const RetailerDashboard = () => {
     }
   };
 
+  const loadQuotedProducts = async () => {
+    try {
+      const res = await api.get('/api/quoted-products/my-products');
+      setQuotedProducts(res.data);
+    } catch (error) {
+      console.error('Error loading quoted products:', error);
+    }
+  };
+
   const acceptQuote = async (quoteId: string) => {
     if (!confirm('Accept this quote?')) return;
     setLoading(true);
     try {
       await api.put(`/api/quotes/${quoteId}/accept`, {});
-      alert('Quote accepted! Proceed to checkout.');
+      alert('Quote accepted! Proceed to checkout. Products have been added to your Quoted Products.');
       loadQuotes();
+      loadQuotedProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to accept quote');
     } finally {
@@ -416,6 +446,7 @@ const RetailerDashboard = () => {
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'products', name: 'Products', icon: Package },
+    { id: 'quoted-products', name: 'Quoted Products', icon: Tag },
     { id: 'quotes', name: 'Quotes', icon: FileText },
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'inventory', name: 'Inventory', icon: Store },
@@ -625,6 +656,177 @@ const RetailerDashboard = () => {
       </div>
     </div>
   );
+
+  // Render Quoted Products Tab
+  const renderQuotedProducts = () => {
+    const orderFromQuotedProduct = async (quotedProduct: QuotedProduct) => {
+      const quantity = prompt('Enter quantity to order:', '1');
+      if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) <= 0) {
+        return;
+      }
+
+      const qty = parseInt(quantity);
+      const totalAmount = quotedProduct.quotedPrice * qty;
+
+      if (!confirm(`Order ${qty} unit(s) of ${quotedProduct.product.name} for ₹${totalAmount.toLocaleString('en-IN')}?`)) {
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const shippingAddress = prompt("Enter shipping address:", user?.address || "");
+        if (!shippingAddress) {
+          setLoading(false);
+          return;
+        }
+
+        const { data } = await api.post('/api/orders', {
+          products: [{
+            product: quotedProduct.product._id,
+            quantity: qty,
+            price: quotedProduct.quotedPrice
+          }],
+          totalAmount,
+          shippingAddress,
+          isFromQuotedProducts: true
+        });
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+          amount: data.razorpayOrder.amount,
+          currency: data.razorpayOrder.currency,
+          name: "Telogica",
+          description: "Order from Quoted Products",
+          order_id: data.razorpayOrder.id,
+          handler: async function (response: any) {
+            try {
+              await api.post('/api/orders/verify', {
+                orderId: data.order._id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              });
+              alert('Payment Successful! Products will be added to your inventory.');
+              loadDashboardData();
+            } catch {
+              alert('Payment Verification Failed');
+            }
+          },
+          prefill: {
+            name: user?.name,
+            email: user?.email,
+          },
+          theme: { color: "#3399cc" }
+        };
+
+        const rzp1 = new (window as any).Razorpay(options);
+        rzp1.on('payment.failed', function (response: any) {
+          alert(response.error.description);
+        });
+        rzp1.open();
+      } catch (error: any) {
+        alert(error.response?.data?.message || 'Failed to create order');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Quoted Products</h2>
+            <p className="text-sm text-gray-600 mt-1">Products with special pricing from accepted quotes. Order anytime at these prices.</p>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Your Special Prices:</strong> These products have been quoted specifically for you. You can order them anytime at the quoted price without requesting a new quote.
+          </p>
+        </div>
+
+        {quotedProducts.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <Tag size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500 mb-4">No quoted products yet</p>
+            <p className="text-sm text-gray-400 mb-4">Request a quote and accept the admin's offer to get special pricing</p>
+            <button
+              onClick={() => navigate('/quote')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Request a Quote
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {quotedProducts.map(qp => (
+              <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+                {qp.product.images && qp.product.images[0] && (
+                  <div className="relative">
+                    <img
+                      src={qp.product.images[0]}
+                      alt={qp.product.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                      Special Price
+                    </span>
+                    {qp.product.category && (
+                      <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                        {qp.product.category}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="p-4">
+                  <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
+                  {qp.product.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
+                  )}
+                  
+                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm text-gray-600">Your Quoted Price:</span>
+                      <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
+                    </div>
+                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">Original Price:</span>
+                        <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                      <div className="mt-2 text-xs text-green-600 font-medium">
+                        Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`px-2 py-1 rounded-full text-xs ${qp.product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {qp.product.stock > 0 ? `${qp.product.stock} in stock` : 'Out of stock'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Updated: {new Date(qp.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => orderFromQuotedProduct(qp)}
+                    disabled={loading || qp.product.stock <= 0}
+                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart size={16} />
+                    Order Now
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Quotes Tab
   const renderQuotes = () => (
@@ -1144,6 +1346,7 @@ const RetailerDashboard = () => {
           <>
             {activeTab === 'dashboard' && renderDashboard()}
             {activeTab === 'products' && renderProducts()}
+            {activeTab === 'quoted-products' && renderQuotedProducts()}
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'inventory' && renderInventory()}

@@ -14,7 +14,10 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  ShoppingCart
+  ShoppingCart,
+  Tag,
+  Edit,
+  Save
 } from 'lucide-react';
 
 interface RetailerSummary {
@@ -67,6 +70,30 @@ interface RetailerDetails {
   warranties: any[];
 }
 
+interface RetailerWithQuotedProducts {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  isApproved: boolean;
+  quotedProductsCount: number;
+  quotedProducts: QuotedProductItem[];
+}
+
+interface QuotedProductItem {
+  _id: string;
+  product: {
+    _id: string;
+    name: string;
+    category?: string;
+    images?: string[];
+  };
+  quotedPrice: number;
+  originalPrice?: number;
+  updatedAt: string;
+  notes?: string;
+}
+
 interface RetailerManagementProps {
   isEmbedded?: boolean;
 }
@@ -74,7 +101,7 @@ interface RetailerManagementProps {
 const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = false }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'retailers' | 'sales'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'retailers' | 'sales' | 'quoted-products'>('overview');
 
   const [analytics, setAnalytics] = useState<RetailerAnalytics | null>(null);
   const [retailers, setRetailers] = useState<RetailerSummary[]>([]);
@@ -90,6 +117,12 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+
+  // Quoted Products State
+  const [retailersWithQuotedProducts, setRetailersWithQuotedProducts] = useState<RetailerWithQuotedProducts[]>([]);
+  const [selectedRetailerForQuotes, setSelectedRetailerForQuotes] = useState<RetailerWithQuotedProducts | null>(null);
+  const [editingQuotedProduct, setEditingQuotedProduct] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState<string>('');
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -134,7 +167,8 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       await Promise.all([
         loadAnalytics(),
         loadRetailers(),
-        loadAllSales()
+        loadAllSales(),
+        loadRetailersQuotedProducts()
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -172,6 +206,27 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       setSalesTotals(res.data.totals);
     } catch (error) {
       console.error('Error loading sales:', error);
+    }
+  };
+
+  const loadRetailersQuotedProducts = async () => {
+    try {
+      const res = await api.get('/api/quoted-products/admin/all?showAll=true');
+      setRetailersWithQuotedProducts(res.data);
+    } catch (error) {
+      console.error('Error loading retailers quoted products:', error);
+    }
+  };
+
+  const updateQuotedPrice = async (quotedProductId: string, newPrice: number) => {
+    try {
+      await api.put(`/api/quoted-products/admin/${quotedProductId}`, { quotedPrice: newPrice });
+      alert('Price updated successfully');
+      loadRetailersQuotedProducts();
+      setEditingQuotedProduct(null);
+      setEditPrice('');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update price');
     }
   };
 
@@ -821,10 +876,188 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
     );
   };
 
+  // Render Quoted Products Tab
+  const renderQuotedProducts = () => {
+    const filteredRetailers = retailersWithQuotedProducts.filter(r =>
+      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Retailer Quoted Products</h2>
+            <p className="text-sm text-gray-600 mt-1">View and manage quoted prices for each retailer</p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search retailers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
+          <p className="text-sm text-indigo-800">
+            <strong>Quoted Products:</strong> These are products with special pricing for specific retailers. When a retailer accepts a quote, the products are saved here with their quoted prices. You can edit the prices, and changes will reflect on the retailer's dashboard.
+          </p>
+        </div>
+
+        {filteredRetailers.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <Tag size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500">No retailers with quoted products found</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredRetailers.map(retailer => (
+              <div key={retailer._id} className="bg-white rounded-lg shadow overflow-hidden">
+                <div 
+                  className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => setSelectedRetailerForQuotes(
+                    selectedRetailerForQuotes?._id === retailer._id ? null : retailer
+                  )}
+                >
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{retailer.name}</h3>
+                    <p className="text-sm text-gray-500">{retailer.email}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {retailer.isApproved ? 'Active' : 'Pending'}
+                    </span>
+                    <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium">
+                      {retailer.quotedProductsCount} products
+                    </span>
+                    <Eye size={18} className="text-gray-400" />
+                  </div>
+                </div>
+
+                {selectedRetailerForQuotes?._id === retailer._id && (
+                  <div className="p-6">
+                    {retailer.quotedProducts.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No quoted products for this retailer</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Original Price</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quoted Price</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {retailer.quotedProducts.map(qp => (
+                              <tr key={qp._id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    {qp.product.images && qp.product.images[0] && (
+                                      <img 
+                                        src={qp.product.images[0]} 
+                                        alt={qp.product.name}
+                                        className="w-10 h-10 rounded object-cover"
+                                      />
+                                    )}
+                                    <span className="font-medium text-gray-900">{qp.product.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {qp.product.category || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {qp.originalPrice ? formatCurrency(qp.originalPrice) : '-'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {editingQuotedProduct === qp._id ? (
+                                    <input
+                                      type="number"
+                                      value={editPrice}
+                                      onChange={(e) => setEditPrice(e.target.value)}
+                                      className="w-28 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <span className="font-semibold text-green-600">
+                                      {formatCurrency(qp.quotedPrice)}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  {new Date(qp.updatedAt).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {editingQuotedProduct === qp._id ? (
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          const price = parseFloat(editPrice);
+                                          if (!isNaN(price) && price > 0) {
+                                            updateQuotedPrice(qp._id, price);
+                                          } else {
+                                            alert('Please enter a valid price');
+                                          }
+                                        }}
+                                        className="text-green-600 hover:text-green-800"
+                                        title="Save"
+                                      >
+                                        <Save size={18} />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingQuotedProduct(null);
+                                          setEditPrice('');
+                                        }}
+                                        className="text-gray-600 hover:text-gray-800"
+                                        title="Cancel"
+                                      >
+                                        <XCircle size={18} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setEditingQuotedProduct(qp._id);
+                                        setEditPrice(qp.quotedPrice.toString());
+                                      }}
+                                      className="text-indigo-600 hover:text-indigo-800"
+                                      title="Edit Price"
+                                    >
+                                      <Edit size={18} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const tabs = [
     { id: 'overview', name: 'Overview', icon: TrendingUp },
     { id: 'retailers', name: 'Retailers', icon: Users },
     { id: 'sales', name: 'All Sales', icon: DollarSign },
+    { id: 'quoted-products', name: 'Quoted Products', icon: Tag },
   ];
 
   return (
@@ -885,6 +1118,7 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'retailers' && renderRetailers()}
             {activeTab === 'sales' && renderSales()}
+            {activeTab === 'quoted-products' && renderQuotedProducts()}
           </>
         )}
       </div>

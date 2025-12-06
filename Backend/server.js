@@ -91,6 +91,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const logRoutes = require('./routes/logRoutes');
+const retailerQuotedProductRoutes = require('./routes/retailerQuotedProductRoutes');
 
 // Apply rate limiting to routes
 // app.use('/api/auth/login', authLimiter);
@@ -117,6 +118,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/logs', logRoutes);
+app.use('/api/quoted-products', retailerQuotedProductRoutes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -180,13 +182,13 @@ app.listen(PORT, () => {
 ║   🚀 Telogica E-Commerce Platform                         ║
 ║                                                           ║
 ║   Server running on port ${PORT}                          ║
-║   Environment: ${process.env.NODE_ENV || 'development'}  ║
+║   Environment: ${process.env.NODE_ENV || 'development'}   ║
 ║                                                           ║
-║   ✓ Security middleware active                           ║
-║   ✓ Rate limiting enabled                                ║
-║   ✓ CORS configured                                      ║
-║   ✓ Input validation ready                               ║
-║   ✓ Export functionality available                       ║
+║   ✓ Security middleware active                            ║
+║   ✓ Rate limiting enabled                                 ║
+║   ✓ CORS configured                                       ║
+║   ✓ Input validation ready                                ║
+║   ✓ Export functionality available                        ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
