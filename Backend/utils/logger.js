@@ -1,4 +1,5 @@
 const AdminLog = require('../models/AdminLog');
+const { emitToAdmins } = require('../services/socketService');
 
 /**
  * Log admin action
@@ -28,6 +29,10 @@ const logAdminAction = async (req, action, entity, entityId = null, details = nu
     });
 
     await logEntry.save();
+
+    // Emit real-time event to connected admins
+    emitToAdmins('new_log', logEntry);
+
   } catch (error) {
     console.error('Error logging admin action:', error);
     // Don't throw error to prevent blocking the main request

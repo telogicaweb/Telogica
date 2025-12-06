@@ -74,8 +74,11 @@ const Cart = () => {
       }
 
       // Razorpay Integration
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
+      console.log('Using Razorpay Key:', razorpayKey);
+
       const options: RazorpayOptions = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+        key: razorpayKey,
         amount: data.razorpayOrder.amount,
         currency: data.razorpayOrder.currency,
         name: "Telogica",

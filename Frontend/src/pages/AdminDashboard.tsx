@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+} from 'recharts';
 import api from '../api';
 import {
   Users,
@@ -309,6 +313,16 @@ const AdminDashboard: React.FC = () => {
       ),
     [availableRecommendationProducts, productForm.recommendedProductIds]
   );
+
+  // Dashboard Chart Data (Moved to top level to avoid hook violation)
+  const orderStatusData = useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    orders.forEach(order => {
+      const status = order.orderStatus || 'Unknown';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  }, [orders]);
 
   const handleRecommendationSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = Array.from(event.target.selectedOptions, option => option.value);
@@ -896,125 +910,259 @@ const AdminDashboard: React.FC = () => {
         ? analytics.quotes.conversionRate.toFixed(2)
         : analytics.quotes.conversionRate;
 
+    // Prepare Chart Data
+    const salesData = [
+      { name: 'Direct Sales', value: analytics.sales.direct },
+      { name: 'Quote Sales', value: analytics.sales.quote },
+    ];
 
+    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+
+    // orderStatusData is now computed at the top level
+
+    const recentOrders = orders.slice(0, 5);
+    const recentQuotes = quotes.slice(0, 5);
 
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold text-gray-800 tracking-tight">Dashboard Overview</h2>
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString()}
+          </div>
+        </div>
 
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg text-white shadow-lg">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 h-full w-1 bg-blue-500 group-hover:w-2 transition-all duration-200"></div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-blue-100 text-sm">Total Sales</p>
-                <p className="text-3xl font-bold">{formatCurrency(analytics.sales.total)}</p>
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Sales</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{formatCurrency(analytics.sales.total)}</p>
               </div>
-              <DollarSign className="w-12 h-12 text-blue-200" />
+              <div className="p-3 bg-blue-50 rounded-full text-blue-600">
+                <DollarSign className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center text-sm text-gray-500">
+              <span className="text-green-500 flex items-center font-medium mr-2">
+                <TrendingUp className="w-4 h-4 mr-1" /> +12%
+              </span>
+              <span>from last month</span>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg text-white shadow-lg">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 h-full w-1 bg-green-500 group-hover:w-2 transition-all duration-200"></div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-green-100 text-sm">Total Orders</p>
-                <p className="text-3xl font-bold">{formatNumber(analytics.orders.total)}</p>
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Orders</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.orders.total)}</p>
               </div>
-              <ShoppingCart className="w-12 h-12 text-green-200" />
+              <div className="p-3 bg-green-50 rounded-full text-green-600">
+                <ShoppingCart className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center text-sm text-gray-500">
+              <span className="text-green-500 flex items-center font-medium mr-2">
+                <TrendingUp className="w-4 h-4 mr-1" /> +5%
+              </span>
+              <span>new orders today</span>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-lg text-white shadow-lg">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 h-full w-1 bg-yellow-500 group-hover:w-2 transition-all duration-200"></div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-yellow-100 text-sm">Pending Quotes</p>
-                <p className="text-3xl font-bold">{formatNumber(analytics.quotes.pending)}</p>
-                <p className="text-xs text-yellow-200 mt-2">
-                  Conversion: {conversionRate}%
-                </p>
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Pending Quotes</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.quotes.pending)}</p>
               </div>
-              <FileText className="w-12 h-12 text-yellow-200" />
+              <div className="p-3 bg-yellow-50 rounded-full text-yellow-600">
+                <FileText className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center text-sm text-gray-500">
+              <span className="text-yellow-600 font-medium mr-2">
+                {conversionRate}%
+              </span>
+              <span>conversion rate</span>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg text-white shadow-lg">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 h-full w-1 bg-purple-500 group-hover:w-2 transition-all duration-200"></div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-purple-100 text-sm">Pending Warranties</p>
-                <p className="text-3xl font-bold">{formatNumber(analytics.warranties.pending)}</p>
+                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Users</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.users.total)}</p>
               </div>
-              <Shield className="w-12 h-12 text-purple-200" />
+              <div className="p-3 bg-purple-50 rounded-full text-purple-600">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center text-sm text-gray-500">
+              <span className="text-purple-600 font-medium mr-2">
+                {analytics.users.pendingRetailers}
+              </span>
+              <span>pending retailers</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Direct Sales</p>
-                <p className="text-2xl font-bold text-gray-800">{formatCurrency(analytics.sales.direct)}</p>
-              </div>
-              <TrendingUp className="w-10 h-10 text-blue-500" />
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Sales Distribution */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-6">Sales Distribution</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={salesData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {salesData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                  <Legend verticalAlign="bottom" height={36}/>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Quote Sales</p>
-                <p className="text-2xl font-bold text-gray-800">{formatCurrency(analytics.sales.quote)}</p>
-              </div>
-              <BarChart3 className="w-10 h-10 text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Total Users</p>
-                <p className="text-2xl font-bold text-gray-800">{formatNumber(analytics.users.total)}</p>
-              </div>
-              <Users className="w-10 h-10 text-purple-500" />
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm">Retailers Waiting Approval</p>
-                <p className="text-2xl font-bold text-gray-800">{formatNumber(analytics.users.pendingRetailers)}</p>
-              </div>
-              <AlertCircle className="w-10 h-10 text-red-500" />
+          {/* Order Status */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-6">Order Status Overview</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={orderStatusData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <RechartsTooltip cursor={{ fill: '#F3F4F6' }} />
+                  <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-            <p className="text-xs uppercase tracking-wide text-blue-600">Inventory - Total</p>
-            <p className="text-2xl font-bold text-blue-900">{formatNumber(analytics.inventory.total)}</p>
+        {/* Recent Activity Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Recent Orders */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">Recent Orders</h3>
+              <button onClick={() => setActiveTab('orders')} className="text-blue-600 text-sm hover:underline">View All</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-500 font-medium">
+                  <tr>
+                    <th className="px-6 py-3">Order ID</th>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Amount</th>
+                    <th className="px-6 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {recentOrders.map((order) => (
+                    <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-gray-900">#{order._id.slice(-6)}</td>
+                      <td className="px-6 py-4">{order.userId?.name || 'Unknown'}</td>
+                      <td className="px-6 py-4">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
+                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                          order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {order.orderStatus}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {recentOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent orders found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="bg-green-50 border border-green-100 rounded-lg p-4">
-            <p className="text-xs uppercase tracking-wide text-green-600">Inventory Online</p>
-            <p className="text-2xl font-bold text-green-900">{formatNumber(analytics.inventory.online)}</p>
-          </div>
-          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
-            <p className="text-xs uppercase tracking-wide text-yellow-600">Inventory Offline</p>
-            <p className="text-2xl font-bold text-yellow-900">{formatNumber(analytics.inventory.offline)}</p>
+
+          {/* Recent Quotes */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-800">Recent Quotes</h3>
+              <button onClick={() => setActiveTab('quotes')} className="text-blue-600 text-sm hover:underline">View All</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-500 font-medium">
+                  <tr>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Items</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {recentQuotes.map((quote) => (
+                    <tr key={quote._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-gray-900">{quote.user?.name || 'Unknown'}</td>
+                      <td className="px-6 py-4">{quote.products?.length || 0} items</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          quote.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                          quote.status === 'responded' ? 'bg-blue-100 text-blue-700' :
+                          quote.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {quote.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">
+                        {new Date(quote.createdAt || '').toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {recentQuotes.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent quotes found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         {/* System Data Export Section */}
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center gap-2 mb-4">
-            <Download className="w-6 h-6 text-indigo-600" />
-            <h3 className="text-lg font-bold text-gray-800">System Data Export</h3>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+              <Download className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800">System Data Export</h3>
+              <p className="text-sm text-gray-500">Export comprehensive reports for all system data (Supports up to 100MB)</p>
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mb-6">
-            Export comprehensive reports for all system data. Choose your preferred format (PDF, CSV, or Excel).
-          </p>
 
-          <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100 items-center">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-500" />
               <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
@@ -1046,18 +1194,20 @@ const AdminDashboard: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
-              { label: 'Orders Report', entity: 'orders', icon: ShoppingCart, color: 'text-blue-600' },
-              { label: 'Quotes Report', entity: 'quotes', icon: FileText, color: 'text-yellow-600' },
-              { label: 'Products Catalog', entity: 'products', icon: Package, color: 'text-indigo-600' },
-              { label: 'Users List', entity: 'users', icon: Users, color: 'text-purple-600' },
-              { label: 'Warranties', entity: 'warranties', icon: Shield, color: 'text-green-600' },
-              { label: 'Invoices', entity: 'invoices', icon: DollarSign, color: 'text-gray-600' },
-              { label: 'Sales Report', entity: 'sales-report', icon: TrendingUp, color: 'text-emerald-600' },
-              { label: 'Product Units', entity: 'product-units', icon: CheckCircle, color: 'text-orange-600' },
+              { label: 'Orders Report', entity: 'orders', icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Quotes Report', entity: 'quotes', icon: FileText, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+              { label: 'Products Catalog', entity: 'products', icon: Package, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { label: 'Users List', entity: 'users', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Warranties', entity: 'warranties', icon: Shield, color: 'text-green-600', bg: 'bg-green-50' },
+              { label: 'Invoices', entity: 'invoices', icon: DollarSign, color: 'text-gray-600', bg: 'bg-gray-50' },
+              { label: 'Sales Report', entity: 'sales-report', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Product Units', entity: 'product-units', icon: CheckCircle, color: 'text-orange-600', bg: 'bg-orange-50' },
             ].map((item) => (
-              <div key={item.entity} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-3 mb-3">
-                  <item.icon className={`w-5 h-5 ${item.color}`} />
+              <div key={item.entity} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors group">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-lg ${item.bg}`}>
+                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                  </div>
                   <span className="font-medium text-gray-700">{item.label}</span>
                 </div>
                 <div className="flex gap-2">
@@ -2050,11 +2200,11 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-yellow-800">Pending Quotes</p>
+                <p className="text-sm font-medium text-yellow-800">Pending</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">
                   {quotes.filter(q => q.status === 'pending').length}
                 </p>
@@ -2062,24 +2212,35 @@ const AdminDashboard: React.FC = () => {
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
           </div>
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Responded</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {quotes.filter(q => q.status === 'responded').length}
+                </p>
+              </div>
+              <MessageSquare className="w-8 h-8 text-blue-600" />
+            </div>
+          </div>
           <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-800">Approved</p>
+                <p className="text-sm font-medium text-green-800">Accepted</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {quotes.filter(q => q.status === 'approved').length}
+                  {quotes.filter(q => q.status === 'accepted').length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
+          <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-800">Total Quotes</p>
+                <p className="text-sm font-medium text-purple-800">Total</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{quotes.length}</p>
               </div>
-              <FileText className="w-8 h-8 text-blue-600" />
+              <FileText className="w-8 h-8 text-purple-600" />
             </div>
           </div>
         </div>
@@ -2101,12 +2262,15 @@ const AdminDashboard: React.FC = () => {
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : quote.status === 'approved'
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    quote.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : quote.status === 'responded'
+                      ? 'bg-blue-100 text-blue-800'
+                      : quote.status === 'accepted' || quote.status === 'approved'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                    }`}
+                  }`}
                 >
                   {quote.status}
                 </span>

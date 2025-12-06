@@ -332,8 +332,11 @@ const RetailerDashboard = () => {
         shippingAddress
       });
 
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
+      console.log('Using Razorpay Key:', razorpayKey);
+
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+        key: razorpayKey,
         amount: data.razorpayOrder.amount,
         currency: data.razorpayOrder.currency,
         name: "Telogica",
@@ -686,8 +689,11 @@ const RetailerDashboard = () => {
           isFromQuotedProducts: true
         });
 
+        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
+        console.log('Using Razorpay Key:', razorpayKey);
+
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+          key: razorpayKey,
           amount: data.razorpayOrder.amount,
           currency: data.razorpayOrder.currency,
           name: "Telogica",

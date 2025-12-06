@@ -3,11 +3,13 @@ const Quote = require('../models/Quote');
 const Product = require('../models/Product');
 const ProductUnit = require('../models/ProductUnit');
 const Invoice = require('../models/Invoice');
+const Warranty = require('../models/Warranty');
 const RetailerInventory = require('../models/RetailerInventory');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
 const { generateAndUploadInvoice } = require('../utils/invoiceGenerator');
+const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
 const { recalculateProductInventory } = require('../utils/inventory');
 
 const razorpay = new Razorpay({
@@ -202,6 +204,15 @@ const verifyPayment = async (req, res) => {
       .update(order.razorpayOrderId + "|" + razorpayPaymentId)
       .digest('hex');
 
+    console.log('--- Payment Verification Debug ---');
+    console.log('Order ID:', orderId);
+    console.log('Razorpay Order ID (DB):', order.razorpayOrderId);
+    console.log('Razorpay Payment ID (Client):', razorpayPaymentId);
+    console.log('Razorpay Signature (Client):', razorpaySignature);
+    console.log('Generated Signature:', generated_signature);
+    console.log('Match:', generated_signature === razorpaySignature);
+    console.log('----------------------------------');
+
     if (generated_signature === razorpaySignature) {
       order.paymentStatus = 'completed';
       order.orderStatus = 'confirmed';
@@ -272,6 +283,56 @@ const verifyPayment = async (req, res) => {
       // Save the order again to persist serial numbers
       await order.save();
 
+      // Generate Warranties
+      const warrantyLinks = [];
+      try {
+        console.log('Generating warranties for order:', order._id);
+        for (const item of order.products) {
+          if (item.serialNumbers && item.serialNumbers.length > 0) {
+            for (const serialNumber of item.serialNumbers) {
+              const startDate = new Date();
+              startDate.setDate(startDate.getDate() + 3); // Today + 3 days
+              
+              const endDate = new Date(startDate);
+              endDate.setMonth(endDate.getMonth() + 12); // + 12 months
+
+              // Find the unit to link it properly
+              const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
+
+              const warranty = new Warranty({
+                user: order.user._id,
+                product: item.product._id,
+                productUnit: productUnit ? productUnit._id : null,
+                productName: item.product.name,
+                modelNumber: productUnit ? productUnit.modelNumber : (item.product.modelNumberPrefix || 'N/A'),
+                serialNumber: serialNumber,
+                purchaseDate: new Date(),
+                purchaseType: order.user.role === 'retailer' ? 'retailer' : 'telogica_online',
+                status: 'approved',
+                warrantyStartDate: startDate,
+                warrantyEndDate: endDate,
+                warrantyPeriodMonths: 12
+              });
+
+              // Generate PDF
+              const pdfUrl = await generateAndUploadWarranty(warranty, order.user);
+              warranty.warrantyCertificateUrl = pdfUrl;
+              
+              await warranty.save();
+              console.log(`Warranty generated for ${serialNumber}: ${pdfUrl}`);
+              
+              warrantyLinks.push({
+                name: item.product.name,
+                serial: serialNumber,
+                url: pdfUrl
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error generating warranties:', error);
+      }
+
       // Generate invoice
       let invoice;
       try {
@@ -326,12 +387,17 @@ const verifyPayment = async (req, res) => {
 
       // Send payment confirmation email
       const invoiceLink = invoice && invoice.invoiceUrl ? `\n\nYou can download your invoice here: ${invoice.invoiceUrl}` : '';
+      
+      let warrantySection = '';
+      if (warrantyLinks.length > 0) {
+        warrantySection = '\n\nWarranty Certificates:\n' + warrantyLinks.map(w => `${w.name} (Serial: ${w.serial}): ${w.url}`).join('\n');
+      }
 
       if (order.user && order.user.email) {
         sendEmail(
           order.user.email,
           'Payment Successful - Telogica',
-          `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}.${invoiceLink}`,
+          `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}.${invoiceLink}${warrantySection}`,
           'payment_confirmation',
           { entityType: 'order', entityId: order._id }
         ).catch(err => console.error('Error sending payment confirmation email:', err));

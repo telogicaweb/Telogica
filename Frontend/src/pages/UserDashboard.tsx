@@ -133,8 +133,11 @@ const UserDashboard = () => {
       });
 
       // Razorpay Integration
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
+      console.log('Using Razorpay Key:', razorpayKey);
+
       const options: RazorpayOptions = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4",
+        key: razorpayKey,
         amount: data.razorpayOrder.amount,
         currency: data.razorpayOrder.currency,
         name: "Telogica",
@@ -324,14 +327,28 @@ const UserDashboard = () => {
                         <div className="p-6">
                           <ul className="divide-y divide-gray-200">
                             {order.products.map((p: any) => (
-                              <li key={p._id} className="py-4 flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <div className="ml-4">
-                                    <p className="text-sm font-medium text-gray-900">{p.product?.name || 'Product Unavailable'}</p>
-                                    <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
+                              <li key={p._id} className="py-4 flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <div className="ml-4">
+                                      <p className="text-sm font-medium text-gray-900">{p.product?.name || 'Product Unavailable'}</p>
+                                      <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
+                                    </div>
                                   </div>
+                                  <p className="text-sm font-medium text-gray-900">₹{p.price}</p>
                                 </div>
-                                <p className="text-sm font-medium text-gray-900">₹{p.price}</p>
+                                {p.serialNumbers && p.serialNumbers.length > 0 && (
+                                  <div className="ml-4 mt-2">
+                                    <p className="text-xs text-gray-500 mb-1">Serial Numbers:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {p.serialNumbers.map((sn: string) => (
+                                        <span key={sn} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                          {sn}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -590,8 +607,8 @@ const UserDashboard = () => {
                             </div>
                           )}
 
-                          {warranty.invoiceUrl && (
-                            <div className="flex gap-2">
+                          <div className="flex gap-4 mt-2">
+                            {warranty.invoiceUrl && (
                               <a
                                 href={warranty.invoiceUrl}
                                 target="_blank"
@@ -601,8 +618,19 @@ const UserDashboard = () => {
                                 <Eye size={16} />
                                 View Invoice
                               </a>
-                            </div>
-                          )}
+                            )}
+                            {warranty.warrantyCertificateUrl && (
+                              <a
+                                href={warranty.warrantyCertificateUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1"
+                              >
+                                <Download size={16} />
+                                Warranty Certificate
+                              </a>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

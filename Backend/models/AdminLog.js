@@ -10,35 +10,72 @@ const adminLogSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  adminEmail: String,
+  adminRole: String,
   action: {
     type: String,
     required: true
+  },
+  actionCategory: {
+    type: String,
+    enum: [
+      'CREATE', 'READ', 'UPDATE', 'DELETE', 'EXPORT', 'IMPORT', 
+      'LOGIN', 'LOGOUT', 'SECURITY', 'SYSTEM', 'INTEGRATION', 
+      'NOTIFICATION', 'BATCH', 'WORKFLOW', 'AUDIT', 'BACKUP', 
+      'RESTORE', 'CONFIG', 'PERMISSION'
+    ],
+    default: 'SYSTEM'
   },
   entity: {
     type: String,
     required: true
   },
-  entityId: {
-    type: String
+  entityId: String,
+  severity: {
+    type: String,
+    enum: ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR', 'CRITICAL', 'ALERT', 'EMERGENCY'],
+    default: 'INFO'
   },
-  details: {
-    type: mongoose.Schema.Types.Mixed
+  message: String,
+  details: mongoose.Schema.Types.Mixed,
+  ipAddress: String,
+  userAgent: String,
+  statusCode: Number,
+  responseTime: Number,
+  location: {
+    country: String,
+    city: String,
+    latitude: Number,
+    longitude: Number
   },
-  ipAddress: {
-    type: String
+  tags: [String],
+  changes: {
+    before: mongoose.Schema.Types.Mixed,
+    after: mongoose.Schema.Types.Mixed
   },
-  userAgent: {
-    type: String
+  metadata: mongoose.Schema.Types.Mixed,
+  correlationId: String,
+  sessionId: String,
+  version: String,
+  archived: {
+    type: Boolean,
+    default: false
   },
+  archivedAt: Date,
   timestamp: {
     type: Date,
     default: Date.now
   }
-}, { timestamps: true });
+}, {
+  timestamps: true
+});
 
-// Index for faster filtering
+// Indexes for faster querying
 adminLogSchema.index({ timestamp: -1 });
 adminLogSchema.index({ adminId: 1 });
 adminLogSchema.index({ action: 1 });
+adminLogSchema.index({ entity: 1 });
+adminLogSchema.index({ severity: 1 });
+adminLogSchema.index({ '$**': 'text' }); // Text index for search
 
 module.exports = mongoose.model('AdminLog', adminLogSchema);

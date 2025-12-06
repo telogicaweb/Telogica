@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, AlertCircle, FileText, ShoppingCart } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Trash2, AlertCircle, FileText, ShoppingCart } from 'lucide-react';
 const Quote = () => {
   const { cart, quoteItems, removeFromQuote, clearQuote, clearCart } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
+  const { success, error: toastError } = useToast();
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
@@ -15,7 +17,7 @@ const Quote = () => {
   useEffect(() => {
     if (user?.role === 'user' && cart.length > 3 && quoteItems.length === 0) {
       // Items are already in cart, no need to duplicate them
-      // The UI will show cart items if quote items are empty
+      // The UI will show cart items if quote items are empty 
     }
   }, [cart, user, quoteItems]);
 
@@ -28,7 +30,7 @@ const Quote = () => {
     const itemsToQuote = quoteItems.length > 0 ? quoteItems : cart;
 
     if (itemsToQuote.length === 0) {
-      alert('No items to quote');
+      toastError('No items to quote');
       return;
     }
 
@@ -38,7 +40,7 @@ const Quote = () => {
     
     // If has telecom items, must have at least 3 telecom items
     if (hasTelecom && telecomItems.length < 3) {
-      alert(`For Telecom products, a minimum of 3 items is required. You currently have ${telecomItems.length} Telecom items.`);
+      toastError(`For Telecom products, a minimum of 3 items is required. You currently have ${telecomItems.length} Telecom items.`);
       return;
     }
 
@@ -51,14 +53,14 @@ const Quote = () => {
         message
       });
 
-      alert('Quote Submitted Successfully! You will receive an email once admin responds.');
+      success('Quote Submitted Successfully! You will receive an email once admin responds.');
       clearQuote();
       clearCart();
       // Redirect to appropriate dashboard based on user role
       navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
     } catch (error: any) {
       console.error('Quote submission error:', error);
-      alert(error.response?.data?.message || 'Failed to submit quote');
+      toastError(error.response?.data?.message || 'Failed to submit quote');
     }
   };
 

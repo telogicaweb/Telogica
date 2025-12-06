@@ -1,12 +1,208 @@
 const PDFDocument = require('pdfkit');
 const ExcelJS = require('exceljs');
-const { Parser } = require('json2csv');
+const { Parser, Transform } = require('json2csv');
+const { Readable } = require('stream');
 
 /**
  * Universal Export Utilities for Enterprise E-Commerce Platform
  * Supports PDF, CSV, and Excel exports for all admin modules
  * Using ExcelJS (secure alternative to xlsx)
  */
+
+// ============================================
+// Streaming Export Utilities (For Large Datasets)
+// ============================================
+
+/**
+ * Stream PDF export directly to response
+ * @param {Object} res - Express response object
+ * @param {Object} cursor - Mongoose cursor
+ * @param {Object} config - Configuration object
+ */
+const streamPDF = (res, cursor, config) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ 
+        margin: 50,
+        size: 'A4',
+        layout: config.orientation || 'portrait',
+        bufferPages: true
+      });
+
+      // Pipe PDF to response
+      doc.pipe(res);
+
+      // Header
+      doc.fontSize(20).fillColor('#2563eb')
+         .text(config.title || 'Export Report', { align: 'center' })
+         .moveDown(0.5);
+
+      // Metadata
+      if (config.metadata) {
+        doc.fontSize(10).fillColor('#666666');
+        Object.entries(config.metadata).forEach(([key, value]) => {
+          doc.text(`${key}: ${value}`);
+        });
+        doc.moveDown();
+      }
+
+      doc.strokeColor('#cccccc').lineWidth(1)
+         .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown();
+
+      // Table Header
+      const tableTop = doc.y;
+      let currentX = 50;
+      
+      doc.fontSize(10).fillColor('#000000').font('Helvetica-Bold');
+      config.columns.forEach((col) => {
+        doc.text(col.header, currentX, tableTop, { 
+          width: col.width || 100, 
+          align: col.align || 'left' 
+        });
+        currentX += col.width || 100;
+      });
+      
+      doc.moveDown();
+      doc.strokeColor('#cccccc').lineWidth(1)
+         .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+      doc.moveDown(0.5);
+
+      // Process rows from cursor
+      let rowIndex = 0;
+      doc.font('Helvetica').fontSize(9);
+
+      cursor.on('data', (row) => {
+        // Check for new page
+        if (doc.y > 700) {
+          doc.addPage();
+          doc.y = 50;
+        }
+
+        const rowY = doc.y;
+        currentX = 50;
+        
+        config.columns.forEach((col) => {
+          const value = getNestedValue(row, col.key);
+          const displayValue = col.formatter ? col.formatter(value, row) : ((value || value === 0) ? String(value) : '-');
+          
+          doc.text(displayValue, currentX, rowY, { 
+            width: col.width || 100, 
+            align: col.align || 'left',
+            height: 20,
+            ellipsis: true
+          });
+          currentX += col.width || 100;
+        });
+        
+        doc.moveDown(0.8);
+        
+        if ((rowIndex + 1) % 5 === 0) {
+          doc.strokeColor('#eeeeee').lineWidth(0.5)
+             .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+          doc.moveDown(0.3);
+        }
+        rowIndex++;
+      });
+
+      cursor.on('end', () => {
+        // Footer
+        const pageCount = doc.bufferedPageRange();
+        for (let i = 0; i < pageCount.count; i++) {
+          doc.switchToPage(i);
+          doc.fontSize(8).fillColor('#999999');
+          doc.text(
+            `Page ${i + 1} of ${pageCount.count} | Generated on ${new Date().toLocaleString()}`,
+            50,
+            doc.page.height - 50,
+            { align: 'center' }
+          );
+        }
+        doc.end();
+        resolve();
+      });
+
+      cursor.on('error', (err) => {
+        doc.end();
+        reject(err);
+      });
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Stream CSV export directly to response
+ * @param {Object} res - Express response object
+ * @param {Object} cursor - Mongoose cursor
+ * @param {Object} config - Configuration object
+ */
+const streamCSV = (res, cursor, config) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const fields = config.columns.map(col => ({
+        label: col.header,
+        value: (row) => {
+          const val = getNestedValue(row, col.key);
+          return col.formatter ? col.formatter(val, row) : val;
+        }
+      }));
+
+      const json2csv = new Transform({ fields }, { objectMode: true });
+      
+      cursor.pipe(json2csv).pipe(res);
+
+      cursor.on('end', () => resolve());
+      cursor.on('error', reject);
+      json2csv.on('error', reject);
+
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Stream Excel export directly to response
+ * @param {Object} res - Express response object
+ * @param {Object} cursor - Mongoose cursor
+ * @param {Object} config - Configuration object
+ */
+const streamExcel = async (res, cursor, config) => {
+  try {
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res });
+    const worksheet = workbook.addWorksheet(config.sheetName || 'Sheet1');
+
+    worksheet.columns = config.columns.map(col => ({
+      header: col.header,
+      key: col.key,
+      width: col.width ? Math.floor(col.width / 8) : 15,
+    }));
+
+    cursor.on('data', (row) => {
+      const rowData = {};
+      config.columns.forEach(col => {
+        const value = getNestedValue(row, col.key);
+        rowData[col.key] = col.formatter ? col.formatter(value, row) : value;
+      });
+      worksheet.addRow(rowData).commit();
+    });
+
+    return new Promise((resolve, reject) => {
+      cursor.on('end', async () => {
+        await worksheet.commit();
+        await workbook.commit();
+        resolve();
+      });
+      cursor.on('error', reject);
+      workbook.on('error', reject);
+    });
+  } catch (error) {
+    throw error;
+  }
+};
 
 // ============================================
 // PDF Export Utilities
@@ -465,7 +661,7 @@ const INVOICE_EXPORT_CONFIG = {
  * @param {Object} config - Configuration object
  * @param {String} filename - Base filename
  */
-const streamPDF = (res, data, config, filename) => {
+const streamPDFLegacy = (res, data, config, filename) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}-${Date.now()}.pdf"`);
 
@@ -647,6 +843,8 @@ const BLOG_EXPORT_CONFIG = {
 module.exports = {
   // Main export functions
   streamPDF,
+  streamCSV,
+  streamExcel,
   generatePDF,
   generateCSV,
   generateExcel,

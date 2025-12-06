@@ -14,6 +14,7 @@ const warrantySchema = new mongoose.Schema({
     required: true 
   },
   invoice: { type: String }, // URL to uploaded invoice (required for offline/retailer purchases)
+  warrantyCertificateUrl: { type: String }, // URL to generated warranty certificate PDF
   status: { 
     type: String, 
     enum: ['pending', 'approved', 'rejected'], 

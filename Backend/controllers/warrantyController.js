@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const { sendEmail } = require('../utils/mailer');
 const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
+const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
 
 // Upload invoice
 exports.uploadInvoice = async (req, res) => {
@@ -179,13 +180,26 @@ exports.approveWarranty = async (req, res) => {
     warranty.warrantyEndDate = endDate;
     warranty.adminNotes = adminNotes;
 
+    // Generate Warranty Certificate PDF
+    try {
+      const pdfUrl = await generateAndUploadWarranty(warranty, warranty.user);
+      warranty.warrantyCertificateUrl = pdfUrl;
+    } catch (pdfError) {
+      console.error('Error generating warranty PDF during approval:', pdfError);
+      // Continue even if PDF generation fails, but log it
+    }
+
     await warranty.save();
 
     // Send approval email to user
+    const certificateLink = warranty.warrantyCertificateUrl 
+      ? `\n\nYou can download your warranty certificate here: ${warranty.warrantyCertificateUrl}` 
+      : '';
+
     await sendEmail(
       warranty.user.email,
       'Warranty Approved',
-      `Your warranty for ${warranty.productName} (Serial: ${warranty.serialNumber}) has been approved. Warranty valid until ${warranty.warrantyEndDate.toLocaleDateString()}.`,
+      `Your warranty for ${warranty.productName} (Serial: ${warranty.serialNumber}) has been approved. Warranty valid until ${warranty.warrantyEndDate.toLocaleDateString()}.${certificateLink}`,
       'warranty_approved',
       { entityType: 'warranty', entityId: warranty._id }
     );
