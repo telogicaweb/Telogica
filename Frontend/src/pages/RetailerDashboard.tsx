@@ -1430,7 +1430,7 @@ const RetailerDashboard = () => {
             <form onSubmit={handleSellSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name or Company Name *</label>
                   <input
                     type="text"
                     required
@@ -1490,7 +1490,9 @@ const RetailerDashboard = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Number <span className="text-xs text-gray-500 font-normal">(Enter the number from the generated invoice)</span>
+                  </label>
                   <input
                     type="text"
                     value={sellFormData.invoiceNumber}
@@ -1500,15 +1502,55 @@ const RetailerDashboard = () => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice URL *</label>
-                  <input
-                    type="url"
-                    required
-                    value={sellFormData.customerInvoice}
-                    onChange={(e) => setSellFormData({ ...sellFormData, customerInvoice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://..."
-                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!sellFormData.customerName || !sellFormData.customerEmail || !sellFormData.sellingPrice) {
+                          alert('Please fill in Customer Name, Email and Selling Price first');
+                          return;
+                        }
+                        setLoading(true);
+                        try {
+                          const response = await api.post('/api/retailer-inventory/generate-invoice', {
+                            inventoryId: selectedItem._id,
+                            ...sellFormData
+                          });
+                          setSellFormData(prev => ({
+                            ...prev,
+                            customerInvoice: response.data.invoiceUrl,
+                            invoiceNumber: response.data.invoiceNumber || prev.invoiceNumber
+                          }));
+                          alert('Invoice generated successfully! Please verify it before recording the sale.');
+                        } catch (error: any) {
+                          alert(error.response?.data?.message || 'Failed to generate invoice');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                    >
+                      {loading ? 'Generating...' : 'Generate Invoice'}
+                    </button>
+
+                    {sellFormData.customerInvoice && (
+                      <a
+                        href={sellFormData.customerInvoice}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        <Download size={16} />
+                        Download & Verify Invoice
+                      </a>
+                    )}
+                  </div>
+                  {!sellFormData.customerInvoice && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Generate an invoice to proceed with the sale record.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1529,7 +1571,7 @@ const RetailerDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !sellFormData.customerInvoice}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {loading ? 'Processing...' : 'Record Sale'}

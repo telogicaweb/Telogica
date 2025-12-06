@@ -7,12 +7,14 @@ const {
   markAsSold,
   getInventoryItem,
   getAllInventories,
-  updateInventoryStatus
+  updateInventoryStatus,
+  generateInvoice
 } = require('../controllers/retailerInventoryController');
 
 // Retailer routes
 router.get('/my-inventory', protect, retailer, getRetailerInventory);
 router.post('/add', protect, retailer, addToInventory);
+router.post('/generate-invoice', protect, retailer, generateInvoice);
 router.post('/:inventoryId/sell', protect, retailer, markAsSold);
 router.get('/:id', protect, getInventoryItem);
 router.put('/:id/status', protect, updateInventoryStatus);
