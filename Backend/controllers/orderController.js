@@ -459,4 +459,40 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus };
+// Download Order Invoice
+const { generateOrderInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+
+const downloadInvoice = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user')
+      .populate('products.product');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Verify user owns this order
+    if (req.user.role !== 'admin' && order.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Fetch product units for this order to get serials/models
+    const productUnits = await ProductUnit.find({ order: order._id });
+
+    const buffer = await generateOrderInvoicePdfBuffer(order, productUnits);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=invoice-${order.orderNumber || order._id}.pdf`,
+      'Content-Length': buffer.length
+    });
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice };

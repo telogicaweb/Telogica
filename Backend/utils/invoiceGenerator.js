@@ -349,4 +349,147 @@ function renderRetailerInvoice(doc, saleData, retailer, product, productUnit) {
     );
 }
 
-module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer, generateRetailerInvoice };
+const generateOrderInvoicePdfBuffer = async (order, productUnits) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on('data', (data) => buffers.push(data));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    renderOrderInvoice(doc, order, productUnits);
+    doc.end();
+  });
+};
+
+function renderOrderInvoice(doc, order, productUnits) {
+  // Header
+  doc
+    .fillColor('#444444')
+    .fontSize(20)
+    .font('Helvetica-Bold')
+    .text('Telogica Limited', 50, 50)
+    .fontSize(10)
+    .font('Helvetica')
+    .text('(Formerly Aishwarya Technologies and Telecom Limited)', 50, 75)
+    .fontSize(10)
+    .text('Tax Invoice', 200, 50, { align: 'right' })
+    .moveDown();
+
+  generateHr(doc, 95);
+
+  const customerInformationTop = 120;
+
+  // Seller Info (Telogica)
+  doc
+    .fontSize(10)
+    .text('Sold By:', 50, customerInformationTop)
+    .font('Helvetica-Bold')
+    .text('Telogica Limited', 50, customerInformationTop + 15)
+    .font('Helvetica')
+    .text('123 Tech Street', 50, customerInformationTop + 30)
+    .text('Bangalore, India', 50, customerInformationTop + 45);
+
+  // Buyer Info (Retailer)
+  doc
+    .font('Helvetica')
+    .text('Sold To:', 300, customerInformationTop)
+    .font('Helvetica-Bold')
+    .text(order.user.name, 300, customerInformationTop + 15)
+    .font('Helvetica')
+    .text(order.user.email, 300, customerInformationTop + 30)
+    .text(order.shippingAddress, 300, customerInformationTop + 45, { width: 200 });
+
+  // Invoice Details
+  const invoiceDetailsTop = customerInformationTop + 100;
+  doc
+    .text('Invoice Number:', 50, invoiceDetailsTop)
+    .font('Helvetica-Bold')
+    .text(order.orderNumber || `ORD-${order._id.toString().slice(-6).toUpperCase()}`, 150, invoiceDetailsTop)
+    .font('Helvetica')
+    .text('Date:', 50, invoiceDetailsTop + 15)
+    .text(formatDate(new Date(order.createdAt)), 150, invoiceDetailsTop + 15);
+
+  generateHr(doc, invoiceDetailsTop + 40);
+
+  // Product Table
+  const tableTop = invoiceDetailsTop + 60;
+  doc.font('Helvetica-Bold');
+
+  // Custom Table Row for Order Invoice (more columns)
+  const generateOrderTableRow = (y, item, model, serial, originalPrice, price, total) => {
+    doc
+      .fontSize(8)
+      .text(item, 50, y, { width: 150 })
+      .text(model, 200, y, { width: 80 })
+      .text(serial, 280, y, { width: 80 })
+      .text(originalPrice, 360, y, { width: 60, align: 'right' })
+      .text(price, 430, y, { width: 60, align: 'right' })
+      .text(total, 0, y, { align: 'right' });
+  };
+
+  generateOrderTableRow(tableTop, 'Product', 'Model', 'Serial', 'Orig. Price', 'Paid Price', 'Total');
+  generateHr(doc, tableTop + 20);
+  doc.font('Helvetica');
+
+  let position = tableTop + 30;
+
+  order.products.forEach((item) => {
+    const itemUnits = productUnits.filter(u => u.product.toString() === item.product._id.toString());
+    const serials = itemUnits.map(u => u.serialNumber).join(', ') || 'N/A';
+    const models = [...new Set(itemUnits.map(u => u.modelNumber))].join(', ') || 'N/A';
+
+    // Determine Original Price
+    // If it's a quote, item.price is the quoted price. Original price might be on product.
+    // If it's direct cart, item.price is the price.
+    // We can show product.price or product.retailerPrice as original if available.
+    const originalPriceVal = item.product.retailerPrice || item.product.price || 0;
+    const originalPrice = formatCurrency(originalPriceVal);
+    const paidPrice = formatCurrency(item.price);
+    const lineTotal = formatCurrency(item.price * item.quantity);
+
+    generateOrderTableRow(
+      position,
+      item.product.name,
+      models,
+      serials,
+      originalPrice,
+      paidPrice,
+      lineTotal
+    );
+
+    position += 20;
+
+    // Add extra space if serials wrap (simple approximation)
+    if (serials.length > 20) position += 10;
+  });
+
+  generateHr(doc, position + 20);
+
+  // Total
+  const totalPosition = position + 40;
+  doc.font('Helvetica-Bold');
+  doc.fontSize(10);
+  generateTableRow(
+    doc,
+    totalPosition,
+    '',
+    '',
+    'Total',
+    formatCurrency(order.totalAmount)
+  );
+  doc.font('Helvetica');
+
+  // Footer
+  doc
+    .fontSize(10)
+    .text(
+      'Thank you for your business.',
+      50,
+      700,
+      { align: 'center', width: 500 }
+    );
+}
+
+module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer, generateRetailerInvoice, generateOrderInvoicePdfBuffer };

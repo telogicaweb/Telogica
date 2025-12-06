@@ -17,7 +17,8 @@ import {
   Download,
   Search,
   Store,
-  Tag
+  Tag,
+  Loader
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -147,6 +148,7 @@ const RetailerDashboard = () => {
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
 
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
@@ -1083,6 +1085,39 @@ const RetailerDashboard = () => {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
                     {order.paymentStatus}
                   </span>
+                  <button
+                    onClick={async () => {
+                      if (downloadingOrderId) return;
+                      setDownloadingOrderId(order._id);
+                      try {
+                        const response = await api.get(`/api/orders/${order._id}/invoice`, {
+                          responseType: 'blob'
+                        });
+                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `invoice-${order.orderNumber || order._id}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                      } catch (error) {
+                        console.error('Error downloading invoice:', error);
+                        alert('Failed to download invoice');
+                      } finally {
+                        setDownloadingOrderId(null);
+                      }
+                    }}
+                    disabled={downloadingOrderId === order._id}
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Download Invoice"
+                  >
+                    {downloadingOrderId === order._id ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : (
+                      <Download size={16} />
+                    )}
+                    <span>{downloadingOrderId === order._id ? 'Downloading...' : 'Download Invoice'}</span>
+                  </button>
                 </div>
               </div>
               <div className="p-6">
