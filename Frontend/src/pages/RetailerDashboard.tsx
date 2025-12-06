@@ -17,7 +17,8 @@ import {
   Download,
   Search,
   Store,
-  Tag
+  Tag,
+  Loader
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -126,34 +127,35 @@ const RetailerDashboard = () => {
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
   const navigate = useNavigate();
-  
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
-  
+
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  
+
   // Products
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productCategory, setProductCategory] = useState('');
-  
+
   // Inventory
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryFilter, setInventoryFilter] = useState('all');
-  
+
   // Quotes
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  
+
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
-  
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
+
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
-  
+
   // Quoted Products
   const [quotedProducts, setQuotedProducts] = useState<QuotedProduct[]>([]);
-  
+
   // Sell modal
   const [showSellModal, setShowSellModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -169,6 +171,9 @@ const RetailerDashboard = () => {
   });
 
   useEffect(() => {
+    if (authContext?.loading) {
+      return; // Wait for auth to load
+    }
     if (!user) {
       navigate('/login');
       return;
@@ -177,13 +182,16 @@ const RetailerDashboard = () => {
       navigate('/');
       return;
     }
-    loadDashboardData();
-  }, [user, navigate]);
+    // Only load if not already loaded
+    if (!stats) {
+      loadDashboardData();
+    }
+  }, [user, authContext?.loading, navigate]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
+      await Promise.allSettled([
         loadStats(),
         loadProducts(),
         loadInventory(),
@@ -296,7 +304,7 @@ const RetailerDashboard = () => {
     try {
       // Filter out invalid products
       const validItems = quote.products.filter((item: any) => (item.product && item.product._id) || (item.productId && item.productId._id));
-      
+
       if (validItems.length === 0) {
         alert('Cannot proceed: All products in this quote are no longer available.');
         setLoading(false);
@@ -316,7 +324,7 @@ const RetailerDashboard = () => {
       const products = validItems.map((item: any) => ({
         product: item.product?._id || item.productId?._id,
         quantity: item.quantity,
-        price: totalQty > 0 ? totalPrice / totalQty : 0
+        price: item.offeredPrice || (totalQty > 0 ? totalPrice / totalQty : 0)
       }));
 
       const shippingAddress = prompt("Enter shipping address:", user?.address || "");
@@ -428,7 +436,7 @@ const RetailerDashboard = () => {
   // Filter products
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          p.description?.toLowerCase().includes(productSearch.toLowerCase());
+      p.description?.toLowerCase().includes(productSearch.toLowerCase());
     const matchesCategory = !productCategory || p.category === productCategory;
     return matchesSearch && matchesCategory;
   });
@@ -784,7 +792,7 @@ const RetailerDashboard = () => {
                   {qp.product.description && (
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
                   )}
-                  
+
                   <div className="bg-gray-50 rounded-lg p-3 mb-4">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-sm text-gray-600">Your Quoted Price:</span>
@@ -870,25 +878,58 @@ const RetailerDashboard = () => {
 
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
+                  <div className="space-y-2">
                     {quote.products.map((p: any, idx: number) => (
-                      <li key={idx}>• {p.product?.name || 'Unknown'} (Qty: {p.quantity})</li>
+                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded border border-gray-100">
+                        <div>
+                          <p className="font-medium text-gray-900">{p.product?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">Qty: {p.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          {p.offeredPrice ? (
+                            <>
+                              <p className="font-bold text-green-600">₹{p.offeredPrice.toLocaleString()}</p>
+                              {(p.originalPrice || p.product?.price) && (
+                                <p className="text-xs text-gray-400 line-through">₹{(p.originalPrice || p.product?.price).toLocaleString()}</p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-gray-600">
+                              {(p.originalPrice || p.product?.price) ? `₹${(p.originalPrice || p.product?.price).toLocaleString()}` : 'Price on Request'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
 
                 {quote.adminResponse && (
                   <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                    <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-indigo-700">Offered Price:</span>
-                      <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Offer</h4>
+
+                    {/* Price Comparison */}
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm text-gray-600">Original Total:</span>
+                      <span className="text-sm text-gray-500 line-through decoration-red-500">
+                        ₹{quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0).toLocaleString()}
+                      </span>
                     </div>
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-bold text-indigo-900">Offered Total:</span>
+                      <span className="text-xl font-bold text-green-600">₹{quote.adminResponse.totalPrice.toLocaleString()}</span>
+                    </div>
+
                     {quote.adminResponse.discountPercentage > 0 && (
-                      <p className="text-sm text-green-600">{quote.adminResponse.discountPercentage}% discount!</p>
+                      <div className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded inline-block mb-2">
+                        {quote.adminResponse.discountPercentage}% Savings
+                      </div>
                     )}
+
                     {quote.adminResponse.message && (
-                      <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
+                      <div className="mt-2 text-sm text-indigo-800 bg-white/50 p-2 rounded border border-indigo-100">
+                        <span className="font-semibold">Note:</span> {quote.adminResponse.message}
+                      </div>
                     )}
                   </div>
                 )}
@@ -963,19 +1004,51 @@ const RetailerDashboard = () => {
 
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
+                  <div className="space-y-2">
                     {quote.products.map((p: any, idx: number) => (
-                      <li key={idx}>• {p.product?.name || 'Unknown'} (Qty: {p.quantity})</li>
+                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded border border-gray-100">
+                        <div>
+                          <p className="font-medium text-gray-900">{p.product?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">Qty: {p.quantity}</p>
+                        </div>
+                        <div className="text-right">
+                          {p.offeredPrice ? (
+                            <>
+                              <p className="font-bold text-green-600">₹{p.offeredPrice.toLocaleString()}</p>
+                              {(p.originalPrice || p.product?.price) && (
+                                <p className="text-xs text-gray-400 line-through">₹{(p.originalPrice || p.product?.price).toLocaleString()}</p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-gray-600">
+                              {(p.originalPrice || p.product?.price) ? `₹${(p.originalPrice || p.product?.price).toLocaleString()}` : 'Price on Request'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
 
                 {quote.adminResponse && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Final Price:</span>
-                      <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm text-gray-600">Original Total:</span>
+                      <span className="text-sm text-gray-500 line-through decoration-red-500">
+                        ₹{quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0).toLocaleString()}
+                      </span>
                     </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-gray-700">Final Price:</span>
+                      <span className="text-lg font-bold text-green-600">₹{quote.adminResponse.totalPrice.toLocaleString()}</span>
+                    </div>
+                    {quote.adminResponse.discountPercentage > 0 && (
+                      <div className="mt-2 text-right">
+                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">
+                          {quote.adminResponse.discountPercentage}% Savings
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1014,12 +1087,43 @@ const RetailerDashboard = () => {
                   <p className="font-medium text-lg">{formatCurrency(order.totalAmount)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
-                    {order.orderStatus}
-                  </span>
+                  {/* Order status removed as per request */}
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
                     {order.paymentStatus}
                   </span>
+                  <button
+                    onClick={async () => {
+                      if (downloadingOrderId) return;
+                      setDownloadingOrderId(order._id);
+                      try {
+                        const response = await api.get(`/api/orders/${order._id}/invoice`, {
+                          responseType: 'blob'
+                        });
+                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `invoice-${order.orderNumber || order._id}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                      } catch (error) {
+                        console.error('Error downloading invoice:', error);
+                        alert('Failed to download invoice');
+                      } finally {
+                        setDownloadingOrderId(null);
+                      }
+                    }}
+                    disabled={downloadingOrderId === order._id}
+                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Download Invoice"
+                  >
+                    {downloadingOrderId === order._id ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : (
+                      <Download size={16} />
+                    )}
+                    <span>{downloadingOrderId === order._id ? 'Downloading...' : 'Download Invoice'}</span>
+                  </button>
                 </div>
               </div>
               <div className="p-6">
@@ -1052,11 +1156,10 @@ const RetailerDashboard = () => {
             <button
               key={filter}
               onClick={() => setInventoryFilter(filter)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                inventoryFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
             </button>
@@ -1256,9 +1359,9 @@ const RetailerDashboard = () => {
                           <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
                         )}
                         {sale.invoiceUrl && (
-                          <a 
-                            href={sale.invoiceUrl} 
-                            target="_blank" 
+                          <a
+                            href={sale.invoiceUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 text-xs"
                           >
@@ -1322,11 +1425,10 @@ const RetailerDashboard = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    }`}
                 >
                   <Icon size={18} />
                   {tab.name}
@@ -1362,14 +1464,14 @@ const RetailerDashboard = () => {
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Record Sale</h2>
             <p className="text-gray-600 mb-4">
-              Product: <strong>{selectedItem.product?.name}</strong> | 
+              Product: <strong>{selectedItem.product?.name}</strong> |
               Serial: <strong>{selectedItem.productUnit?.serialNumber}</strong>
             </p>
-            
+
             <form onSubmit={handleSellSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name or Company Name *</label>
                   <input
                     type="text"
                     required
@@ -1429,7 +1531,9 @@ const RetailerDashboard = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Invoice Number <span className="text-xs text-gray-500 font-normal">(Enter the number from the generated invoice)</span>
+                  </label>
                   <input
                     type="text"
                     value={sellFormData.invoiceNumber}
@@ -1439,21 +1543,61 @@ const RetailerDashboard = () => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice URL *</label>
-                  <input
-                    type="url"
-                    required
-                    value={sellFormData.customerInvoice}
-                    onChange={(e) => setSellFormData({ ...sellFormData, customerInvoice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://..."
-                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!sellFormData.customerName || !sellFormData.customerEmail || !sellFormData.sellingPrice) {
+                          alert('Please fill in Customer Name, Email and Selling Price first');
+                          return;
+                        }
+                        setLoading(true);
+                        try {
+                          const response = await api.post('/api/retailer-inventory/generate-invoice', {
+                            inventoryId: selectedItem._id,
+                            ...sellFormData
+                          });
+                          setSellFormData(prev => ({
+                            ...prev,
+                            customerInvoice: response.data.invoiceUrl,
+                            invoiceNumber: response.data.invoiceNumber || prev.invoiceNumber
+                          }));
+                          alert('Invoice generated successfully! Please verify it before recording the sale.');
+                        } catch (error: any) {
+                          alert(error.response?.data?.message || 'Failed to generate invoice');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                    >
+                      {loading ? 'Generating...' : 'Generate Invoice'}
+                    </button>
+
+                    {sellFormData.customerInvoice && (
+                      <a
+                        href={sellFormData.customerInvoice}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        <Download size={16} />
+                        Download & Verify Invoice
+                      </a>
+                    )}
+                  </div>
+                  {!sellFormData.customerInvoice && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Generate an invoice to proceed with the sale record.
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Once you record this sale, the warranty will be automatically registered for the customer. 
+                  <strong>Note:</strong> Once you record this sale, the warranty will be automatically registered for the customer.
                   Both you and the customer will receive email notifications.
                 </p>
               </div>
@@ -1468,7 +1612,7 @@ const RetailerDashboard = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !sellFormData.customerInvoice}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {loading ? 'Processing...' : 'Record Sale'}

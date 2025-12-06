@@ -215,7 +215,7 @@ const verifyPayment = async (req, res) => {
 
     if (generated_signature === razorpaySignature) {
       order.paymentStatus = 'completed';
-      order.orderStatus = 'confirmed';
+      order.orderStatus = 'completed'; // Immediately complete order
       order.razorpayPaymentId = razorpayPaymentId;
       order.razorpaySignature = razorpaySignature;
       await order.save();
@@ -226,6 +226,13 @@ const verifyPayment = async (req, res) => {
       }
 
       await order.populate('user products.product');
+
+      if (!order.user) {
+        console.error('Order user not found after populate:', order.user);
+        throw new Error('User not found for this order');
+      }
+
+      console.log('Order user populated:', order.user._id, order.user.role);
 
       // Assign product units to the order
       const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
@@ -273,8 +280,23 @@ const verifyPayment = async (req, res) => {
 
           await recalculateProductInventory(item.product._id);
 
-          // Note: RetailerInventory is created when order is marked as 'delivered' by admin
-          // This ensures products are added to retailer's inventory only after actual delivery
+          // Note: RetailerInventory is created immediately for retailers
+          if (order.user.role === 'retailer') {
+            const inventoryEntries = units.map(unit => ({
+              retailer: order.user._id,
+              productUnit: unit._id,
+              product: item.product._id,
+              purchaseOrder: order._id,
+              purchaseDate: new Date(),
+              purchasePrice: item.price,
+              status: 'in_stock'
+            }));
+
+            if (inventoryEntries.length > 0) {
+              await RetailerInventory.insertMany(inventoryEntries);
+              console.log(`Added ${inventoryEntries.length} items to retailer inventory`);
+            }
+          }
         } catch (error) {
           console.error('Error assigning units:', error);
         }
@@ -420,7 +442,8 @@ const verifyPayment = async (req, res) => {
       res.status(400).json({ message: 'Payment verification failed' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error in verifyPayment:', error);
+    res.status(500).json({ message: error.message, stack: error.stack });
   }
 };
 
@@ -429,7 +452,10 @@ const verifyPayment = async (req, res) => {
 // @access  Private
 const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).populate('products.product');
+    const orders = await Order.find({ user: req.user._id })
+      .populate('products.product')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -441,7 +467,11 @@ const getMyOrders = async (req, res) => {
 // @access  Private/Admin
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({}).populate('user', 'id name').populate('products.product');
+    const orders = await Order.find({})
+      .populate('user', 'id name')
+      .populate('products.product')
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -458,7 +488,7 @@ const updateOrderStatus = async (req, res) => {
 
     if (order) {
       const previousStatus = order.orderStatus;
-      
+
       if (status) {
         order.orderStatus = status;
       }
@@ -472,50 +502,8 @@ const updateOrderStatus = async (req, res) => {
       // Populate user and products for further processing
       await updatedOrder.populate('user products.product');
 
-      // When order is marked as 'delivered', add products to retailer inventory
-      if (status === 'delivered' && previousStatus !== 'delivered' && updatedOrder.user && updatedOrder.user.role === 'retailer') {
-        try {
-          // Fetch all product units for this order in a single query
-          const allUnits = await ProductUnit.find({ order: updatedOrder._id });
+      // Inventory update logic removed - handled in verifyPayment
 
-          // Fetch all existing inventory entries for this retailer and order to avoid duplicates
-          const existingInventories = await RetailerInventory.find({
-            retailer: updatedOrder.user._id,
-            purchaseOrder: updatedOrder._id
-          });
-          const existingProductUnitIds = new Set(existingInventories.map(inv => inv.productUnit.toString()));
-
-          // Build inventory entries to create
-          const inventoryEntries = [];
-          for (const item of updatedOrder.products) {
-            const productUnits = allUnits.filter(u => u.product.toString() === item.product._id.toString());
-
-            for (const unit of productUnits) {
-              if (!existingProductUnitIds.has(unit._id.toString())) {
-                inventoryEntries.push({
-                  retailer: updatedOrder.user._id,
-                  productUnit: unit._id,
-                  product: item.product._id,
-                  purchaseOrder: updatedOrder._id,
-                  purchaseDate: new Date(),
-                  purchasePrice: item.price,
-                  status: 'in_stock'
-                });
-              }
-            }
-          }
-
-          // Bulk insert inventory entries
-          if (inventoryEntries.length > 0) {
-            await RetailerInventory.insertMany(inventoryEntries);
-          }
-
-          console.log(`Retailer inventory updated for order ${updatedOrder.orderNumber || updatedOrder._id}: ${inventoryEntries.length} items added`);
-        } catch (inventoryError) {
-          console.error('Error updating retailer inventory:', inventoryError);
-          // Continue with the status update even if inventory update fails
-        }
-      }
 
       // Send email notification for status change (Async)
       if (updatedOrder.user && updatedOrder.user.email) {
@@ -537,4 +525,40 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus };
+// Download Order Invoice
+const { generateOrderInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+
+const downloadInvoice = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user')
+      .populate('products.product');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Verify user owns this order
+    if (req.user.role !== 'admin' && order.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Fetch product units for this order to get serials/models
+    const productUnits = await ProductUnit.find({ order: order._id });
+
+    const buffer = await generateOrderInvoicePdfBuffer(order, productUnits);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=invoice-${order.orderNumber || order._id}.pdf`,
+      'Content-Length': buffer.length
+    });
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice };

@@ -33,16 +33,16 @@ const createQuote = async (req, res) => {
     });
 
     const createdQuote = await quote.save();
-    
-    // Notify Admin
+
+    // Notify Admin (Non-blocking)
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
-    await sendEmail(
+    sendEmail(
       adminEmail,
       'New Quote Request',
       `User ${req.user.name} (${req.user.email}) requested a quote with ${products.length} products.`,
       'quote_request',
       { entityType: 'quote', entityId: createdQuote._id }
-    );
+    ).catch(err => console.error('Failed to send admin notification email:', err));
 
     res.status(201).json(createdQuote);
   } catch (error) {
@@ -55,19 +55,30 @@ const createQuote = async (req, res) => {
 // @access  Private
 const getQuotes = async (req, res) => {
   try {
+    console.log('getQuotes called by user:', req.user ? req.user._id : 'unknown');
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
     let quotes;
     if (req.user.role === 'admin') {
       quotes = await Quote.find({})
         .populate('user', 'name email role')
         .populate('products.product')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
     } else {
       quotes = await Quote.find({ user: req.user._id })
         .populate('products.product')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
     }
+
+    console.log(`Found ${quotes.length} quotes`);
     res.json(quotes);
   } catch (error) {
+    console.error('Error in getQuotes:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -89,10 +100,10 @@ const respondToQuote = async (req, res) => {
       if (products && Array.isArray(products)) {
         products.forEach(pItem => {
           // Safely find the product, checking if product exists (it might be null if deleted)
-          const quoteProduct = quote.products.find(qp => 
+          const quoteProduct = quote.products.find(qp =>
             qp.product && qp.product._id.toString() === pItem.product.toString()
           );
-          
+
           if (quoteProduct) {
             quoteProduct.offeredPrice = Number(pItem.offeredPrice);
             calculatedTotal += quoteProduct.offeredPrice * quoteProduct.quantity;
@@ -108,19 +119,19 @@ const respondToQuote = async (req, res) => {
         discountPercentage = Math.round(discountPercentage * 100) / 100;
       }
 
-      quote.adminResponse = { 
-        totalPrice: calculatedTotal, 
+      quote.adminResponse = {
+        totalPrice: calculatedTotal,
         discountPercentage,
         message,
         respondedAt: new Date()
       };
       quote.status = 'responded';
-      
+
       const updatedQuote = await quote.save();
 
       // Notify User with detailed email
       const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: ₹${calculatedTotal}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
-      
+
       // HTML escape function to prevent XSS
       const escapeHtml = (text) => {
         const map = {
@@ -132,7 +143,7 @@ const respondToQuote = async (req, res) => {
         };
         return text.replace(/[&<>"']/g, m => map[m]);
       };
-      
+
       const emailHtml = `
         <h2>Quote Response</h2>
         <p>Dear ${escapeHtml(quote.user.name)},</p>
@@ -145,14 +156,14 @@ const respondToQuote = async (req, res) => {
         <p>Please login to your account to accept or reject this quote.</p>
         <p>Thank you!</p>
       `;
-      await sendEmail(
+      sendEmail(
         quote.user.email,
         'Quote Response - Action Required',
         emailText,
         'quote_approval',
         { entityType: 'quote', entityId: quote._id },
         emailHtml
-      );
+      ).catch(err => console.error('Failed to send quote response email:', err));
 
       res.json(updatedQuote);
     } else {
@@ -185,7 +196,7 @@ const acceptQuote = async (req, res) => {
 
     quote.status = 'accepted';
     quote.acceptedAt = new Date();
-    
+
     const updatedQuote = await quote.save();
 
     // Save quoted products for retailer
@@ -232,16 +243,16 @@ const rejectQuote = async (req, res) => {
       return res.status(404).json({ message: 'Quote not found' });
     }
 
-    const isAdmin = req.user.role === 'admin' || 
-                    (req.user.role && req.user.role.toLowerCase() === 'admin') ||
-                    req.user.email === (process.env.ADMIN_EMAIL || 'admin@telogica.com');
+    const isAdmin = req.user.role === 'admin' ||
+      (req.user.role && req.user.role.toLowerCase() === 'admin') ||
+      req.user.email === (process.env.ADMIN_EMAIL || 'admin@telogica.com');
     const isOwner = quote.user.toString() === req.user._id.toString();
 
     console.log(`Reject Quote Debug: UserID=${req.user._id}, Role=${req.user.role}, QuoteOwner=${quote.user}, IsAdmin=${isAdmin}, IsOwner=${isOwner}`);
 
     // Allow Admin or Owner to reject
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: 'Not authorized to reject this quote',
         debug: {
           userRole: req.user.role,
@@ -266,7 +277,7 @@ const rejectQuote = async (req, res) => {
     if (reason) {
       quote.rejectionReason = reason;
     }
-    
+
     const updatedQuote = await quote.save();
     res.json(updatedQuote);
   } catch (error) {

@@ -12,15 +12,15 @@ const orderSchema = new mongoose.Schema({
   }],
   totalAmount: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
-  paymentStatus: { 
-    type: String, 
-    enum: ['pending', 'completed', 'failed'], 
-    default: 'pending' 
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'pending'
   },
-  orderStatus: { 
-    type: String, 
-    enum: ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled'], 
-    default: 'pending' 
+  orderStatus: {
+    type: String,
+    enum: ['pending', 'processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'completed'],
+    default: 'pending'
   },
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
@@ -30,5 +30,9 @@ const orderSchema = new mongoose.Schema({
   isQuoteBased: { type: Boolean, default: false }, // Flag to indicate if order is based on a quote
   discountApplied: { type: Number, default: 0 } // Discount amount/percentage applied
 }, { timestamps: true });
+
+// Add indexes for performance
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

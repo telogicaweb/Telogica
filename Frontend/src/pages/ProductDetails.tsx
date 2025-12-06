@@ -133,13 +133,18 @@ const ProductDetails = () => {
       handleAddToCart(true);
       return;
     }
-    
+
     // For regular users
-    const requiresQuote = !isTelecom || quantity > 3 || !product.price || product.requiresQuote;
+    const requiresQuote = !isTelecom || !product.price || product.requiresQuote;
 
     if (requiresQuote) {
       handleAddToQuote();
     } else {
+      // Enforce minimum quantity for Telecom
+      if (isTelecom && quantity < 3) {
+        alert('Telecom products require a minimum quantity of 3.');
+        return;
+      }
       handleAddToCart(false);
     }
   };
@@ -148,7 +153,7 @@ const ProductDetails = () => {
     if (hasRetailerPrice) {
       return 'Add to Cart';
     }
-    if (!product.price || !isTelecom || quantity > 3 || product.requiresQuote) {
+    if (!product.price || !isTelecom || product.requiresQuote) {
       return 'Add to Quote';
     }
     return 'Add to Cart';
@@ -203,7 +208,7 @@ const ProductDetails = () => {
                 <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold">{product.category}</div>
                 <h1 className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">{product.name}</h1>
                 <p className="mt-4 text-lg text-gray-500">{product.description}</p>
-                
+
                 <div className="mt-6">
                   {isRetailer ? (
                     // Retailer pricing display
@@ -227,25 +232,25 @@ const ProductDetails = () => {
                     )
                   )}
                 </div>
-                
+
                 <div className="mt-8 flex items-center gap-4">
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">Quantity</label>
-                    <input 
+                    <input
                       id="quantity"
-                      type="number" 
-                      min="1" 
-                      value={quantity} 
+                      type="number"
+                      min="1"
+                      value={quantity}
                       onChange={(e) => {
                         const parsed = parseInt(e.target.value);
                         setQuantity(isNaN(parsed) || parsed < 1 ? 1 : parsed);
-                      }} 
+                      }}
                       className="mt-1 block w-20 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
 
-                  <button 
-                    onClick={handleAction} 
+                  <button
+                    onClick={handleAction}
                     className="mt-6 w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 md:w-auto gap-2"
                   >
                     {getActionButtonText() === 'Add to Cart' ? <ShoppingCart size={18} /> : <FileText size={18} />}
@@ -256,8 +261,8 @@ const ProductDetails = () => {
                 {/* Additional options for retailers */}
                 {isRetailer && hasRetailerPrice && (
                   <div className="mt-4">
-                    <button 
-                      onClick={handleAddToQuote} 
+                    <button
+                      onClick={handleAddToQuote}
                       className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
                       <FileText size={14} />
@@ -283,9 +288,9 @@ const ProductDetails = () => {
                 return (
                   <Link to={`/product/${recProduct._id}`} key={recProduct._id} className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden">
                     <div className="h-32 overflow-hidden relative">
-                      <img 
-                        src={thumbnail} 
-                        alt={recProduct.name} 
+                      <img
+                        src={thumbnail}
+                        alt={recProduct.name}
                         className="w-full h-full object-cover"
                       />
                       <span className="absolute top-1 right-1 bg-white/90 text-gray-900 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow">

@@ -34,7 +34,7 @@ exports.addToInventory = async (req, res) => {
     const inventoryItems = await Promise.all(
       productUnits.map(async (unit) => {
         const productUnit = await ProductUnit.findById(unit.productUnitId);
-        
+
         // Update product unit to mark retailer ownership
         await ProductUnit.findByIdAndUpdate(unit.productUnitId, {
           retailer: req.user._id,
@@ -67,10 +67,10 @@ exports.addToInventory = async (req, res) => {
 exports.markAsSold = async (req, res) => {
   try {
     const { inventoryId } = req.params;
-    const { 
-      customerName, 
-      customerEmail, 
-      customerPhone, 
+    const {
+      customerName,
+      customerEmail,
+      customerPhone,
       customerAddress,
       sellingPrice,
       customerInvoice,
@@ -80,8 +80,8 @@ exports.markAsSold = async (req, res) => {
 
     // Validate required fields
     if (!customerName || !customerEmail || !customerPhone || !customerInvoice) {
-      return res.status(400).json({ 
-        message: 'Customer details and invoice are required' 
+      return res.status(400).json({
+        message: 'Customer details and invoice are required'
       });
     }
 
@@ -204,6 +204,58 @@ exports.markAsSold = async (req, res) => {
   }
 };
 
+// Generate Invoice for Retailer Sale
+const { generateRetailerInvoice } = require('../utils/invoiceGenerator');
+
+exports.generateInvoice = async (req, res) => {
+  try {
+    const {
+      inventoryId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      sellingPrice,
+      invoiceNumber,
+      soldDate
+    } = req.body;
+
+    const inventoryItem = await RetailerInventory.findById(inventoryId)
+      .populate('productUnit')
+      .populate('product');
+
+    if (!inventoryItem) {
+      return res.status(404).json({ message: 'Inventory item not found' });
+    }
+
+    if (inventoryItem.retailer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const saleData = {
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      sellingPrice,
+      invoiceNumber,
+      soldDate
+    };
+
+    const { url, invoiceNumber: generatedInvoiceNumber } = await generateRetailerInvoice(
+      saleData,
+      req.user,
+      inventoryItem.product,
+      inventoryItem.productUnit
+    );
+
+    res.json({ invoiceUrl: url, invoiceNumber: generatedInvoiceNumber });
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Get inventory item details
 exports.getInventoryItem = async (req, res) => {
   try {
@@ -235,7 +287,7 @@ exports.getInventoryItem = async (req, res) => {
 exports.getAllInventories = async (req, res) => {
   try {
     const { retailerId, status } = req.query;
-    
+
     const filter = {};
     if (retailerId) filter.retailer = retailerId;
     if (status) filter.status = status;
