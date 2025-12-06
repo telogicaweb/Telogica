@@ -167,16 +167,24 @@ exports.approveWarranty = async (req, res) => {
       return res.status(404).json({ message: 'Warranty not found' });
     }
 
-    // Calculate warranty end date if not provided
-    let endDate = warrantyEndDate;
-    if (!endDate && warrantyStartDate) {
-      const startDate = new Date(warrantyStartDate);
+    // Calculate warranty dates if not provided
+    let startDate = warrantyStartDate ? new Date(warrantyStartDate) : null;
+    let endDate = warrantyEndDate ? new Date(warrantyEndDate) : null;
+
+    // If start date not provided, default to purchase date + 3 days
+    if (!startDate) {
+      startDate = new Date(warranty.purchaseDate);
+      startDate.setDate(startDate.getDate() + 3);
+    }
+
+    // If end date not provided, calculate from start date + warranty period
+    if (!endDate) {
       endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + warranty.warrantyPeriodMonths);
+      endDate.setMonth(endDate.getMonth() + (warranty.warrantyPeriodMonths || 12));
     }
 
     warranty.status = 'approved';
-    warranty.warrantyStartDate = warrantyStartDate || new Date();
+    warranty.warrantyStartDate = startDate;
     warranty.warrantyEndDate = endDate;
     warranty.adminNotes = adminNotes;
 

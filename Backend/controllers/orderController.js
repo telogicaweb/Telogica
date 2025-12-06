@@ -312,14 +312,15 @@ const verifyPayment = async (req, res) => {
         for (const item of order.products) {
           if (item.serialNumbers && item.serialNumbers.length > 0) {
             for (const serialNumber of item.serialNumbers) {
+              // Find the unit to link it properly
+              const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
+              const warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
+
               const startDate = new Date();
               startDate.setDate(startDate.getDate() + 3); // Today + 3 days
               
               const endDate = new Date(startDate);
-              endDate.setMonth(endDate.getMonth() + 12); // + 12 months
-
-              // Find the unit to link it properly
-              const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
+              endDate.setMonth(endDate.getMonth() + warrantyMonths); // + warranty months
 
               const warranty = new Warranty({
                 user: order.user._id,
@@ -333,7 +334,7 @@ const verifyPayment = async (req, res) => {
                 status: 'approved',
                 warrantyStartDate: startDate,
                 warrantyEndDate: endDate,
-                warrantyPeriodMonths: 12
+                warrantyPeriodMonths: warrantyMonths
               });
 
               // Generate PDF
