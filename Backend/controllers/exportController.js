@@ -7,6 +7,10 @@ const Invoice = require('../models/Invoice');
 const ProductUnit = require('../models/ProductUnit');
 const RetailerInventory = require('../models/RetailerInventory');
 
+const Contact = require('../models/Contact');
+const EmailLog = require('../models/EmailLog');
+const BlogPost = require('../models/BlogPost');
+
 const {
   streamPDF,
   generatePDF,
@@ -18,6 +22,9 @@ const {
   WARRANTY_EXPORT_CONFIG,
   QUOTE_EXPORT_CONFIG,
   INVOICE_EXPORT_CONFIG,
+  CONTACT_EXPORT_CONFIG,
+  EMAIL_LOG_EXPORT_CONFIG,
+  BLOG_EXPORT_CONFIG,
   formatDate
 } = require('../utils/exportUtils');
 
@@ -32,7 +39,7 @@ const {
 
 exports.exportProducts = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate, limit = 10000 } = req.query;
     
     // Enforce maximum export limit to prevent memory issues
     const maxLimit = 10000;
@@ -44,6 +51,12 @@ exports.exportProducts = async (req, res) => {
     if (filters.minPrice) query.price = { $gte: Number(filters.minPrice) };
     if (filters.maxPrice) {
       query.price = { ...query.price, $lte: Number(filters.maxPrice) };
+    }
+    if (startDate) {
+      query.createdAt = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
     }
     
     const products = await Product.find(query)
@@ -76,7 +89,7 @@ exports.exportProducts = async (req, res) => {
 
 exports.exportOrders = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate, limit = 10000 } = req.query;
     
     // Enforce maximum export limit to prevent memory issues
     const maxLimit = 10000;
@@ -86,11 +99,15 @@ exports.exportOrders = async (req, res) => {
     const query = {};
     if (filters.paymentStatus) query.paymentStatus = filters.paymentStatus;
     if (filters.orderStatus) query.orderStatus = filters.orderStatus;
-    if (filters.startDate) {
-      query.createdAt = { $gte: new Date(filters.startDate) };
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.createdAt = { $gte: new Date(start) };
     }
-    if (filters.endDate) {
-      query.createdAt = { ...query.createdAt, $lte: new Date(filters.endDate) };
+    if (end) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(end) };
     }
     
     const orders = await Order.find(query)
@@ -127,13 +144,19 @@ exports.exportOrders = async (req, res) => {
 
 exports.exportUsers = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
     
     // Build query from filters
     const query = {};
     if (filters.role) query.role = filters.role;
     if (filters.isApproved !== undefined) {
       query.isApproved = filters.isApproved === 'true';
+    }
+    if (startDate) {
+      query.createdAt = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
     }
     
     const users = await User.find(query)
@@ -175,16 +198,20 @@ exports.exportUsers = async (req, res) => {
 
 exports.exportWarranties = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
     
     // Build query from filters
     const query = {};
     if (filters.status) query.status = filters.status;
-    if (filters.startDate) {
-      query.purchaseDate = { $gte: new Date(filters.startDate) };
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.purchaseDate = { $gte: new Date(start) };
     }
-    if (filters.endDate) {
-      query.purchaseDate = { ...query.purchaseDate, $lte: new Date(filters.endDate) };
+    if (end) {
+      query.purchaseDate = { ...query.purchaseDate, $lte: new Date(end) };
     }
     
     const warranties = await Warranty.find(query)
@@ -226,16 +253,20 @@ exports.exportWarranties = async (req, res) => {
 
 exports.exportQuotes = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
     
     // Build query from filters
     const query = {};
     if (filters.status) query.status = filters.status;
-    if (filters.startDate) {
-      query.createdAt = { $gte: new Date(filters.startDate) };
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.createdAt = { $gte: new Date(start) };
     }
-    if (filters.endDate) {
-      query.createdAt = { ...query.createdAt, $lte: new Date(filters.endDate) };
+    if (end) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(end) };
     }
     
     const quotes = await Quote.find(query)
@@ -279,16 +310,20 @@ exports.exportQuotes = async (req, res) => {
 
 exports.exportInvoices = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {} } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
     
     // Build query from filters
     const query = {};
     if (filters.paymentStatus) query.paymentStatus = filters.paymentStatus;
-    if (filters.startDate) {
-      query.invoiceDate = { $gte: new Date(filters.startDate) };
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.invoiceDate = { $gte: new Date(start) };
     }
-    if (filters.endDate) {
-      query.invoiceDate = { ...query.invoiceDate, $lte: new Date(filters.endDate) };
+    if (end) {
+      query.invoiceDate = { ...query.invoiceDate, $lte: new Date(end) };
     }
     
     const invoices = await Invoice.find(query)
@@ -326,7 +361,7 @@ exports.exportInvoices = async (req, res) => {
 
 exports.exportProductUnits = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate, limit = 10000 } = req.query;
     
     // Enforce maximum export limit to prevent memory issues
     const maxLimit = 10000;
@@ -337,6 +372,12 @@ exports.exportProductUnits = async (req, res) => {
     if (filters.status) query.status = filters.status;
     if (filters.stockType) query.stockType = filters.stockType;
     if (filters.productId) query.product = filters.productId;
+    if (startDate) {
+      query.createdAt = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
+    }
     
     const units = await ProductUnit.find(query)
       .populate('product', 'name category')
@@ -387,7 +428,7 @@ exports.exportProductUnits = async (req, res) => {
 
 exports.exportRetailerInventory = async (req, res) => {
   try {
-    const { format = 'pdf', filters = {}, limit = 10000 } = req.query;
+    const { format = 'pdf', filters = {}, startDate, endDate, limit = 10000 } = req.query;
     
     // Enforce maximum export limit to prevent memory issues
     const maxLimit = 10000;
@@ -397,6 +438,12 @@ exports.exportRetailerInventory = async (req, res) => {
     const query = {};
     if (filters.status) query.status = filters.status;
     if (filters.retailerId) query.retailer = filters.retailerId;
+    if (startDate) {
+      query.purchaseDate = { $gte: new Date(startDate) };
+    }
+    if (endDate) {
+      query.purchaseDate = { ...query.purchaseDate, $lte: new Date(endDate) };
+    }
     
     const inventory = await RetailerInventory.find(query)
       .populate('retailer', 'name email')
@@ -490,6 +537,139 @@ exports.exportSalesReport = async (req, res) => {
   } catch (error) {
     console.error('Sales report export error:', error);
     res.status(500).json({ message: 'Failed to export sales report', error: error.message });
+  }
+};
+
+// ============================================
+// Contact Exports
+// ============================================
+
+exports.exportContacts = async (req, res) => {
+  try {
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
+    
+    const query = {};
+    if (filters.status) query.status = filters.status;
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.createdAt = { $gte: new Date(start) };
+    }
+    if (end) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(end) };
+    }
+    
+    const contacts = await Contact.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    if (!contacts.length) {
+      return res.status(404).json({ message: 'No messages found' });
+    }
+    
+    const metadata = {
+      'Total Messages': contacts.length,
+      'Generated On': formatDate(new Date()),
+      'Generated By': req.user.name
+    };
+    
+    const config = { ...CONTACT_EXPORT_CONFIG, metadata };
+    
+    await handleExport(res, contacts, config, format, 'messages');
+  } catch (error) {
+    console.error('Contact export error:', error);
+    res.status(500).json({ message: 'Failed to export messages', error: error.message });
+  }
+};
+
+// ============================================
+// Email Log Exports
+// ============================================
+
+exports.exportEmailLogs = async (req, res) => {
+  try {
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
+    
+    const query = {};
+    if (filters.status) query.status = filters.status;
+    if (filters.emailType) query.emailType = filters.emailType;
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.sentAt = { $gte: new Date(start) };
+    }
+    if (end) {
+      query.sentAt = { ...query.sentAt, $lte: new Date(end) };
+    }
+    
+    const logs = await EmailLog.find(query)
+      .sort({ sentAt: -1 })
+      .lean();
+    
+    if (!logs.length) {
+      return res.status(404).json({ message: 'No email logs found' });
+    }
+    
+    const metadata = {
+      'Total Logs': logs.length,
+      'Generated On': formatDate(new Date()),
+      'Generated By': req.user.name
+    };
+    
+    const config = { ...EMAIL_LOG_EXPORT_CONFIG, metadata };
+    
+    await handleExport(res, logs, config, format, 'email-logs');
+  } catch (error) {
+    console.error('Email log export error:', error);
+    res.status(500).json({ message: 'Failed to export email logs', error: error.message });
+  }
+};
+
+// ============================================
+// Blog Exports
+// ============================================
+
+exports.exportBlogs = async (req, res) => {
+  try {
+    const { format = 'pdf', filters = {}, startDate, endDate } = req.query;
+    
+    const query = {};
+    if (filters.category) query.category = filters.category;
+    
+    const start = startDate || filters.startDate;
+    const end = endDate || filters.endDate;
+
+    if (start) {
+      query.publishDate = { $gte: new Date(start) };
+    }
+    if (end) {
+      query.publishDate = { ...query.publishDate, $lte: new Date(end) };
+    }
+    
+    const blogs = await BlogPost.find(query)
+      .sort({ publishDate: -1 })
+      .lean();
+    
+    if (!blogs.length) {
+      return res.status(404).json({ message: 'No blog posts found' });
+    }
+    
+    const metadata = {
+      'Total Posts': blogs.length,
+      'Generated On': formatDate(new Date()),
+      'Generated By': req.user.name
+    };
+    
+    const config = { ...BLOG_EXPORT_CONFIG, metadata };
+    
+    await handleExport(res, blogs, config, format, 'blog-posts');
+  } catch (error) {
+    console.error('Blog export error:', error);
+    res.status(500).json({ message: 'Failed to export blog posts', error: error.message });
   }
 };
 

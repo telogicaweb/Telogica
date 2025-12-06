@@ -27,9 +27,16 @@ import {
   Download,
   CheckCircle,
   Clock,
-  LogOut
+  LogOut,
+  Star,
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
+import AdminLogs from './admin/AdminLogs';
+import ProductSelector from '../components/AdminDashboard/ProductSelector';
+import CategoryInput from '../components/AdminDashboard/CategoryInput';
+import UnitBatchEntry from '../components/AdminDashboard/UnitBatchEntry';
 
 interface User {
   _id: string;
@@ -271,6 +278,10 @@ const AdminDashboard: React.FC = () => {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  
+  // Export filters
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
@@ -284,6 +295,11 @@ const AdminDashboard: React.FC = () => {
     () => products.filter(product => product && product._id && (!editingProduct || product._id !== editingProduct._id)),
     [products, editingProduct]
   );
+
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [products]);
 
   const selectedRecommendationDetails = useMemo(
     () =>
@@ -412,34 +428,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleAddUnits = async () => {
+  const handleAddUnits = async (unitsToAdd: Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>) => {
     if (!selectedProductForUnits) return;
-
-    // Validate all fields are filled
-    const invalidUnits = newUnits.filter(u => !u.serialNumber || !u.modelNumber);
-    if (invalidUnits.length > 0) {
-      const missingFields = invalidUnits.map((unit) => {
-        const unitNumber = newUnits.indexOf(unit) + 1;
-        const missing: string[] = [];
-        if (!unit.serialNumber) missing.push('serial number');
-        if (!unit.modelNumber) missing.push('model number');
-        return `Unit ${unitNumber}: ${missing.join(' and ')}`;
-      }).join(', ');
-      alert(`Please fill the following required fields:\n${missingFields}`);
-      return;
-    }
 
     try {
       await api.post('/api/product-units/add', {
         productId: selectedProductForUnits._id,
-        units: newUnits.map(unit => ({
+        units: unitsToAdd.map(unit => ({
           serialNumber: unit.serialNumber,
           modelNumber: unit.modelNumber,
           warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
           stockType: 'both'
         }))
       });
-      alert(`${newUnits.length} unit${newUnits.length > 1 ? 's' : ''} added successfully`);
+      alert(`${unitsToAdd.length} unit${unitsToAdd.length > 1 ? 's' : ''} added successfully`);
       setNewUnits([]);
       setShowAddUnitsForm(false);
       // Reload product units and products
@@ -889,13 +891,17 @@ const AdminDashboard: React.FC = () => {
 
   const handleServerExport = async (entity: string, format: 'pdf' | 'csv' | 'excel') => {
     try {
-      const response = await api.get(`/api/export/${entity}?format=${format}`, {
+      let url = `/api/export/${entity}?format=${format}`;
+      if (exportStartDate) url += `&startDate=${exportStartDate}`;
+      if (exportEndDate) url += `&endDate=${exportEndDate}`;
+
+      const response = await api.get(url, {
         responseType: 'blob'
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
+      link.href = downloadUrl;
       link.setAttribute('download', `${entity}_export_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`);
       document.body.appendChild(link);
       link.click();
@@ -1031,6 +1037,36 @@ const AdminDashboard: React.FC = () => {
             Export comprehensive reports for all system data. Choose your preferred format (PDF, CSV, or Excel).
           </p>
 
+          <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            {(exportStartDate || exportEndDate) && (
+              <button
+                onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                className="text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
               { label: 'Orders Report', entity: 'orders', icon: ShoppingCart, color: 'text-blue-600' },
@@ -1122,12 +1158,70 @@ const AdminDashboard: React.FC = () => {
               </button>
             )}
             <button
+              onClick={() => navigate('/admin/home-page-products')}
+              className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded-full flex items-center gap-2 hover:bg-indigo-50"
+            >
+              <Star className="w-4 h-4" />
+              Featured Products
+            </button>
+            <button
               onClick={() => setShowProductForm(!showProductForm)}
               className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:from-blue-600 hover:to-indigo-700"
             >
               <Plus className="w-4 h-4" />
               {showProductForm ? 'Hide Form' : 'Add Product'}
             </button>
+          </div>
+        </div>
+
+        {/* Export Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {(exportStartDate || exportEndDate) && (
+                <button
+                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleServerExport('products', 'pdf')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('products', 'csv')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('products', 'excel')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1266,13 +1360,10 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                  <input
-                    type="text"
+                  <CategoryInput
                     value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter category"
+                    onChange={(value) => setProductForm({ ...productForm, category: value })}
+                    categories={uniqueCategories}
                   />
                 </div>
                 <div>
@@ -1355,42 +1446,11 @@ const AdminDashboard: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Recommended Products
                 </label>
-                <select
-                  multiple
-                  value={productForm.recommendedProductIds}
-                  onChange={handleRecommendationSelection}
-                  className="w-full min-h-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  size={Math.min(6, availableRecommendationProducts.length || 4)}
-                >
-                  {availableRecommendationProducts.length === 0 && (
-                    <option disabled value="">
-                      No other products available yet
-                    </option>
-                  )}
-                  {availableRecommendationProducts.map(product => (
-                    <option key={product._id} value={product._id}>
-                      {product.name} • {product.category}
-                    </option>
-                  ))}
-                </select>
-                {selectedRecommendationDetails.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {selectedRecommendationDetails.map(product => (
-                      <button
-                        key={product._id}
-                        type="button"
-                        onClick={() => handleRemoveRecommendation(product._id)}
-                        className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-full text-xs font-medium hover:bg-blue-100"
-                      >
-                        <span>{product.name}</span>
-                        <X className="w-3 h-3" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 mt-2">
-                  Hold <span className="font-semibold">Ctrl</span> (or <span className="font-semibold">Cmd</span> on Mac) to select multiple products.
-                </p>
+                <ProductSelector
+                  products={availableRecommendationProducts}
+                  selectedIds={productForm.recommendedProductIds}
+                  onChange={(ids) => setProductForm({ ...productForm, recommendedProductIds: ids })}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -1677,23 +1737,60 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportUsersPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700"
-            >
-              <Download className="w-4 h-4" />
-              Export PDF
-            </button>
-            <button
-              onClick={handleExportUsersExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700"
-            >
-              <Download className="w-4 h-4" />
-              Export Excel
-            </button>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+          </div>
+
+          {/* Export Section */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {(exportStartDate || exportEndDate) && (
+                  <button
+                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleServerExport('users', 'pdf')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                >
+                  <Download size={14} /> PDF
+                </button>
+                <button
+                  onClick={() => handleServerExport('users', 'csv')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                >
+                  <Download size={14} /> CSV
+                </button>
+                <button
+                  onClick={() => handleServerExport('users', 'excel')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                >
+                  <Download size={14} /> Excel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1915,33 +2012,63 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage customer quote requests and provide pricing</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
+              <p className="text-sm text-gray-600 mt-1">Manage customer quote requests and provide pricing</p>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportQuotesPDF}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export PDF
-            </button>
-            <button
-              onClick={handleExportQuotesExcel}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export Excel
-            </button>
-            <button
-              onClick={exportQuotes}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export CSV
-            </button>
+
+          {/* Export Section */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {(exportStartDate || exportEndDate) && (
+                  <button
+                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleServerExport('quotes', 'pdf')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                >
+                  <Download size={14} /> PDF
+                </button>
+                <button
+                  onClick={() => handleServerExport('quotes', 'csv')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                >
+                  <Download size={14} /> CSV
+                </button>
+                <button
+                  onClick={() => handleServerExport('quotes', 'excel')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                >
+                  <Download size={14} /> Excel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2310,33 +2437,63 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
-            <p className="text-sm text-gray-600 mt-1">Track and manage customer orders efficiently</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
+              <p className="text-sm text-gray-600 mt-1">Track and manage customer orders efficiently</p>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportOrdersPDF}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export PDF
-            </button>
-            <button
-              onClick={handleExportOrdersExcel}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export Excel
-            </button>
-            <button
-              onClick={exportOrders}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Export CSV
-            </button>
+
+          {/* Export Section */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                {(exportStartDate || exportEndDate) && (
+                  <button
+                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleServerExport('orders', 'pdf')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                >
+                  <Download size={14} /> PDF
+                </button>
+                <button
+                  onClick={() => handleServerExport('orders', 'csv')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                >
+                  <Download size={14} /> CSV
+                </button>
+                <button
+                  onClick={() => handleServerExport('orders', 'excel')}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                >
+                  <Download size={14} /> Excel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2481,7 +2638,62 @@ const AdminDashboard: React.FC = () => {
   // Render Warranties Tab
   const renderWarranties = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
+        </div>
+
+        {/* Export Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {(exportStartDate || exportEndDate) && (
+                <button
+                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleServerExport('warranties', 'pdf')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('warranties', 'csv')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('warranties', 'excel')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-4">
         {warranties.map((warranty) => (
@@ -2573,7 +2785,62 @@ const AdminDashboard: React.FC = () => {
   // Render Email Logs Tab
   const renderEmailLogs = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Email Logs</h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">Email Logs</h2>
+        </div>
+
+        {/* Export Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {(exportStartDate || exportEndDate) && (
+                <button
+                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleServerExport('email-logs', 'pdf')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('email-logs', 'csv')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('email-logs', 'excel')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -2646,7 +2913,62 @@ const AdminDashboard: React.FC = () => {
   // Render Contacts Tab
   const renderContacts = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
+        </div>
+
+        {/* Export Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {(exportStartDate || exportEndDate) && (
+                <button
+                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleServerExport('contacts', 'pdf')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('contacts', 'csv')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('contacts', 'excel')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-4">
         {contacts.map((contact) => (
@@ -2849,6 +3171,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'messages', name: 'Messages', icon: MessageSquare },
     { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
+    { id: 'logs', name: 'Activity Logs', icon: ClipboardList },
   ];
 
   return (
@@ -2942,6 +3265,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'messages' && renderContacts()}
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
+            {activeTab === 'logs' && <AdminLogs />}
           </>
         )}
       </div>
@@ -2988,67 +3312,20 @@ const AdminDashboard: React.FC = () => {
               {showAddUnitsForm && (
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
-                  <div className="space-y-3">
-                    {newUnits.map((unit, idx) => (
-                      <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded">
-                        <input
-                          type="text"
-                          placeholder="Serial Number"
-                          value={unit.serialNumber}
-                          onChange={(e) => {
-                            const updated = [...newUnits];
-                            updated[idx].serialNumber = e.target.value;
-                            setNewUnits(updated);
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Model Number"
-                          value={unit.modelNumber}
-                          onChange={(e) => {
-                            const updated = [...newUnits];
-                            updated[idx].modelNumber = e.target.value;
-                            setNewUnits(updated);
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Warranty (months)"
-                          value={unit.warrantyPeriod}
-                          onChange={(e) => {
-                            const updated = [...newUnits];
-                            updated[idx].warrantyPeriod = parseInt(e.target.value) || DEFAULT_WARRANTY_MONTHS;
-                            setNewUnits(updated);
-                          }}
-                          className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <button
-                          onClick={() => setNewUnits(newUnits.filter((_, i) => i !== idx))}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: DEFAULT_WARRANTY_MONTHS }])}
-                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-                    >
-                      + Add Another Unit
-                    </button>
-                    {newUnits.length > 0 && (
-                      <button
-                        onClick={handleAddUnits}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                      >
-                        Save Units
-                      </button>
-                    )}
-                  </div>
+                  <UnitBatchEntry
+                    defaultWarrantyMonths={DEFAULT_WARRANTY_MONTHS}
+                    onSave={(units) => {
+                      setNewUnits(units);
+                      // We need to call handleAddUnits immediately or update state and then call it.
+                      // Since handleAddUnits uses the state `newUnits`, we need to be careful.
+                      // Let's modify handleAddUnits to accept units as argument or wait for state update.
+                      // Better approach: Update state and trigger save in useEffect or just pass units to a modified handler.
+                      // For now, let's just update state and show a "Confirm Save" button or modify the flow.
+                      // Actually, UnitBatchEntry has a "Save All Units" button which calls onSave.
+                      // So we can just call the API directly here.
+                      handleAddUnitsDirectly(units);
+                    }}
+                  />
                 </div>
               )}
 

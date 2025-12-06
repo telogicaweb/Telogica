@@ -36,4 +36,13 @@ router.get('/retailer-inventory', protect, admin, exportController.exportRetaile
 // Sales report exports
 router.get('/sales-report', protect, admin, exportController.exportSalesReport);
 
+// Contact exports
+router.get('/contacts', protect, admin, exportController.exportContacts);
+
+// Email Log exports
+router.get('/email-logs', protect, admin, exportController.exportEmailLogs);
+
+// Blog exports
+router.get('/blogs', protect, admin, exportController.exportBlogs);
+
 module.exports = router;

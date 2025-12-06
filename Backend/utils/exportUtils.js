@@ -573,6 +573,77 @@ const streamPDF = (res, data, config, filename) => {
   doc.end();
 };
 
+
+
+/**
+ * Contact export configuration
+ */
+const CONTACT_EXPORT_CONFIG = {
+  title: 'Contact Messages Export',
+  columns: [
+    { key: 'name', header: 'Name', width: 100 },
+    { key: 'email', header: 'Email', width: 120 },
+    { key: 'subject', header: 'Subject', width: 120 },
+    { key: 'status', header: 'Status', width: 80, formatter: formatStatus },
+    { key: 'createdAt', header: 'Date', width: 90, formatter: formatDate }
+  ],
+  csvFields: [
+    { label: 'Name', value: 'name' },
+    { label: 'Email', value: 'email' },
+    { label: 'Phone', value: 'phone' },
+    { label: 'Subject', value: 'subject' },
+    { label: 'Message', value: 'message' },
+    { label: 'Status', value: 'status' },
+    { label: 'Date', value: (row) => formatDate(row.createdAt) }
+  ]
+};
+
+/**
+ * Email Log export configuration
+ */
+const EMAIL_LOG_EXPORT_CONFIG = {
+  title: 'Email Logs Export',
+  columns: [
+    { key: 'recipient', header: 'Recipient', width: 120 },
+    { key: 'emailType', header: 'Type', width: 100 },
+    { key: 'subject', header: 'Subject', width: 120 },
+    { key: 'status', header: 'Status', width: 80, formatter: formatStatus },
+    { key: 'sentAt', header: 'Sent At', width: 90, formatter: formatDate }
+  ],
+  csvFields: [
+    { label: 'Recipient', value: 'recipient' },
+    { label: 'Recipient Type', value: 'recipientType' },
+    { label: 'Subject', value: 'subject' },
+    { label: 'Email Type', value: 'emailType' },
+    { label: 'Status', value: 'status' },
+    { label: 'Error Message', value: 'errorMessage' },
+    { label: 'Sent At', value: (row) => formatDate(row.sentAt) }
+  ]
+};
+
+/**
+ * Blog export configuration
+ */
+const BLOG_EXPORT_CONFIG = {
+  title: 'Blog Posts Export',
+  columns: [
+    { key: 'title', header: 'Title', width: 150 },
+    { key: 'author', header: 'Author', width: 100 },
+    { key: 'category', header: 'Category', width: 80 },
+    { key: 'isPublished', header: 'Published', width: 70, formatter: (v) => v ? 'Yes' : 'No' },
+    { key: 'publishDate', header: 'Date', width: 90, formatter: formatDate }
+  ],
+  csvFields: [
+    { label: 'Title', value: 'title' },
+    { label: 'Author', value: 'author' },
+    { label: 'Category', value: 'category' },
+    { label: 'Read Time', value: 'readTime' },
+    { label: 'Published', value: 'isPublished' },
+    { label: 'Featured', value: 'isFeatured' },
+    { label: 'Publish Date', value: (row) => formatDate(row.publishDate) }
+  ]
+};
+
 module.exports = {
   // Main export functions
   streamPDF,
@@ -593,5 +664,8 @@ module.exports = {
   USER_EXPORT_CONFIG,
   WARRANTY_EXPORT_CONFIG,
   QUOTE_EXPORT_CONFIG,
-  INVOICE_EXPORT_CONFIG
+  INVOICE_EXPORT_CONFIG,
+  CONTACT_EXPORT_CONFIG,
+  EMAIL_LOG_EXPORT_CONFIG,
+  BLOG_EXPORT_CONFIG
 };

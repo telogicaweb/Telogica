@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/mailer');
+const { logAdminAction } = require('../utils/logger');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -99,6 +100,12 @@ const loginUser = async (req, res) => {
     if (user && (await user.matchPassword(password))) {
       if (!user.isApproved) {
         return res.status(403).json({ message: 'Account not approved yet. Please wait for admin approval.' });
+      }
+
+      // Log admin login
+      if (user.role === 'admin') {
+        req.user = user; // Set user for logger
+        await logAdminAction(req, 'LOGIN', 'Auth', user._id, { email: user.email });
       }
 
       res.json({

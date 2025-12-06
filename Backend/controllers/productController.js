@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const streamifier = require('streamifier');
 const cloudinary = require('../utils/cloudinary');
+const { logAdminAction } = require('../utils/logger');
 
 const { Types } = mongoose;
 
@@ -114,6 +115,13 @@ const createProduct = async (req, res) => {
     });
 
     const createdProduct = await product.save();
+
+    await logAdminAction(req, 'CREATE', 'Product', createdProduct._id, {
+      name: createdProduct.name,
+      category: createdProduct.category,
+      price: createdProduct.price
+    });
+
     res.status(201).json(createdProduct);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -168,6 +176,12 @@ const updateProduct = async (req, res) => {
       product.technicalSpecs = technicalSpecs || product.technicalSpecs;
 
       const updatedProduct = await product.save();
+
+      await logAdminAction(req, 'UPDATE', 'Product', updatedProduct._id, {
+        name: updatedProduct.name,
+        changes: req.body
+      });
+
       res.json(updatedProduct);
     } else {
       res.status(404).json({ message: 'Product not found' });
@@ -186,6 +200,11 @@ const deleteProduct = async (req, res) => {
 
     if (product) {
       await product.deleteOne();
+
+      await logAdminAction(req, 'DELETE', 'Product', product._id, {
+        name: product.name
+      });
+
       res.json({ message: 'Product removed' });
     } else {
       res.status(404).json({ message: 'Product not found' });

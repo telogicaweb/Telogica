@@ -27,6 +27,7 @@ import ReportManagement from './pages/admin/ReportManagement';
 import PageContent from './pages/admin/PageContent';
 import StatsManagement from './pages/admin/StatsManagement';
 import RetailerManagement from './pages/admin/RetailerManagement';
+import HomePageProducts from './pages/admin/HomePageProducts';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import SiteMap from './pages/SiteMap';
@@ -58,6 +59,7 @@ function App() {
             <Route path="/admin/page-content" element={<PageContent />} />
             <Route path="/admin/stats-management" element={<StatsManagement />} />
             <Route path="/admin/retailer-management" element={<RetailerManagement />} />
+            <Route path="/admin/home-page-products" element={<HomePageProducts />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/retailer-dashboard" element={<RetailerDashboard />} />
             <Route path="/warranty" element={<WarrantyRegistration />} />

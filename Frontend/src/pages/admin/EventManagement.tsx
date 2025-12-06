@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar, Download } from 'lucide-react';
 
 interface Event {
   _id?: string;
@@ -20,6 +20,8 @@ export default function EventManagement() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
   const [formData, setFormData] = useState<Event>({
     title: '',
     eventDate: '',
@@ -47,6 +49,15 @@ export default function EventManagement() {
     } catch (error) {
       console.error('Error loading events:', error);
     }
+  };
+
+  const handleExport = (format: 'csv' | 'pdf' | 'excel') => {
+    const queryParams = new URLSearchParams({
+      format,
+      ...(exportStartDate && { startDate: exportStartDate }),
+      ...(exportEndDate && { endDate: exportEndDate }),
+    });
+    window.open(`${api.defaults.baseURL}/api/export/events?${queryParams.toString()}`, '_blank');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,6 +126,57 @@ export default function EventManagement() {
           >
             <Plus size={18} className="md:w-5 md:h-5" /> New Event
           </button>
+        </div>
+
+        {/* Export Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              {(exportStartDate || exportEndDate) && (
+                <button
+                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
+                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExport('pdf')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                <Download size={14} /> PDF
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                <Download size={14} /> CSV
+              </button>
+              <button
+                onClick={() => handleExport('excel')}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                <Download size={14} /> Excel
+              </button>
+            </div>
+          </div>
         </div>
 
         {showForm && (

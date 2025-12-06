@@ -47,8 +47,8 @@ const Home = () => {
   };
 
   const filteredProducts = activeCategory === 'all'
-    ? products
-    : products.filter(p => p.category === activeCategory);
+    ? products.filter(p => p.isRecommended)
+    : products.filter(p => p.category === activeCategory && p.isRecommended);
 
   const categories = [
     { value: 'all', label: 'ALL' },
@@ -65,10 +65,10 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Our Products
+              Featured Products
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Innovative solutions across Telecom, Defence, and Railway industries
+              Our top picks for innovative solutions across Telecom, Defence, and Railway industries
             </p>
           </div>
 
@@ -93,7 +93,7 @@ const Home = () => {
           {filteredProducts.length === 0 ? (
             <div className="text-center py-20">
               <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 text-lg">No products found in this category.</p>
+              <p className="text-gray-500 text-lg">No featured products found in this category.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -209,6 +209,17 @@ const Home = () => {
               ))}
             </div>
           )}
+
+          {/* View All Products Button */}
+          <div className="mt-16 text-center">
+            <Link
+              to="/products"
+              className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-all hover:shadow-lg hover:-translate-y-0.5"
+            >
+              View All Products
+              <span className="ml-2">→</span>
+            </Link>
+          </div>
         </div>
       </section>
 
