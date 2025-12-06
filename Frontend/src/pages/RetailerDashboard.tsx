@@ -322,7 +322,7 @@ const RetailerDashboard = () => {
       const products = validItems.map((item: any) => ({
         product: item.product?._id || item.productId?._id,
         quantity: item.quantity,
-        price: totalQty > 0 ? totalPrice / totalQty : 0
+        price: item.offeredPrice || (totalQty > 0 ? totalPrice / totalQty : 0)
       }));
 
       const shippingAddress = prompt("Enter shipping address:", user?.address || "");
@@ -1079,9 +1079,7 @@ const RetailerDashboard = () => {
                   <p className="font-medium text-lg">{formatCurrency(order.totalAmount)}</p>
                 </div>
                 <div className="flex gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
-                    {order.orderStatus}
-                  </span>
+                  {/* Order status removed as per request */}
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
                     {order.paymentStatus}
                   </span>
