@@ -317,7 +317,7 @@ const AdminDashboard: React.FC = () => {
   const [quoteResponse, setQuoteResponse] = useState<{
     id: string;
     response: string;
-    products: { [productId: string]: number };
+    products: { [productId: string]: number | string };
   }>({ id: '', response: '', products: {} });
 
   const formatCurrency = (amount: number) => {
