@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -8,12 +9,15 @@ const {
   authLimiter,
   exportLimiter,
 } = require('./middleware/security');
+const { initializeSocket } = require('./services/socketService');
+const logger = require('./services/loggerService');
 
 dotenv.config();
 
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
 
 // CORS Configuration for production
 // IMPORTANT: CORS must be applied FIRST before any other middleware
@@ -92,6 +96,8 @@ const contactRoutes = require('./routes/contactRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const logRoutes = require('./routes/logRoutes');
 const retailerQuotedProductRoutes = require('./routes/retailerQuotedProductRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 
 // Apply rate limiting to routes
 // app.use('/api/auth/login', authLimiter);
@@ -119,17 +125,22 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/quoted-products', retailerQuotedProductRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 
 app.get('/', (req, res) => {
   res.json({
     message: 'Telogica E-Commerce API',
-    version: '2.0.0',
+    version: '3.0.0',
     status: 'running',
     features: [
       'Complete E-Commerce',
+      'Real-time WebSocket Notifications',
       'Warranty Management',
       'Invoice Generation',
       'Export Functionality (PDF/CSV/Excel)',
+      'Activity Logging & Audit Trail',
+      'In-App Notifications',
       'Rate Limiting & Security',
       'Admin Dashboard',
       'Retailer Portal',
@@ -175,7 +186,11 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// Initialize WebSocket server
+initializeSocket(server);
+
+server.listen(PORT, () => {
+  logger.info(`Server started on port ${PORT}`);
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
@@ -189,6 +204,14 @@ app.listen(PORT, () => {
 ║   ✓ CORS configured                                       ║
 ║   ✓ Input validation ready                                ║
 ║   ✓ Export functionality available                        ║
+║   ✓ Security middleware active                           ║
+║   ✓ Rate limiting enabled                                ║
+║   ✓ CORS configured                                      ║
+║   ✓ Input validation ready                               ║
+║   ✓ Export functionality available                       ║
+║   ✓ WebSocket server initialized                         ║
+║   ✓ Real-time notifications enabled                      ║
+║   ✓ Activity logging configured                          ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
