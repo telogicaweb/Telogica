@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { ToastProvider } from './context/ToastContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -32,11 +33,12 @@ import SiteMap from './pages/SiteMap';
 
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <Router>
-          <Header />
-          <Routes>
+    <ToastProvider>
+      <AuthProvider>
+        <CartProvider>
+          <Router>
+            <Header />
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/investors" element={<Investors />} />
@@ -68,6 +70,7 @@ function App() {
         </Router>
       </CartProvider>
     </AuthProvider>
+    </ToastProvider>
   );
 }
 
