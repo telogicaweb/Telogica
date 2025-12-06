@@ -41,6 +41,7 @@ import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
 import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
+import WarrantyValidator from '../components/AdminDashboard/WarrantyValidator';
 
 import ProductUnitManager from '../components/AdminDashboard/ProductUnitManager';
 
@@ -286,6 +287,10 @@ const AdminDashboard: React.FC = () => {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [productViewMode, setProductViewMode] = useState<'grid' | 'table'>('table');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
+  const [productFilterStatus, setProductFilterStatus] = useState<string>('all');
 
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
@@ -1196,9 +1201,40 @@ const AdminDashboard: React.FC = () => {
     const searchTerm = productSearch.trim().toLowerCase();
     const validProducts = products.filter(product => product && product.name);
     const filteredProducts = validProducts.filter((product) => {
-      if (!searchTerm) return true;
-      const combined = `${product.name} ${product.category || ''}`.toLowerCase();
-      return combined.includes(searchTerm);
+      // Search filter
+      if (searchTerm) {
+        const combined = `${product.name} ${product.category || ''}`.toLowerCase();
+        if (!combined.includes(searchTerm)) return false;
+      }
+      
+      // Category filter
+      if (productFilterCategory !== 'all' && product.category !== productFilterCategory) {
+        return false;
+      }
+      
+      // Status filter
+      const stock = product.stockQuantity ?? product.stock ?? 0;
+      if (productFilterStatus !== 'all') {
+        switch (productFilterStatus) {
+          case 'in_stock':
+            if (stock <= 5) return false;
+            break;
+          case 'low_stock':
+            if (stock === 0 || stock > 5) return false;
+            break;
+          case 'out_of_stock':
+            if (stock > 0) return false;
+            break;
+          case 'quote_only':
+            if (!product.requiresQuote) return false;
+            break;
+          case 'recommended':
+            if (!product.isRecommended) return false;
+            break;
+        }
+      }
+      
+      return true;
     });
 
     const totalStock = validProducts.reduce(
@@ -1211,46 +1247,145 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Product Management</h2>
-            <p className="text-sm text-gray-600 max-w-xl">
-              Keep Telogica product listings crisp, visually consistent, and ready for every purchase channel. Upload images, manage stock, and keep quote-only gear in a single place.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search by name or category"
-                className="pl-10 pr-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Product Management</h2>
+              <p className="text-indigo-100 max-w-2xl">
+                Manage your entire product catalog efficiently. Add new products, update inventory, set pricing, and configure warranty options.
+              </p>
             </div>
-            {productSearch && (
-              <button
-                onClick={() => setProductSearch('')}
-                className="text-sm px-3 py-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-100"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/admin/home-page-products')}
-              className="bg-white text-indigo-600 border border-indigo-600 px-4 py-2 rounded-full flex items-center gap-2 hover:bg-indigo-50"
-            >
-              <Star className="w-4 h-4" />
-              Featured Products
-            </button>
             <button
               onClick={() => setShowProductForm(!showProductForm)}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:from-blue-600 hover:to-indigo-700"
+              className="bg-white text-indigo-600 px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-indigo-50 transition-colors font-semibold shadow-md"
             >
-              <Plus className="w-4 h-4" />
-              {showProductForm ? 'Hide Form' : 'Add Product'}
+              <Plus className="w-5 h-5" />
+              {showProductForm ? 'Close Form' : 'Add New Product'}
             </button>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-600">Total Products</p>
+              <Package className="w-5 h-5 text-indigo-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{products.length}</p>
+            <p className="text-xs text-gray-500 mt-1">Active in catalog</p>
+          </div>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-600">Total Stock</p>
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{totalStock.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">Units available</p>
+          </div>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-600">Low Stock</p>
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
+            <p className="text-xs text-gray-500 mt-1">Need restock</p>
+          </div>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-600">Quote Required</p>
+              <FileText className="w-5 h-5 text-blue-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{quoteOnlyCount}</p>
+            <p className="text-xs text-gray-500 mt-1">Custom pricing</p>
+          </div>
+        </div>
+
+        {/* Filters and Controls */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex flex-wrap items-center gap-3 flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products..."
+                  className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                />
+              </div>
+              
+              <select
+                value={productFilterCategory}
+                onChange={(e) => setProductFilterCategory(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Categories</option>
+                {uniqueCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+
+              <select
+                value={productFilterStatus}
+                onChange={(e) => setProductFilterStatus(e.target.value)}
+                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Status</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="quote_only">Quote Only</option>
+                <option value="recommended">Recommended</option>
+              </select>
+
+              {(productSearch || productFilterCategory !== 'all' || productFilterStatus !== 'all') && (
+                <button
+                  onClick={() => {
+                    setProductSearch('');
+                    setProductFilterCategory('all');
+                    setProductFilterStatus('all');
+                  }}
+                  className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setProductViewMode('table')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    productViewMode === 'table'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Table
+                </button>
+                <button
+                  onClick={() => setProductViewMode('grid')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    productViewMode === 'grid'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Grid
+                </button>
+              </div>
+
+              <button
+                onClick={() => navigate('/admin/home-page-products')}
+                className="px-4 py-2.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors flex items-center gap-2 font-medium"
+              >
+                <Star className="w-4 h-4" />
+                Featured
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1302,29 +1437,6 @@ const AdminDashboard: React.FC = () => {
                 <Download size={14} /> Excel
               </button>
             </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <p className="text-xs uppercase tracking-widest text-gray-500">Total Products</p>
-            <p className="text-3xl font-bold text-gray-900">{products.length}</p>
-            <p className="text-sm text-gray-500 mt-1">Live catalog size</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <p className="text-xs uppercase tracking-widest text-gray-500">Inventory stock</p>
-            <p className="text-3xl font-bold text-gray-900">{totalStock.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 mt-1">Online + offline availability</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <p className="text-xs uppercase tracking-widest text-gray-500">Quote-only gear</p>
-            <p className="text-3xl font-bold text-gray-900">{quoteOnlyCount}</p>
-            <p className="text-sm text-gray-500 mt-1">Requires approval / quotes</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-            <p className="text-xs uppercase tracking-widest text-gray-500">Low stock alerts</p>
-            <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
-            <p className="text-sm text-gray-500 mt-1">{recommendedCount} featured ready</p>
           </div>
         </div>
 
@@ -2796,6 +2908,9 @@ const AdminDashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
         </div>
+
+        {/* Warranty Validation Tool */}
+        <WarrantyValidator />
 
         {/* Export Section */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">

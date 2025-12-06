@@ -316,4 +316,113 @@ exports.checkSerialNumber = async (req, res) => {
   }
 };
 
+// Validate warranty for a product (Admin)
+exports.validateWarranty = async (req, res) => {
+  try {
+    const { serialNumber, productId } = req.query;
+
+    if (!serialNumber) {
+      return res.status(400).json({ message: 'Serial number is required' });
+    }
+
+    // Find the product unit
+    const productUnit = await ProductUnit.findOne({ 
+      serialNumber,
+      ...(productId && { product: productId })
+    }).populate('product');
+
+    if (!productUnit) {
+      return res.status(404).json({ 
+        isValid: false,
+        status: 'not_found',
+        message: 'Product with this serial number not found in our system'
+      });
+    }
+
+    // Find warranty registration
+    const warranty = await Warranty.findOne({ serialNumber })
+      .populate('user product productUnit');
+
+    if (!warranty) {
+      return res.json({
+        isValid: false,
+        status: 'not_registered',
+        message: 'No warranty registered for this product',
+        productInfo: {
+          name: productUnit.product?.name,
+          serialNumber: productUnit.serialNumber,
+          modelNumber: productUnit.modelNumber,
+          manufacturingDate: productUnit.manufacturingDate
+        }
+      });
+    }
+
+    // Check if warranty is approved
+    if (warranty.status !== 'approved') {
+      return res.json({
+        isValid: false,
+        status: warranty.status,
+        message: `Warranty is ${warranty.status}`,
+        warranty: {
+          id: warranty._id,
+          productName: warranty.productName,
+          serialNumber: warranty.serialNumber,
+          modelNumber: warranty.modelNumber,
+          purchaseDate: warranty.purchaseDate,
+          status: warranty.status,
+          registeredDate: warranty.createdAt,
+          ...(warranty.status === 'rejected' && { rejectionReason: warranty.rejectionReason })
+        }
+      });
+    }
+
+    // Check if warranty has expired
+    const today = new Date();
+    const isExpired = warranty.warrantyEndDate && new Date(warranty.warrantyEndDate) < today;
+    const isActive = warranty.warrantyStartDate && warranty.warrantyEndDate && 
+                     new Date(warranty.warrantyStartDate) <= today && 
+                     new Date(warranty.warrantyEndDate) >= today;
+
+    const daysRemaining = warranty.warrantyEndDate 
+      ? Math.ceil((new Date(warranty.warrantyEndDate) - today) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    return res.json({
+      isValid: isActive,
+      status: isExpired ? 'expired' : isActive ? 'active' : 'pending_start',
+      message: isExpired 
+        ? 'Warranty has expired' 
+        : isActive 
+          ? `Warranty is active (${daysRemaining} days remaining)`
+          : 'Warranty will start from the approved date',
+      warranty: {
+        id: warranty._id,
+        productName: warranty.productName,
+        serialNumber: warranty.serialNumber,
+        modelNumber: warranty.modelNumber,
+        purchaseDate: warranty.purchaseDate,
+        purchaseType: warranty.purchaseType,
+        warrantyStartDate: warranty.warrantyStartDate,
+        warrantyEndDate: warranty.warrantyEndDate,
+        warrantyPeriodMonths: warranty.warrantyPeriodMonths,
+        daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+        status: warranty.status,
+        registeredDate: warranty.createdAt,
+        approvedDate: warranty.updatedAt,
+        certificateUrl: warranty.warrantyCertificateUrl,
+        customerName: warranty.user?.name,
+        customerEmail: warranty.user?.email
+      },
+      productInfo: {
+        name: productUnit.product?.name,
+        category: productUnit.product?.category,
+        manufacturingDate: productUnit.manufacturingDate
+      }
+    });
+  } catch (error) {
+    console.error('Error validating warranty:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = exports;
