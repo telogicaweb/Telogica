@@ -1,8 +1,13 @@
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
+const fs = require('fs');
 
 const logDir = process.env.LOG_DIR || 'logs';
+
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
 
 const errorStackFormat = winston.format((info) => {
   if (info.stack) {

@@ -19,7 +19,14 @@ const initializeSocket = (server) => {
 
   io.use((socket, next) => {
     try {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+      let token = socket.handshake.auth.token;
+      
+      if (!token) {
+        const authHeader = socket.handshake.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7);
+        }
+      }
       
       if (!token) {
         return next(new Error('Authentication required'));

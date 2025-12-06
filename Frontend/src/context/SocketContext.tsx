@@ -16,6 +16,10 @@ interface Notification {
   link?: string;
   priority: string;
   createdAt: Date;
+  metadata?: {
+    icon?: string;
+    [key: string]: any;
+  };
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -77,10 +81,14 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
       setUnreadCount((prev) => prev + 1);
 
       if (Notification.permission === 'granted') {
-        new Notification(notification.title, {
-          body: notification.message,
-          icon: '/logo.png',
-        });
+        try {
+          new Notification(notification.title, {
+            body: notification.message,
+            icon: notification.metadata?.icon || '/favicon.ico',
+          });
+        } catch (error) {
+          console.error('Error showing browser notification:', error);
+        }
       }
     });
 

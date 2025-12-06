@@ -4,16 +4,20 @@ const logger = require('./loggerService');
 
 const validateCoupon = async (code, userId, cartItems, totalAmount) => {
   try {
+    const now = new Date();
     const coupon = await Coupon.findOne({
       code: code.toUpperCase(),
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
     }).populate('applicableProducts excludedProducts');
 
     if (!coupon) {
-      return { valid: false, message: 'Invalid coupon code' };
+      return { valid: false, message: 'Invalid or expired coupon code' };
     }
 
-    if (!coupon.isValid()) {
-      return { valid: false, message: 'Coupon is no longer valid or has expired' };
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      return { valid: false, message: 'Coupon usage limit reached' };
     }
 
     if (totalAmount < coupon.minPurchaseAmount) {
