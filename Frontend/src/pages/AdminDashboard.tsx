@@ -29,6 +29,7 @@ import {
   Clock,
   LogOut
 } from 'lucide-react';
+import RetailerManagement from './admin/RetailerManagement';
 
 interface User {
   _id: string;
@@ -618,8 +619,8 @@ const AdminDashboard: React.FC = () => {
       images: product.images || [],
       recommendedProductIds: Array.isArray(product.recommendedProductIds)
         ? product.recommendedProductIds
-            .map(id => (typeof id === 'string' ? id : id?._id))
-            .filter((id): id is string => Boolean(id))
+          .map(id => (typeof id === 'string' ? id : id?._id))
+          .filter((id): id is string => Boolean(id))
         : [],
     });
     setShowProductForm(true);
@@ -682,12 +683,12 @@ const AdminDashboard: React.FC = () => {
       const response = await api.get(`/api/export/products?format=${format}`, {
         responseType: 'blob'
       });
-      
+
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
+
       const extension = format === 'excel' ? 'xlsx' : format;
       link.download = `Telogica-Products-${new Date().toISOString().split('T')[0]}.${extension}`;
       document.body.appendChild(link);
@@ -708,12 +709,12 @@ const AdminDashboard: React.FC = () => {
       const response = await api.get(`/api/export/product-units?format=${format}`, {
         responseType: 'blob'
       });
-      
+
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
+
       const extension = format === 'excel' ? 'xlsx' : format;
       link.download = `Telogica-Product-Units-${new Date().toISOString().split('T')[0]}.${extension}`;
       document.body.appendChild(link);
@@ -742,10 +743,10 @@ const AdminDashboard: React.FC = () => {
     }));
 
     if (productsPayload.length === 0) {
-        // If no products are set, maybe the user didn't interact with inputs.
-        // We should probably validate that all products in the quote have a price set.
-        // But for now, let's just check if payload is empty.
-        // Actually, better to check if we have prices for the quote being responded to.
+      // If no products are set, maybe the user didn't interact with inputs.
+      // We should probably validate that all products in the quote have a price set.
+      // But for now, let's just check if payload is empty.
+      // Actually, better to check if we have prices for the quote being responded to.
     }
 
     try {
@@ -891,7 +892,7 @@ const AdminDashboard: React.FC = () => {
       const response = await api.get(`/api/export/${entity}?format=${format}`, {
         responseType: 'blob'
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -1029,7 +1030,7 @@ const AdminDashboard: React.FC = () => {
           <p className="text-sm text-gray-600 mb-6">
             Export comprehensive reports for all system data. Choose your preferred format (PDF, CSV, or Excel).
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
               { label: 'Orders Report', entity: 'orders', icon: ShoppingCart, color: 'text-blue-600' },
@@ -1561,19 +1562,19 @@ const AdminDashboard: React.FC = () => {
         // Title
         doc.setFillColor(33, 150, 243);
         doc.rect(0, 0, 210, 40, 'F');
-        
+
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text('TELOGICA', 105, 20, { align: 'center' });
-        
+
         doc.setFontSize(18);
         doc.text('USER MANAGEMENT REPORT', 105, 30, { align: 'center' });
 
         // Report details
         doc.setFillColor(245, 245, 245);
         doc.rect(10, 45, 190, 15, 'F');
-        
+
         doc.setTextColor(33, 33, 33);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -1582,7 +1583,7 @@ const AdminDashboard: React.FC = () => {
 
         // Table
         const headers = [['No.', 'Name', 'Email', 'Role', 'Status', 'Joined']];
-        
+
         const body = users.map((u, i) => [
           i + 1,
           u.name,
@@ -1613,10 +1614,10 @@ const AdminDashboard: React.FC = () => {
     const handleExportUsersExcel = async () => {
       try {
         const ExcelJS = await import('exceljs');
-        
+
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Telogica';
-        
+
         const worksheet = workbook.addWorksheet('Users');
         worksheet.columns = [
           { header: 'No.', key: 'no', width: 5 },
@@ -1626,14 +1627,14 @@ const AdminDashboard: React.FC = () => {
           { header: 'Status', key: 'status', width: 15 },
           { header: 'Joined', key: 'joined', width: 12 }
         ];
-        
+
         worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         worksheet.getRow(1).fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FF2196F3' }
         };
-        
+
         users.forEach((u, index) => {
           worksheet.addRow({
             no: index + 1,
@@ -1644,7 +1645,7 @@ const AdminDashboard: React.FC = () => {
             joined: new Date(u.createdAt).toLocaleDateString()
           });
         });
-        
+
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const link = document.createElement('a');
@@ -1660,7 +1661,7 @@ const AdminDashboard: React.FC = () => {
       const roles = ['user', 'retailer', 'admin'];
       const currentIndex = roles.indexOf(currentRole);
       const nextRole = roles[(currentIndex + 1) % roles.length];
-      
+
       if (!window.confirm(`Change user role from "${currentRole}" to "${nextRole}"?\n\nThis will update the user's permissions immediately.`)) {
         return;
       }
@@ -1808,19 +1809,19 @@ const AdminDashboard: React.FC = () => {
         // Title
         doc.setFillColor(33, 150, 243);
         doc.rect(0, 0, 210, 40, 'F');
-        
+
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text('TELOGICA', 105, 20, { align: 'center' });
-        
+
         doc.setFontSize(18);
         doc.text('QUOTE MANAGEMENT REPORT', 105, 30, { align: 'center' });
 
         // Report details
         doc.setFillColor(245, 245, 245);
         doc.rect(10, 45, 190, 15, 'F');
-        
+
         doc.setTextColor(33, 33, 33);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -1829,7 +1830,7 @@ const AdminDashboard: React.FC = () => {
 
         // Table
         const headers = [['No.', 'Customer', 'Products', 'Status', 'Quoted Price', 'Date']];
-        
+
         const body = quotes.map((q, i) => [
           i + 1,
           q.user?.name || q.userId?.name || 'Unknown',
@@ -1863,10 +1864,10 @@ const AdminDashboard: React.FC = () => {
     const handleExportQuotesExcel = async () => {
       try {
         const ExcelJS = await import('exceljs');
-        
+
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Telogica';
-        
+
         const worksheet = workbook.addWorksheet('Quotes');
         worksheet.columns = [
           { header: 'No.', key: 'no', width: 5 },
@@ -1879,14 +1880,14 @@ const AdminDashboard: React.FC = () => {
           { header: 'Admin Response', key: 'adminResponse', width: 30 },
           { header: 'Date', key: 'date', width: 12 }
         ];
-        
+
         worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         worksheet.getRow(1).fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FF2196F3' }
         };
-        
+
         quotes.forEach((q, index) => {
           worksheet.addRow({
             no: index + 1,
@@ -1900,7 +1901,7 @@ const AdminDashboard: React.FC = () => {
             date: q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
           });
         });
-        
+
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const link = document.createElement('a');
@@ -2046,7 +2047,7 @@ const AdminDashboard: React.FC = () => {
               {quote.status === 'pending' && (
                 <div className="mt-4 border-t pt-4">
                   <h4 className="font-medium text-sm text-gray-700 mb-2">Provide Quote Response:</h4>
-                  
+
                   {/* Product Pricing Table */}
                   <div className="mb-4 overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -2064,7 +2065,7 @@ const AdminDashboard: React.FC = () => {
                           const productName = item.product?.name || item.productId?.name || 'Unknown Product';
                           // @ts-ignore
                           const originalPrice = item.product?.price || item.product?.normalPrice || item.originalPrice || 0;
-                          
+
                           return (
                             <tr key={idx}>
                               <td className="px-3 py-2">{productName}</td>
@@ -2150,12 +2151,12 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   // Render Orders Tab
   const renderOrders = () => {
@@ -2169,19 +2170,19 @@ const AdminDashboard: React.FC = () => {
         // Title
         doc.setFillColor(33, 150, 243);
         doc.rect(0, 0, 210, 40, 'F');
-        
+
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text('TELOGICA', 105, 20, { align: 'center' });
-        
+
         doc.setFontSize(18);
         doc.text('ORDER MANAGEMENT REPORT', 105, 30, { align: 'center' });
 
         // Report details
         doc.setFillColor(245, 245, 245);
         doc.rect(10, 45, 190, 15, 'F');
-        
+
         doc.setTextColor(33, 33, 33);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -2190,7 +2191,7 @@ const AdminDashboard: React.FC = () => {
 
         // Table
         const headers = [['Order ID', 'Customer', 'Items', 'Amount', 'Status', 'Date']];
-        
+
         const body = orders.map((o) => [
           o.orderNumber || o._id.slice(-8),
           o.userId?.name || 'Unknown',
@@ -2217,7 +2218,7 @@ const AdminDashboard: React.FC = () => {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text('SUMMARY', 15, finalY + 15);
-        
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -2233,10 +2234,10 @@ const AdminDashboard: React.FC = () => {
     const handleExportOrdersExcel = async () => {
       try {
         const ExcelJS = await import('exceljs');
-        
+
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Telogica';
-        
+
         // Orders worksheet
         const worksheet = workbook.addWorksheet('Orders');
         worksheet.columns = [
@@ -2251,14 +2252,14 @@ const AdminDashboard: React.FC = () => {
           { header: 'Payment Status', key: 'paymentStatus', width: 15 },
           { header: 'Date', key: 'date', width: 12 }
         ];
-        
+
         worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         worksheet.getRow(1).fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FF2196F3' }
         };
-        
+
         orders.forEach((o, index) => {
           worksheet.addRow({
             no: index + 1,
@@ -2273,7 +2274,7 @@ const AdminDashboard: React.FC = () => {
             date: new Date(o.createdAt).toLocaleDateString()
           });
         });
-        
+
         // Summary worksheet
         const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
         const summaryWs = workbook.addWorksheet('Summary');
@@ -2281,21 +2282,21 @@ const AdminDashboard: React.FC = () => {
           { header: 'Metric', key: 'metric', width: 25 },
           { header: 'Value', key: 'value', width: 20 }
         ];
-        
+
         summaryWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
         summaryWs.getRow(1).fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FF2196F3' }
         };
-        
+
         summaryWs.addRows([
           { metric: 'Total Orders', value: orders.length },
           { metric: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}` },
           { metric: 'Pending Orders', value: orders.filter(o => o.orderStatus === 'pending').length },
           { metric: 'Delivered Orders', value: orders.filter(o => o.orderStatus === 'delivered').length }
         ]);
-        
+
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const link = document.createElement('a');
@@ -2933,101 +2934,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'products' && renderProducts()}
             {activeTab === 'users' && renderUsers()}
             {activeTab === 'retailers' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-gray-800">Retailer Management</h2>
-                  <button
-                    onClick={() => navigate('/admin/retailer-management')}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                  >
-                    <Store className="w-4 h-4" />
-                    Open Full Dashboard
-                  </button>
-                </div>
-                <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
-                  <p className="text-indigo-800">
-                    Click "Open Full Dashboard" to access the comprehensive retailer management panel with analytics,
-                    individual retailer details, inventory tracking, and sales history.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 text-sm">Total Retailers</p>
-                        <p className="text-2xl font-bold text-gray-800">
-                          {users.filter(u => u.role === 'retailer').length}
-                        </p>
-                      </div>
-                      <Users className="w-10 h-10 text-indigo-500" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 text-sm">Pending Approval</p>
-                        <p className="text-2xl font-bold text-gray-800">
-                          {users.filter(u => u.role === 'retailer' && !u.isApproved).length}
-                        </p>
-                      </div>
-                      <Clock className="w-10 h-10 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 text-sm">Active Retailers</p>
-                        <p className="text-2xl font-bold text-gray-800">
-                          {users.filter(u => u.role === 'retailer' && u.isApproved).length}
-                        </p>
-                      </div>
-                      <CheckCircle className="w-10 h-10 text-green-500" />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-4 border-b">
-                    <h3 className="font-semibold text-gray-800">Recent Retailers</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {users.filter(u => u.role === 'retailer').slice(0, 5).map(retailer => (
-                          <tr key={retailer._id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{retailer.name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{retailer.email}</td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                {retailer.isApproved ? 'Active' : 'Pending'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              {!retailer.isApproved && (
-                                <button
-                                  onClick={() => handleApproveRetailer(retailer._id)}
-                                  className="text-green-600 hover:text-green-800"
-                                  title="Approve"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <RetailerManagement isEmbedded={true} />
             )}
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
@@ -3041,167 +2948,167 @@ const AdminDashboard: React.FC = () => {
 
       {/* Product Units Modal */}
       {showUnitsModal && selectedProductForUnits && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
-              <div className="p-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Product Units</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {selectedProductForUnits.name} - Total Units: {productUnits.length}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowUnitsModal(false);
-                      setSelectedProductForUnits(null);
-                      setShowAddUnitsForm(false);
-                      setNewUnits([]);
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-gray-200 sticky top-0 bg-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Product Units</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedProductForUnits.name} - Total Units: {productUnits.length}
+                  </p>
                 </div>
+                <button
+                  onClick={() => {
+                    setShowUnitsModal(false);
+                    setSelectedProductForUnits(null);
+                    setShowAddUnitsForm(false);
+                    setNewUnits([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* Add Units Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowAddUnitsForm(!showAddUnitsForm)}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  {showAddUnitsForm ? 'Hide Add Units Form' : 'Add New Units'}
+                </button>
               </div>
 
-              <div className="p-6">
-                {/* Add Units Button */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowAddUnitsForm(!showAddUnitsForm)}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {showAddUnitsForm ? 'Hide Add Units Form' : 'Add New Units'}
-                  </button>
-                </div>
-
-                {/* Add Units Form */}
-                {showAddUnitsForm && (
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
-                    <div className="space-y-3">
-                      {newUnits.map((unit, idx) => (
-                        <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded">
-                          <input
-                            type="text"
-                            placeholder="Serial Number"
-                            value={unit.serialNumber}
-                            onChange={(e) => {
-                              const updated = [...newUnits];
-                              updated[idx].serialNumber = e.target.value;
-                              setNewUnits(updated);
-                            }}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Model Number"
-                            value={unit.modelNumber}
-                            onChange={(e) => {
-                              const updated = [...newUnits];
-                              updated[idx].modelNumber = e.target.value;
-                              setNewUnits(updated);
-                            }}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <input
-                            type="number"
-                            placeholder="Warranty (months)"
-                            value={unit.warrantyPeriod}
-                            onChange={(e) => {
-                              const updated = [...newUnits];
-                              updated[idx].warrantyPeriod = parseInt(e.target.value) || DEFAULT_WARRANTY_MONTHS;
-                              setNewUnits(updated);
-                            }}
-                            className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <button
-                            onClick={() => setNewUnits(newUnits.filter((_, i) => i !== idx))}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: DEFAULT_WARRANTY_MONTHS }])}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-                      >
-                        + Add Another Unit
-                      </button>
-                      {newUnits.length > 0 && (
+              {/* Add Units Form */}
+              {showAddUnitsForm && (
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
+                  <div className="space-y-3">
+                    {newUnits.map((unit, idx) => (
+                      <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded">
+                        <input
+                          type="text"
+                          placeholder="Serial Number"
+                          value={unit.serialNumber}
+                          onChange={(e) => {
+                            const updated = [...newUnits];
+                            updated[idx].serialNumber = e.target.value;
+                            setNewUnits(updated);
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Model Number"
+                          value={unit.modelNumber}
+                          onChange={(e) => {
+                            const updated = [...newUnits];
+                            updated[idx].modelNumber = e.target.value;
+                            setNewUnits(updated);
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Warranty (months)"
+                          value={unit.warrantyPeriod}
+                          onChange={(e) => {
+                            const updated = [...newUnits];
+                            updated[idx].warrantyPeriod = parseInt(e.target.value) || DEFAULT_WARRANTY_MONTHS;
+                            setNewUnits(updated);
+                          }}
+                          className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                         <button
-                          onClick={handleAddUnits}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                          onClick={() => setNewUnits(newUnits.filter((_, i) => i !== idx))}
+                          className="text-red-600 hover:text-red-800"
                         >
-                          Save Units
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setNewUnits([...newUnits, { serialNumber: '', modelNumber: '', warrantyPeriod: DEFAULT_WARRANTY_MONTHS }])}
+                      className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
+                    >
+                      + Add Another Unit
+                    </button>
+                    {newUnits.length > 0 && (
+                      <button
+                        onClick={handleAddUnits}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                      >
+                        Save Units
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                {/* Units List */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+              {/* Units List */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model Number</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {productUnits.length === 0 ? (
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model Number</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                          No units found. Add units to this product.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {productUnits.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                            No units found. Add units to this product.
+                    ) : (
+                      productUnits.map((unit) => (
+                        <tr key={unit._id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {unit.serialNumber}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {unit.modelNumber}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${unit.status === 'available'
+                                ? 'bg-green-100 text-green-800'
+                                : unit.status === 'sold'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : unit.status === 'reserved'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}
+                            >
+                              {unit.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS} months
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {unit.soldTo || '-'}
                           </td>
                         </tr>
-                      ) : (
-                        productUnits.map((unit) => (
-                          <tr key={unit._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                              {unit.serialNumber}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {unit.modelNumber}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${unit.status === 'available'
-                                  ? 'bg-green-100 text-green-800'
-                                  : unit.status === 'sold'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : unit.status === 'reserved'
-                                      ? 'bg-yellow-100 text-yellow-800'
-                                      : 'bg-red-100 text-red-800'
-                                  }`}
-                              >
-                                {unit.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS} months
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {unit.soldTo || '-'}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
+        </div>
       )}
     </div>
   );

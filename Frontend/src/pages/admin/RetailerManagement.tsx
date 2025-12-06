@@ -67,19 +67,23 @@ interface RetailerDetails {
   warranties: any[];
 }
 
-const RetailerManagement = () => {
+interface RetailerManagementProps {
+  isEmbedded?: boolean;
+}
+
+const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = false }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'retailers' | 'sales'>('overview');
-  
+
   const [analytics, setAnalytics] = useState<RetailerAnalytics | null>(null);
   const [retailers, setRetailers] = useState<RetailerSummary[]>([]);
   const [allSales, setAllSales] = useState<any[]>([]);
   const [salesTotals, setSalesTotals] = useState<any>(null);
-  
+
   const [selectedRetailer, setSelectedRetailer] = useState<RetailerDetails | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
 
@@ -135,7 +139,7 @@ const RetailerManagement = () => {
       let url = '/api/retailer/admin/sales?';
       if (dateRange.startDate) url += `startDate=${dateRange.startDate}&`;
       if (dateRange.endDate) url += `endDate=${dateRange.endDate}&`;
-      
+
       const res = await api.get(url);
       setAllSales(res.data.sales || []);
       setSalesTotals(res.data.totals);
@@ -199,13 +203,13 @@ const RetailerManagement = () => {
       Profit: s.profit || 0,
       WarrantyStatus: s.warrantyStatus
     }));
-    
+
     const headers = Object.keys(data[0]);
     const csv = [
       headers.join(','),
       ...data.map(row => headers.map(h => JSON.stringify((row as any)[h] ?? '')).join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -320,7 +324,7 @@ const RetailerManagement = () => {
             <div className="flex gap-4 min-w-max">
               {analytics.monthlySales.map((month: any) => (
                 <div key={`${month._id.year}-${month._id.month}`} className="text-center min-w-[100px]">
-                  <div 
+                  <div
                     className="bg-blue-500 rounded-t"
                     style={{ height: `${Math.max(20, (month.revenue / Math.max(...analytics.monthlySales.map((m: any) => m.revenue))) * 150)}px` }}
                   />
@@ -385,9 +389,8 @@ const RetailerManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {retailer.isApproved ? 'Active' : 'Pending'}
                       </span>
                     </td>
@@ -534,9 +537,9 @@ const RetailerManagement = () => {
                           <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
                         )}
                         {sale.invoiceUrl && (
-                          <a 
-                            href={sale.invoiceUrl} 
-                            target="_blank" 
+                          <a
+                            href={sale.invoiceUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 text-xs"
                           >
@@ -747,27 +750,30 @@ const RetailerManagement = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-20">
+    <div className={`min-h-screen bg-gray-100 ${!isEmbedded ? 'pt-20' : ''}`}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/admin')}
-              className="text-white hover:text-gray-200"
-            >
-              <ArrowLeft size={24} />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold">Retailer Management</h1>
-              <p className="text-indigo-200">Track retailers, inventory, and sales</p>
+      {/* Header - Only show if not embedded */}
+      {!isEmbedded && (
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/admin')}
+                className="text-white hover:text-gray-200"
+              >
+                <ArrowLeft size={24} />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Retailer Management</h1>
+                <p className="text-indigo-200">Track retailers, inventory, and sales</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabs */}
-      <div className="bg-white shadow sticky top-16 z-10">
+      <div className={`bg-white shadow ${!isEmbedded ? 'sticky top-16 z-10' : ''}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex space-x-1 overflow-x-auto">
             {tabs.map(tab => {
@@ -776,11 +782,10 @@ const RetailerManagement = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
                       ? 'border-indigo-600 text-indigo-600'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <Icon size={18} />
                   {tab.name}
