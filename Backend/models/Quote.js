@@ -21,6 +21,7 @@ const quoteSchema = new mongoose.Schema({
     respondedAt: { type: Date }
   },
   acceptedAt: { type: Date }, // When user accepted the quote
+  rejectionReason: { type: String }, // Reason for rejection (by admin or user)
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' } // Link to order if quote is converted
 }, { timestamps: true });
 

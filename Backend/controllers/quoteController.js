@@ -192,10 +192,12 @@ const acceptQuote = async (req, res) => {
   }
 };
 
-// @desc    Reject quote (User/Retailer)
+// @desc    Reject quote (User/Retailer/Admin)
 // @route   PUT /api/quotes/:id/reject
 // @access  Private
 const rejectQuote = async (req, res) => {
+  const { reason } = req.body;
+
   try {
     const quote = await Quote.findById(req.params.id);
 
@@ -203,16 +205,40 @@ const rejectQuote = async (req, res) => {
       return res.status(404).json({ message: 'Quote not found' });
     }
 
-    // Verify the quote belongs to the user
-    if (quote.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to reject this quote' });
+    const isAdmin = req.user.role === 'admin' || 
+                    (req.user.role && req.user.role.toLowerCase() === 'admin') ||
+                    req.user.email === (process.env.ADMIN_EMAIL || 'admin@telogica.com');
+    const isOwner = quote.user.toString() === req.user._id.toString();
+
+    console.log(`Reject Quote Debug: UserID=${req.user._id}, Role=${req.user.role}, QuoteOwner=${quote.user}, IsAdmin=${isAdmin}, IsOwner=${isOwner}`);
+
+    // Allow Admin or Owner to reject
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ 
+        message: 'Not authorized to reject this quote',
+        debug: {
+          userRole: req.user.role,
+          isOwner: isOwner,
+          userId: req.user._id,
+          quoteOwner: quote.user
+        }
+      });
     }
 
-    if (quote.status !== 'responded') {
+    // If user is owner (and not admin), they can only reject if status is 'responded'
+    if (!isAdmin && quote.status !== 'responded') {
       return res.status(400).json({ message: 'Quote has not been responded to yet' });
     }
 
+    // Prevent rejecting if already processed
+    if (['accepted', 'rejected', 'completed'].includes(quote.status)) {
+      return res.status(400).json({ message: `Quote is already ${quote.status}` });
+    }
+
     quote.status = 'rejected';
+    if (reason) {
+      quote.rejectionReason = reason;
+    }
     
     const updatedQuote = await quote.save();
     res.json(updatedQuote);

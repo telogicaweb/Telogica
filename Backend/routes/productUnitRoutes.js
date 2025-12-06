@@ -7,7 +7,8 @@ const {
   getAvailableUnits,
   updateProductUnit,
   assignUnitsToOrder,
-  getUnitBySerial
+  getUnitBySerial,
+  deleteProductUnit
 } = require('../controllers/productUnitController');
 
 // Admin routes
@@ -15,6 +16,7 @@ router.post('/add', protect, admin, addProductUnits);
 router.get('/product/:productId', protect, admin, getProductUnits);
 router.get('/available/:productId', protect, getAvailableUnits);
 router.put('/:id', protect, admin, updateProductUnit);
+router.delete('/:id', protect, admin, deleteProductUnit);
 router.post('/assign', protect, admin, assignUnitsToOrder);
 router.get('/serial/:serialNumber', protect, getUnitBySerial);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getLogs, exportLogs } from '../../services/logService';
-import { Download, Search, Filter, RefreshCw, Calendar } from 'lucide-react';
+import { Download, Search, Filter, RefreshCw, Calendar, Eye, X } from 'lucide-react';
 
 const AdminLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -8,6 +8,7 @@ const AdminLogs = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
   
   const [filters, setFilters] = useState({
     startDate: '',
@@ -199,8 +200,14 @@ const AdminLogs = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {log.entity}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {JSON.stringify(log.details)}
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {log.ipAddress}
@@ -257,6 +264,70 @@ const AdminLogs = () => {
           </div>
         </div>
       </div>
+
+      {/* Details Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">Log Details</h3>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Timestamp</p>
+                    <p className="text-gray-900">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Admin</p>
+                    <p className="text-gray-900">{selectedLog.adminName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Action</p>
+                    <p className="text-gray-900">{selectedLog.action}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Entity</p>
+                    <p className="text-gray-900">{selectedLog.entity} {selectedLog.entityId ? `(${selectedLog.entityId})` : ''}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">IP Address</p>
+                    <p className="text-gray-900">{selectedLog.ipAddress}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">User Agent</p>
+                    <p className="text-gray-900 truncate" title={selectedLog.userAgent}>{selectedLog.userAgent}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-2">Full Details</p>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-x-auto">
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono">
+                      {JSON.stringify(selectedLog.details, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-end">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

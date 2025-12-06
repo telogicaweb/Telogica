@@ -387,12 +387,20 @@ const getOrders = async (req, res) => {
 // @access  Private/Admin
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, paymentStatus } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (order) {
       const previousStatus = order.orderStatus;
-      order.orderStatus = status;
+      
+      if (status) {
+        order.orderStatus = status;
+      }
+
+      if (paymentStatus) {
+        order.paymentStatus = paymentStatus;
+      }
+
       const updatedOrder = await order.save();
 
       // Populate user and products for further processing

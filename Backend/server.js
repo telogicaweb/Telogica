@@ -68,6 +68,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Apply comprehensive security middleware - Must be after body parsers
 applySecurityMiddleware(app);
 
+// Logger middleware 
+const adminActivityLogger = require('./middleware/adminActivityLogger');
+app.use(adminActivityLogger);
+
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const quoteRoutes = require('./routes/quoteRoutes');

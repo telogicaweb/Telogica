@@ -37,6 +37,7 @@ import AdminLogs from './admin/AdminLogs';
 import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
 import UnitBatchEntry from '../components/AdminDashboard/UnitBatchEntry';
+import ProductUnitManager from '../components/AdminDashboard/ProductUnitManager';
 
 interface User {
   _id: string;
@@ -271,7 +272,7 @@ const AdminDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics>(getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [productUnits, setProductUnits] = useState<ProductUnit[]>([]);
+
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
@@ -327,8 +328,6 @@ const AdminDashboard: React.FC = () => {
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [selectedProductForUnits, setSelectedProductForUnits] = useState<Product | null>(null);
-  const [showAddUnitsForm, setShowAddUnitsForm] = useState(false);
-  const [newUnits, setNewUnits] = useState<Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>>([]);
 
   const [quoteResponse, setQuoteResponse] = useState<{
     id: string;
@@ -420,37 +419,13 @@ const AdminDashboard: React.FC = () => {
       if (product) {
         setSelectedProductForUnits(product);
       }
-      const response = await api.get(`/api/product-units/product/${productId}`);
-      setProductUnits(response.data);
       setShowUnitsModal(true);
     } catch (error) {
       console.error('Error loading product units:', error);
     }
   };
 
-  const handleAddUnits = async (unitsToAdd: Array<{ serialNumber: string; modelNumber: string; warrantyPeriod: number }>) => {
-    if (!selectedProductForUnits) return;
 
-    try {
-      await api.post('/api/product-units/add', {
-        productId: selectedProductForUnits._id,
-        units: unitsToAdd.map(unit => ({
-          serialNumber: unit.serialNumber,
-          modelNumber: unit.modelNumber,
-          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
-          stockType: 'both'
-        }))
-      });
-      alert(`${unitsToAdd.length} unit${unitsToAdd.length > 1 ? 's' : ''} added successfully`);
-      setNewUnits([]);
-      setShowAddUnitsForm(false);
-      // Reload product units and products
-      loadProductUnits(selectedProductForUnits._id);
-      loadProducts();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to add units');
-    }
-  };
 
   const loadQuotes = async () => {
     try {
@@ -573,18 +548,22 @@ const AdminDashboard: React.FC = () => {
       const productResponse = await api.post('/api/products', productData);
       const createdProduct = productResponse.data;
 
-      // Step 2: Add product units
-      await api.post('/api/product-units/add', {
-        productId: createdProduct._id,
-        units: productUnitsForm.map(unit => ({
-          serialNumber: unit.serialNumber,
-          modelNumber: unit.modelNumber,
-          warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
-          stockType: 'both'
-        }))
-      });
+      // Step 2: Add product units (only if any are defined)
+      if (productUnitsForm.length > 0) {
+        await api.post('/api/product-units/add', {
+          productId: createdProduct._id,
+          units: productUnitsForm.map(unit => ({
+            serialNumber: unit.serialNumber,
+            modelNumber: unit.modelNumber,
+            warrantyPeriodMonths: unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS,
+            stockType: 'both'
+          }))
+        });
+      }
 
-      alert('Product created successfully with all units');
+      alert(productUnitsForm.length > 0 
+        ? 'Product created successfully with all units' 
+        : 'Product created successfully');
       setShowProductForm(false);
       setProductForm(getFreshProductFormState());
       setProductUnitsForm([]);
@@ -768,8 +747,7 @@ const AdminDashboard: React.FC = () => {
     const reason = window.prompt('Enter rejection reason:');
     if (!reason) return;
     try {
-      await api.put(`/api/quotes/${quoteId}/reject`, {});
-      // Optionally you could send reason via another endpoint or email log
+      await api.put(`/api/quotes/${quoteId}/reject`, { reason });
       alert('Quote rejected successfully');
       loadQuotes();
     } catch (error: any) {
@@ -778,13 +756,13 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Order Management
-  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+  const handleUpdatePaymentStatus = async (orderId: string, paymentStatus: string) => {
     try {
-      await api.put(`/api/orders/${orderId}`, { status });
-      alert('Order status updated successfully');
+      await api.put(`/api/orders/${orderId}`, { paymentStatus });
+      alert('Payment status updated successfully');
       loadOrders();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to update order status');
+      alert(error.response?.data?.message || 'Failed to update payment status');
     }
   };
 
@@ -878,7 +856,6 @@ const AdminDashboard: React.FC = () => {
       User: o.userId?.name || 'Unknown',
       Email: o.userId?.email || 'Unknown',
       Amount: o.totalAmount,
-      Status: o.orderStatus,
       PaymentStatus: o.paymentStatus,
       Date: new Date(o.createdAt).toLocaleDateString(),
       ItemsCount: o.products.length,
@@ -2317,14 +2294,14 @@ const AdminDashboard: React.FC = () => {
         doc.text(`Total Orders: ${orders.length}`, 100, 55);
 
         // Table
-        const headers = [['Order ID', 'Customer', 'Items', 'Amount', 'Status', 'Date']];
+        const headers = [['Order ID', 'Customer', 'Items', 'Amount', 'Payment', 'Date']];
 
         const body = orders.map((o) => [
           o.orderNumber || o._id.slice(-8),
           o.userId?.name || 'Unknown',
           o.products.length,
           `₹${o.totalAmount.toLocaleString()}`,
-          o.orderStatus,
+          o.paymentStatus,
           new Date(o.createdAt).toLocaleDateString()
         ]);
 
@@ -2375,7 +2352,6 @@ const AdminDashboard: React.FC = () => {
           { header: 'Products', key: 'products', width: 40 },
           { header: 'Total Items', key: 'totalItems', width: 10 },
           { header: 'Total Amount (₹)', key: 'totalAmount', width: 15 },
-          { header: 'Order Status', key: 'orderStatus', width: 15 },
           { header: 'Payment Status', key: 'paymentStatus', width: 15 },
           { header: 'Date', key: 'date', width: 12 }
         ];
@@ -2396,7 +2372,6 @@ const AdminDashboard: React.FC = () => {
             products: o.products.map(p => `${(p.productId || (p as any).product)?.name || 'Unknown'} (${p.quantity})`).join(', '),
             totalItems: o.products.length,
             totalAmount: o.totalAmount,
-            orderStatus: o.orderStatus,
             paymentStatus: o.paymentStatus,
             date: new Date(o.createdAt).toLocaleDateString()
           });
@@ -2420,8 +2395,8 @@ const AdminDashboard: React.FC = () => {
         summaryWs.addRows([
           { metric: 'Total Orders', value: orders.length },
           { metric: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}` },
-          { metric: 'Pending Orders', value: orders.filter(o => o.orderStatus === 'pending').length },
-          { metric: 'Delivered Orders', value: orders.filter(o => o.orderStatus === 'delivered').length }
+          { metric: 'Pending Payments', value: orders.filter(o => o.paymentStatus === 'pending').length },
+          { metric: 'Completed Payments', value: orders.filter(o => o.paymentStatus === 'completed').length }
         ]);
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -2511,9 +2486,9 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-800">Delivered</p>
+                <p className="text-sm font-medium text-green-800">Paid Orders</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {orders.filter(o => o.orderStatus === 'delivered').length}
+                  {orders.filter(o => o.paymentStatus === 'completed').length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
@@ -2522,9 +2497,9 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-yellow-800">Processing</p>
+                <p className="text-sm font-medium text-yellow-800">Pending Payment</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {orders.filter(o => ['pending', 'processing', 'confirmed'].includes(o.orderStatus)).length}
+                  {orders.filter(o => o.paymentStatus === 'pending').length}
                 </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-600" />
@@ -2561,7 +2536,7 @@ const AdminDashboard: React.FC = () => {
                     Amount
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
+                    Payment Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Date
@@ -2593,25 +2568,21 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <select
-                        value={order.orderStatus}
+                        value={order.paymentStatus || 'pending'}
                         onChange={(e) =>
-                          handleUpdateOrderStatus(order._id, e.target.value)
+                          handleUpdatePaymentStatus(order._id, e.target.value)
                         }
-                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.orderStatus === 'delivered'
-                          ? 'bg-green-100 text-green-800'
-                          : order.orderStatus === 'shipped'
-                            ? 'bg-blue-100 text-blue-800'
-                            : order.orderStatus === 'processing'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${
+                          order.paymentStatus === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : order.paymentStatus === 'failed'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
                       >
                         <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -3272,120 +3243,15 @@ const AdminDashboard: React.FC = () => {
 
       {/* Product Units Modal */}
       {showUnitsModal && selectedProductForUnits && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 sticky top-0 bg-white">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Product Units</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {selectedProductForUnits.name} - Total Units: {productUnits.length}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUnitsModal(false);
-                    setSelectedProductForUnits(null);
-                    setShowAddUnitsForm(false);
-                    setNewUnits([]);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {/* Add Units Button */}
-              <div className="mb-4">
-                <button
-                  onClick={() => setShowAddUnitsForm(!showAddUnitsForm)}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {showAddUnitsForm ? 'Hide Add Units Form' : 'Add New Units'}
-                </button>
-              </div>
-
-              {/* Add Units Form */}
-              {showAddUnitsForm && (
-                <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Add New Units</h3>
-                  <UnitBatchEntry
-                    defaultWarrantyMonths={DEFAULT_WARRANTY_MONTHS}
-                    onSave={(units) => {
-                      setNewUnits(units);
-                      // We need to call handleAddUnits immediately or update state and then call it.
-                      // Since handleAddUnits uses the state `newUnits`, we need to be careful.
-                      // Let's modify handleAddUnits to accept units as argument or wait for state update.
-                      // Better approach: Update state and trigger save in useEffect or just pass units to a modified handler.
-                      // For now, let's just update state and show a "Confirm Save" button or modify the flow.
-                      // Actually, UnitBatchEntry has a "Save All Units" button which calls onSave.
-                      // So we can just call the API directly here.
-                      handleAddUnitsDirectly(units);
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Units List */}
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model Number</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {productUnits.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                          No units found. Add units to this product.
-                        </td>
-                      </tr>
-                    ) : (
-                      productUnits.map((unit) => (
-                        <tr key={unit._id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {unit.serialNumber}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {unit.modelNumber}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${unit.status === 'available'
-                                ? 'bg-green-100 text-green-800'
-                                : unit.status === 'sold'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : unit.status === 'reserved'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}
-                            >
-                              {unit.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {unit.warrantyPeriod || DEFAULT_WARRANTY_MONTHS} months
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {unit.soldTo || '-'}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductUnitManager
+          productId={selectedProductForUnits._id}
+          productName={selectedProductForUnits.name}
+          onClose={() => {
+            setShowUnitsModal(false);
+            setSelectedProductForUnits(null);
+            loadProducts(); // Refresh stock counts
+          }}
+        />
       )}
     </div>
   );
