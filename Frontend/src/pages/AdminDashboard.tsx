@@ -35,7 +35,8 @@ import {
   LogOut,
   Star,
   Calendar,
-  ClipboardList
+  ClipboardList,
+  Info
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -291,6 +292,33 @@ const AdminDashboard: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
   const [productFilterStatus, setProductFilterStatus] = useState<string>('all');
+  
+  // User management filters
+  const [userSearch, setUserSearch] = useState('');
+  const [userFilterRole, setUserFilterRole] = useState<string>('all');
+  const [userFilterStatus, setUserFilterStatus] = useState<string>('all');
+  
+  // Quote management filters
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [quoteFilterStatus, setQuoteFilterStatus] = useState<string>('all');
+  
+  // Order management filters
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderFilterStatus, setOrderFilterStatus] = useState<string>('all');
+  const [orderFilterPayment, setOrderFilterPayment] = useState<string>('all');
+  
+  // Warranty management filters
+  const [warrantySearch, setWarrantySearch] = useState('');
+  const [warrantyFilterStatus, setWarrantyFilterStatus] = useState<string>('all');
+  
+  // Contact messages filters
+  const [contactSearch, setContactSearch] = useState('');
+  const [contactFilterStatus, setContactFilterStatus] = useState<string>('all');
+  
+  // Email logs filters
+  const [emailSearch, setEmailSearch] = useState('');
+  const [emailFilterStatus, setEmailFilterStatus] = useState<string>('all');
+  const [emailFilterType, setEmailFilterType] = useState<string>('all');
 
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
@@ -1994,157 +2022,344 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    // Calculate user stats
+    const totalUsers = users.length;
+    const activeUsers = users.filter(u => u.role !== 'retailer' || u.isApproved).length;
+    const pendingUsers = users.filter(u => u.role === 'retailer' && !u.isApproved).length;
+    const adminUsers = users.filter(u => u.role === 'admin').length;
+    const retailerUsers = users.filter(u => u.role === 'retailer').length;
+
+    // Filter users
+    const filteredUsers = users.filter((user) => {
+      // Search filter
+      if (userSearch) {
+        const searchLower = userSearch.toLowerCase();
+        const nameMatch = user.name?.toLowerCase().includes(searchLower);
+        const emailMatch = user.email?.toLowerCase().includes(searchLower);
+        if (!nameMatch && !emailMatch) return false;
+      }
+
+      // Role filter
+      if (userFilterRole !== 'all' && user.role !== userFilterRole) {
+        return false;
+      }
+
+      // Status filter
+      if (userFilterStatus !== 'all') {
+        const isPending = user.role === 'retailer' && !user.isApproved;
+        const isActive = user.role !== 'retailer' || user.isApproved;
+        
+        if (userFilterStatus === 'pending' && !isPending) return false;
+        if (userFilterStatus === 'active' && !isActive) return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = userSearch || userFilterRole !== 'all' || userFilterStatus !== 'all';
+
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-4">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+            <div>
+              <h2 className="text-3xl font-bold mb-2">User Management</h2>
+              <p className="text-purple-100">Manage user accounts, roles, and permissions efficiently</p>
+            </div>
+            <Users className="w-16 h-16 text-purple-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalUsers}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <Users className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
           </div>
 
-          {/* Export Section */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-                <input
-                  type="date"
-                  value={exportStartDate}
-                  onChange={(e) => setExportStartDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="date"
-                  value={exportEndDate}
-                  onChange={(e) => setExportEndDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                {(exportStartDate || exportEndDate) && (
-                  <button
-                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                  >
-                    Clear
-                  </button>
-                )}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Active Users</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{activeUsers}</p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleServerExport('users', 'pdf')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-                >
-                  <Download size={14} /> PDF
-                </button>
-                <button
-                  onClick={() => handleServerExport('users', 'csv')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-                >
-                  <Download size={14} /> CSV
-                </button>
-                <button
-                  onClick={() => handleServerExport('users', 'excel')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-                >
-                  <Download size={14} /> Excel
-                </button>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingUsers}</p>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Admins</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">{adminUsers}</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <Shield className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Retailers</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">{retailerUsers}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Store className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent w-64"
+              />
+            </div>
+
+            <select
+              value={userFilterRole}
+              onChange={(e) => setUserFilterRole(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="all">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="retailer">Retailer</option>
+              <option value="user">User</option>
+            </select>
+
+            <select
+              value={userFilterStatus}
+              onChange={(e) => setUserFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending Approval</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setUserSearch('');
+                  setUserFilterRole('all');
+                  setUserFilterStatus('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <button
+                onClick={() => handleServerExport('users', 'pdf')}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('users', 'csv')}
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('users', 'excel')}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{totalUsers}</span> users
+            </p>
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    User Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Joined
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Member Since
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {user.name}
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 font-medium">No users found</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        {hasActiveFilters ? 'Try adjusting your filters' : 'No users available'}
+                      </p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${user.role === 'admin'
-                          ? 'bg-purple-100 text-purple-800'
-                          : user.role === 'retailer'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user._id} className="hover:bg-purple-50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${
+                            user.role === 'admin' ? 'bg-purple-500' :
+                            user.role === 'retailer' ? 'bg-blue-500' :
+                            'bg-gray-400'
+                          }`}>
+                            {user.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                            <p className="text-xs text-gray-500">ID: {user._id.slice(-8)}</p>
+                          </div>
+                        </div>
+                      </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">{user.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {user.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
+                        {user.role === 'retailer' && <Store className="w-4 h-4 text-blue-600" />}
+                        {user.role === 'user' && <Users className="w-4 h-4 text-gray-600" />}
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : user.role === 'retailer'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : 'bg-gray-100 text-gray-800 border border-gray-200'
                           }`}
-                      >
-                        {user.role}
-                      </span>
+                        >
+                          {user.role.toUpperCase()}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">
+                    <td className="px-6 py-4">
                       {user.role === 'retailer' && !user.isApproved ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Pending Approval
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-orange-500" />
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                            PENDING APPROVAL
+                          </span>
+                        </div>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Active
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                            ACTIVE
+                          </span>
+                        </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">
+                          {new Date(user.createdAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex gap-2">
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                         {user.role === 'retailer' && !user.isApproved && (
                           <button
                             onClick={() => handleApproveRetailer(user._id)}
-                            className="text-green-600 hover:text-green-800 flex items-center gap-1 px-2 py-1 border border-green-300 rounded hover:bg-green-50"
+                            className="text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 flex items-center gap-1.5 px-3 py-2 border border-green-300 rounded-lg hover:shadow-md transition-all font-medium"
                             title="Approve Retailer Access"
                           >
                             <Check className="w-4 h-4" />
-                            <span className="text-xs font-medium">Approve</span>
+                            <span className="text-xs">Approve</span>
                           </button>
                         )}
                         <button
                           onClick={() => handleChangeUserRole(user._id, user.role)}
-                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 border border-blue-300 rounded hover:bg-blue-50"
+                          className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg hover:shadow-md transition-all font-medium"
                           title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
                         >
                           <Edit className="w-4 h-4" />
-                          <span className="text-xs font-medium">Change Role</span>
+                          <span className="text-xs">Role</span>
                         </button>
                         {user.role !== 'admin' && (
                           <button
                             onClick={() => handleDeleteUser(user._id)}
-                            className="text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 border border-red-300 rounded hover:bg-red-50"
+                            className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 px-3 py-2 border border-red-300 rounded-lg hover:shadow-md transition-all font-medium"
                             title="Delete User Account"
                           >
                             <Trash2 className="w-4 h-4" />
-                            <span className="text-xs font-medium">Delete</span>
+                            <span className="text-xs">Delete</span>
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -2269,116 +2484,186 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    // Filter quotes
+    const filteredQuotes = quotes.filter((quote) => {
+      // Search filter
+      if (quoteSearch) {
+        const searchLower = quoteSearch.toLowerCase();
+        const customerName = (quote.user?.name || quote.userId?.name || '').toLowerCase();
+        const customerEmail = (quote.user?.email || quote.userId?.email || '').toLowerCase();
+        const products = quote.products.map(p => (p.product?.name || p.productId?.name || '').toLowerCase()).join(' ');
+        
+        if (!customerName.includes(searchLower) && !customerEmail.includes(searchLower) && !products.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (quoteFilterStatus !== 'all' && quote.status !== quoteFilterStatus) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = quoteSearch || quoteFilterStatus !== 'all';
+
+    // Calculate stats
+    const pendingQuotes = quotes.filter(q => q.status === 'pending').length;
+    const respondedQuotes = quotes.filter(q => q.status === 'responded').length;
+    const acceptedQuotes = quotes.filter(q => q.status === 'accepted' || q.status === 'approved').length;
+    const rejectedQuotes = quotes.filter(q => q.status === 'rejected').length;
+
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Quote Management</h2>
-              <p className="text-sm text-gray-600 mt-1">Manage customer quote requests and provide pricing</p>
+              <h2 className="text-3xl font-bold mb-2">Quote Management</h2>
+              <p className="text-blue-100">Manage customer quote requests and provide competitive pricing</p>
+            </div>
+            <FileText className="w-16 h-16 text-blue-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Review</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingQuotes}</p>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg">
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
             </div>
           </div>
 
-          {/* Export Section */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-                <input
-                  type="date"
-                  value={exportStartDate}
-                  onChange={(e) => setExportStartDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="date"
-                  value={exportEndDate}
-                  onChange={(e) => setExportEndDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                {(exportStartDate || exportEndDate) && (
-                  <button
-                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                  >
-                    Clear
-                  </button>
-                )}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Responded</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">{respondedQuotes}</p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleServerExport('quotes', 'pdf')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-                >
-                  <Download size={14} /> PDF
-                </button>
-                <button
-                  onClick={() => handleServerExport('quotes', 'csv')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-                >
-                  <Download size={14} /> CSV
-                </button>
-                <button
-                  onClick={() => handleServerExport('quotes', 'excel')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-                >
-                  <Download size={14} /> Excel
-                </button>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Accepted</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{acceptedQuotes}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Quotes</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{quotes.length}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <FileText className="w-6 h-6 text-indigo-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-800">Pending</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {quotes.filter(q => q.status === 'pending').length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by customer name, email, or product..."
+                value={quoteSearch}
+                onChange={(e) => setQuoteSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+              />
             </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800">Responded</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {quotes.filter(q => q.status === 'responded').length}
-                </p>
-              </div>
-              <MessageSquare className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-800">Accepted</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {quotes.filter(q => q.status === 'accepted').length}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-800">Total</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{quotes.length}</p>
-              </div>
-              <FileText className="w-8 h-8 text-purple-600" />
+
+            <select
+              value={quoteFilterStatus}
+              onChange={(e) => setQuoteFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="responded">Responded</option>
+              <option value="accepted">Accepted</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setQuoteSearch('');
+                  setQuoteFilterStatus('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <button
+                onClick={() => handleServerExport('quotes', 'pdf')}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('quotes', 'csv')}
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('quotes', 'excel')}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                Excel
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredQuotes.length}</span> of <span className="font-semibold">{quotes.length}</span> quotes
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4">
-          {quotes.map((quote) => (
+          {filteredQuotes.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No quotes found</h3>
+              <p className="text-sm text-gray-500">
+                {hasActiveFilters ? 'Try adjusting your filters' : 'No quote requests available'}
+              </p>
+            </div>
+          ) : (
+            filteredQuotes.map((quote) => (
             <div
               key={quote._id}
               className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
@@ -2545,14 +2830,15 @@ const AdminDashboard: React.FC = () => {
                       onClick={() => handleRejectQuote(quote._id)}
                       className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-4 h-4\" />
                       Reject Quote
                     </button>
                   </div>
                 </div>
               )}
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     );
@@ -2706,606 +2992,1257 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    // Filter orders
+    const filteredOrders = orders.filter((order) => {
+      // Search filter
+      if (orderSearch) {
+        const searchLower = orderSearch.toLowerCase();
+        const customerName = (order.userId?.name || '').toLowerCase();
+        const customerEmail = (order.userId?.email || '').toLowerCase();
+        const orderNumber = (order.orderNumber || order._id || '').toLowerCase();
+        const products = order.products.map(p => ((p.productId || (p as any).product)?.name || '').toLowerCase()).join(' ');
+        
+        if (!customerName.includes(searchLower) && !customerEmail.includes(searchLower) && 
+            !orderNumber.includes(searchLower) && !products.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Order status filter
+      if (orderFilterStatus !== 'all' && order.orderStatus !== orderFilterStatus) {
+        return false;
+      }
+
+      // Payment status filter
+      if (orderFilterPayment !== 'all' && order.paymentStatus !== orderFilterPayment) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = orderSearch || orderFilterStatus !== 'all' || orderFilterPayment !== 'all';
+
+    // Calculate stats
+    const totalOrders = orders.length;
+    const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const pendingPayments = orders.filter(o => o.paymentStatus === 'pending').length;
+    const completedPayments = orders.filter(o => o.paymentStatus === 'completed' || o.paymentStatus === 'paid').length;
+
     return (
       <div className="space-y-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
-              <p className="text-sm text-gray-600 mt-1">Track and manage customer orders efficiently</p>
+              <h2 className="text-3xl font-bold mb-2">Order Management</h2>
+              <p className="text-emerald-100">Track, manage, and fulfill customer orders efficiently</p>
+            </div>
+            <ShoppingCart className="w-16 h-16 text-emerald-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalOrders}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <ShoppingCart className="w-6 h-6 text-indigo-600" />
+              </div>
             </div>
           </div>
 
-          {/* Export Section */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-                <input
-                  type="date"
-                  value={exportStartDate}
-                  onChange={(e) => setExportStartDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="date"
-                  value={exportEndDate}
-                  onChange={(e) => setExportEndDate(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                {(exportStartDate || exportEndDate) && (
-                  <button
-                    onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                    className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                  >
-                    Clear
-                  </button>
-                )}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Revenue</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">₹{totalRevenue.toLocaleString()}</p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleServerExport('orders', 'pdf')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-                >
-                  <Download size={14} /> PDF
-                </button>
-                <button
-                  onClick={() => handleServerExport('orders', 'csv')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-                >
-                  <Download size={14} /> CSV
-                </button>
-                <button
-                  onClick={() => handleServerExport('orders', 'excel')}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-                >
-                  <Download size={14} /> Excel
-                </button>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Payment</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingPayments}</p>
+              </div>
+              <div className="bg-orange-100 p-3 rounded-lg">
+                <Clock className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Completed</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{completedPayments}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800">Total Orders</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{orders.length}</p>
-              </div>
-              <ShoppingCart className="w-8 h-8 text-blue-600" />
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by customer, order ID, or product..."
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-80"
+              />
             </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-800">Paid Orders</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {orders.filter(o => o.paymentStatus === 'completed').length}
-                </p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-yellow-800">Pending Payment</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {orders.filter(o => o.paymentStatus === 'pending').length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-yellow-600" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-violet-100 border border-purple-200 rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-800">Revenue</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  ₹{orders.reduce((sum, o) => sum + o.totalAmount, 0).toLocaleString()}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-purple-600" />
+
+            <select
+              value={orderFilterStatus}
+              onChange={(e) => setOrderFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="all">All Order Status</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
+            <select
+              value={orderFilterPayment}
+              onChange={(e) => setOrderFilterPayment(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="all">All Payment Status</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="paid">Paid</option>
+              <option value="failed">Failed</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setOrderSearch('');
+                  setOrderFilterStatus('all');
+                  setOrderFilterPayment('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <button
+                onClick={() => handleServerExport('orders', 'pdf')}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('orders', 'csv')}
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('orders', 'excel')}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                Excel
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Order ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Products
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Payment Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {orders.map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                      {order.orderNumber || order._id.slice(-8)}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {order.userId?.name}
-                        </div>
-                        <div className="text-gray-600">{order.userId?.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {order.products.length} item(s)
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      ₹{order.totalAmount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <select
-                        value={order.paymentStatus || 'pending'}
-                        onChange={(e) =>
-                          handleUpdatePaymentStatus(order._id, e.target.value)
-                        }
-                        className={`px-2 py-1 rounded text-xs font-medium border-0 ${order.paymentStatus === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : order.paymentStatus === 'failed'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="failed">Failed</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        className="text-blue-600 hover:text-blue-800"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredOrders.length}</span> of <span className="font-semibold">{totalOrders}</span> orders
+            </p>
+          </div>
+        )}
+
+        {/* Orders Table */}
+        {filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <ShoppingCart className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {hasActiveFilters ? 'No orders match your filters' : 'No orders found'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {hasActiveFilters
+                  ? 'Try adjusting your search criteria or clear the filters'
+                  : 'Orders will appear here once customers start placing orders'}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setOrderSearch('');
+                    setOrderFilterStatus('all');
+                    setOrderFilterPayment('all');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-emerald-50 to-green-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Order ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Products
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Order Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Payment Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredOrders.map((order) => (
+                    <tr key={order._id} className="hover:bg-emerald-50/30 transition-colors">
+                      <td className="px-6 py-4 text-sm">
+                        <span className="font-mono font-medium text-indigo-600">
+                          #{order.orderNumber || order._id.slice(-8)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full w-10 h-10 flex items-center justify-center">
+                            <span className="text-sm font-semibold text-indigo-700">
+                              {(order.userId?.name || 'U').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {order.userId?.name || 'Unknown User'}
+                            </div>
+                            <div className="text-sm text-gray-600">{order.userId?.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-900 font-medium">
+                            {order.products.length} item{order.products.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {order.products.slice(0, 2).map((p, i) => {
+                            const product = p.productId || (p as any).product;
+                            return product?.name || 'Unknown Product';
+                          }).join(', ')}
+                          {order.products.length > 2 && ` +${order.products.length - 2} more`}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-base font-bold text-gray-900">
+                          ₹{order.totalAmount.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                          order.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
+                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                          order.orderStatus === 'processing' ? 'bg-indigo-100 text-indigo-800' :
+                          order.orderStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {order.orderStatus === 'delivered' && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {order.orderStatus === 'shipped' && <Package className="w-3 h-3 mr-1" />}
+                          {order.orderStatus === 'cancelled' && <X className="w-3 h-3 mr-1" />}
+                          {order.orderStatus === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                          {order.orderStatus || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <select
+                          value={order.paymentStatus || 'pending'}
+                          onChange={(e) => handleUpdatePaymentStatus(order._id, e.target.value)}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${
+                            order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : order.paymentStatus === 'failed'
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                          }`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="completed">Completed</option>
+                          <option value="paid">Paid</option>
+                          <option value="failed">Failed</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-900">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(order.createdAt).toLocaleTimeString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Order Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
 
   // Render Warranties Tab
-  const renderWarranties = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
+  const renderWarranties = () => {
+    // Filter warranties
+    const filteredWarranties = warranties.filter((warranty) => {
+      // Search filter
+      if (warrantySearch) {
+        const searchLower = warrantySearch.toLowerCase();
+        const productName = (warranty.productName || '').toLowerCase();
+        const customerName = (warranty.userId?.name || '').toLowerCase();
+        const customerEmail = (warranty.userId?.email || '').toLowerCase();
+        const serialNumber = (warranty.serialNumber || '').toLowerCase();
+        const modelNumber = (warranty.modelNumber || '').toLowerCase();
+        
+        if (!productName.includes(searchLower) && !customerName.includes(searchLower) &&
+            !customerEmail.includes(searchLower) && !serialNumber.includes(searchLower) &&
+            !modelNumber.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (warrantyFilterStatus !== 'all' && warranty.status !== warrantyFilterStatus) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = warrantySearch || warrantyFilterStatus !== 'all';
+
+    // Calculate stats
+    const totalWarranties = warranties.length;
+    const pendingWarranties = warranties.filter(w => w.status === 'pending').length;
+    const approvedWarranties = warranties.filter(w => w.status === 'approved').length;
+    const rejectedWarranties = warranties.filter(w => w.status === 'rejected').length;
+
+    return (
+      <div className="space-y-6">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Warranty Management</h2>
+              <p className="text-purple-100">Review and manage product warranty registrations</p>
+            </div>
+            <Shield className="w-16 h-16 text-purple-200 opacity-50" />
+          </div>
         </div>
 
         {/* Warranty Validation Tool */}
         <WarrantyValidator />
 
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {(exportStartDate || exportEndDate) && (
-                <button
-                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                >
-                  Clear
-                </button>
-              )}
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Warranties</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalWarranties}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <Shield className="w-6 h-6 text-indigo-600" />
+              </div>
             </div>
-            <div className="flex gap-2">
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending</p>
+                <p className="text-2xl font-bold text-yellow-600 mt-1">{pendingWarranties}</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{approvedWarranties}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rejected</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{rejectedWarranties}</p>
+              </div>
+              <div className="bg-red-100 p-3 rounded-lg">
+                <X className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by product, customer, serial, or model..."
+                value={warrantySearch}
+                onChange={(e) => setWarrantySearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent w-80"
+              />
+            </div>
+
+            <select
+              value={warrantyFilterStatus}
+              onChange={(e) => setWarrantyFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setWarrantySearch('');
+                  setWarrantyFilterStatus('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('warranties', 'pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
               >
-                <Download size={14} /> PDF
+                PDF
               </button>
               <button
                 onClick={() => handleServerExport('warranties', 'csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
               >
-                <Download size={14} /> CSV
+                CSV
               </button>
               <button
                 onClick={() => handleServerExport('warranties', 'excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
               >
-                <Download size={14} /> Excel
+                Excel
               </button>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        {warranties.map((warranty) => (
-          <div
-            key={warranty._id}
-            className="bg-white p-6 rounded-lg shadow border border-gray-200"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-semibold text-lg">{warranty.productName}</h3>
-                <p className="text-sm text-gray-600">
-                  Customer: {warranty.userId?.name} ({warranty.userId?.email})
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Registered: {new Date(warranty.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${warranty.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : warranty.status === 'approved'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                  }`}
-              >
-                {warranty.status}
-              </span>
-            </div>
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredWarranties.length}</span> of <span className="font-semibold">{totalWarranties}</span> warranties
+            </p>
+          </div>
+        )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div>
-                <p className="text-xs text-gray-600">Serial Number</p>
-                <p className="font-medium">{warranty.serialNumber}</p>
+        {/* Warranty Cards */}
+        {filteredWarranties.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <Shield className="w-10 h-10 text-gray-400" />
               </div>
-              <div>
-                <p className="text-xs text-gray-600">Model Number</p>
-                <p className="font-medium">{warranty.modelNumber}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Purchase Date</p>
-                <p className="font-medium">
-                  {new Date(warranty.purchaseDate).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Purchase Type</p>
-                <p className="font-medium capitalize">{warranty.purchaseType}</p>
-              </div>
-            </div>
-
-            {warranty.invoiceUrl && (
-              <div className="mb-4">
-                <a
-                  href={warranty.invoiceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                >
-                  <Download className="w-4 h-4" />
-                  View Invoice
-                </a>
-              </div>
-            )}
-
-            {warranty.status === 'pending' && (
-              <div className="flex gap-3">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {hasActiveFilters ? 'No warranties match your filters' : 'No warranty registrations found'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {hasActiveFilters
+                  ? 'Try adjusting your search criteria or clear the filters'
+                  : 'Warranty registrations will appear here once customers register their products'}
+              </p>
+              {hasActiveFilters && (
                 <button
-                  onClick={() => handleWarrantyAction(warranty._id, 'approved')}
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleWarrantyAction(warranty._id, 'rejected')}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
+                  onClick={() => {
+                    setWarrantySearch('');
+                    setWarrantyFilterStatus('all');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
-                  Reject
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // Render Email Logs Tab
-  const renderEmailLogs = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-800">Email Logs</h2>
-        </div>
-
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {(exportStartDate || exportEndDate) && (
-                <button
-                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                >
-                  Clear
+                  Clear Filters
                 </button>
               )}
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleServerExport('email-logs', 'pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-              >
-                <Download size={14} /> PDF
-              </button>
-              <button
-                onClick={() => handleServerExport('email-logs', 'csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-              >
-                <Download size={14} /> CSV
-              </button>
-              <button
-                onClick={() => handleServerExport('email-logs', 'excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-              >
-                <Download size={14} /> Excel
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Recipient
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Subject
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Sent At
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {emailLogs.map((log) => (
-                <tr key={log._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">{log.recipient}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{log.subject}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {log.emailType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'sent'
+        ) : (
+          <div className="space-y-4">
+            {filteredWarranties.map((warranty) => (
+              <div
+                key={warranty._id}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-purple-100 p-3 rounded-lg">
+                      <Shield className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900">{warranty.productName}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full w-8 h-8 flex items-center justify-center">
+                          <span className="text-xs font-semibold text-indigo-700">
+                            {(warranty.userId?.name || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{warranty.userId?.name}</p>
+                          <p className="text-xs text-gray-600">{warranty.userId?.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+                        <Calendar className="w-3 h-3" />
+                        Registered: {new Date(warranty.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      warranty.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : warranty.status === 'approved'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
-                        }`}
-                    >
-                      {log.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {new Date(log.sentAt).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {log.status === 'failed' && (
-                      <button
-                        onClick={() => handleResendEmail(log._id)}
-                        className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                        title="Resend"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render Contacts Tab
-  const renderContacts = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
-        </div>
-
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {(exportStartDate || exportEndDate) && (
-                <button
-                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleServerExport('contacts', 'pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-              >
-                <Download size={14} /> PDF
-              </button>
-              <button
-                onClick={() => handleServerExport('contacts', 'csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-              >
-                <Download size={14} /> CSV
-              </button>
-              <button
-                onClick={() => handleServerExport('contacts', 'excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-              >
-                <Download size={14} /> Excel
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {contacts.map((contact) => (
-          <div
-            key={contact._id}
-            className="bg-white p-6 rounded-lg shadow border border-gray-200"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-semibold text-lg">{contact.subject}</h3>
-                <p className="text-sm text-gray-600">
-                  From: {contact.name} ({contact.email})
-                </p>
-                {contact.phone && (
-                  <p className="text-sm text-gray-600">Phone: {contact.phone}</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Received: {new Date(contact.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={contact.status}
-                  onChange={(e) => handleUpdateContactStatus(contact._id, e.target.value)}
-                  className={`px-2 py-1 rounded text-xs font-medium border-0 ${contact.status === 'new'
-                    ? 'bg-blue-100 text-blue-800'
-                    : contact.status === 'read'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-green-100 text-green-800'
                     }`}
-                >
-                  <option value="new">New</option>
-                  <option value="read">Read</option>
-                  <option value="replied">Replied</option>
-                </select>
-                <button
-                  onClick={() => handleDeleteContact(contact._id)}
-                  className="text-red-600 hover:text-red-800 p-1"
-                  title="Delete Message"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  >
+                    {warranty.status === 'pending' && <Clock className="w-4 h-4 mr-1" />}
+                    {warranty.status === 'approved' && <CheckCircle className="w-4 h-4 mr-1" />}
+                    {warranty.status === 'rejected' && <X className="w-4 h-4 mr-1" />}
+                    {warranty.status}
+                  </span>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Serial Number</p>
+                      <p className="font-semibold text-gray-900 mt-1">{warranty.serialNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Model Number</p>
+                      <p className="font-semibold text-gray-900 mt-1">{warranty.modelNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Purchase Date</p>
+                      <p className="font-semibold text-gray-900 mt-1">
+                        {new Date(warranty.purchaseDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Purchase Type</p>
+                      <p className="font-semibold text-gray-900 mt-1 capitalize">{warranty.purchaseType}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  {warranty.invoiceUrl && (
+                    <a
+                      href={warranty.invoiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      View Invoice
+                    </a>
+                  )}
+                  {warranty.status === 'pending' && (
+                    <div className="flex gap-3 ml-auto">
+                      <button
+                        onClick={() => handleWarrantyAction(warranty._id, 'approved')}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleWarrantyAction(warranty._id, 'rejected')}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm"
+                      >
+                        <X className="w-4 h-4" />
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-gray-800 whitespace-pre-wrap">{contact.message}</p>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <a
-                href={`mailto:${contact.email}?subject=Re: ${contact.subject}`}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
-              >
-                <Mail className="w-4 h-4" />
-                Reply via Email
-              </a>
-            </div>
-          </div>
-        ))}
-        {contacts.length === 0 && (
-          <div className="text-center py-10 text-gray-500">
-            No messages found.
+            ))}
           </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Render Email Logs Tab
+  const renderEmailLogs = () => {
+    // Filter email logs
+    const filteredEmailLogs = emailLogs.filter((log) => {
+      // Search filter
+      if (emailSearch) {
+        const searchLower = emailSearch.toLowerCase();
+        const recipient = (log.recipient || '').toLowerCase();
+        const subject = (log.subject || '').toLowerCase();
+        const emailType = (log.emailType || '').toLowerCase();
+        
+        if (!recipient.includes(searchLower) && !subject.includes(searchLower) && !emailType.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (emailFilterStatus !== 'all' && log.status !== emailFilterStatus) {
+        return false;
+      }
+
+      // Type filter
+      if (emailFilterType !== 'all' && log.emailType !== emailFilterType) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = emailSearch || emailFilterStatus !== 'all' || emailFilterType !== 'all';
+
+    // Calculate stats
+    const totalEmails = emailLogs.length;
+    const sentEmails = emailLogs.filter(e => e.status === 'sent').length;
+    const failedEmails = emailLogs.filter(e => e.status === 'failed').length;
+    const uniqueTypes = [...new Set(emailLogs.map(e => e.emailType))].length;
+
+    return (
+      <div className="space-y-6">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Email Logs</h2>
+              <p className="text-cyan-100">Track and monitor all system email communications</p>
+            </div>
+            <Mail className="w-16 h-16 text-cyan-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Emails</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalEmails}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <Mail className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sent Successfully</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{sentEmails}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Failed</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{failedEmails}</p>
+              </div>
+              <div className="bg-red-100 p-3 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Types</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">{uniqueTypes}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <FileText className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by recipient, subject, or type..."
+                value={emailSearch}
+                onChange={(e) => setEmailSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent w-80"
+              />
+            </div>
+
+            <select
+              value={emailFilterStatus}
+              onChange={(e) => setEmailFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
+            </select>
+
+            <select
+              value={emailFilterType}
+              onChange={(e) => setEmailFilterType(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            >
+              <option value="all">All Types</option>
+              {[...new Set(emailLogs.map(e => e.emailType))].map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setEmailSearch('');
+                  setEmailFilterStatus('all');
+                  setEmailFilterType('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <button
+                onClick={() => handleServerExport('email-logs', 'pdf')}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('email-logs', 'csv')}
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('email-logs', 'excel')}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredEmailLogs.length}</span> of <span className="font-semibold">{totalEmails}</span> email logs
+            </p>
+          </div>
+        )}
+
+        {/* Email Logs Table */}
+        {filteredEmailLogs.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <Mail className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {hasActiveFilters ? 'No email logs match your filters' : 'No email logs found'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {hasActiveFilters
+                  ? 'Try adjusting your search criteria or clear the filters'
+                  : 'Email logs will appear here once the system sends emails'}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setEmailSearch('');
+                    setEmailFilterStatus('all');
+                    setEmailFilterType('all');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-cyan-50 to-blue-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Recipient
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Subject
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Sent At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredEmailLogs.map((log) => (
+                    <tr key={log._id} className="hover:bg-cyan-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-900">{log.recipient}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <span className="line-clamp-2">{log.subject}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {log.emailType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                            log.status === 'sent'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {log.status === 'sent' && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {log.status === 'failed' && <AlertCircle className="w-3 h-3 mr-1" />}
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-900">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          {new Date(log.sentAt).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(log.sentAt).toLocaleTimeString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {log.status === 'failed' && (
+                          <button
+                            onClick={() => handleResendEmail(log._id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Resend Email"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render Contacts Tab
+  const renderContacts = () => {
+    // Filter contacts
+    const filteredContacts = contacts.filter((contact) => {
+      // Search filter
+      if (contactSearch) {
+        const searchLower = contactSearch.toLowerCase();
+        const name = (contact.name || '').toLowerCase();
+        const email = (contact.email || '').toLowerCase();
+        const subject = (contact.subject || '').toLowerCase();
+        const message = (contact.message || '').toLowerCase();
+        
+        if (!name.includes(searchLower) && !email.includes(searchLower) &&
+            !subject.includes(searchLower) && !message.includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (contactFilterStatus !== 'all' && contact.status !== contactFilterStatus) {
+        return false;
+      }
+
+      return true;
+    });
+
+    const hasActiveFilters = contactSearch || contactFilterStatus !== 'all';
+
+    // Calculate stats
+    const totalMessages = contacts.length;
+    const newMessages = contacts.filter(c => c.status === 'new').length;
+    const readMessages = contacts.filter(c => c.status === 'read').length;
+    const repliedMessages = contacts.filter(c => c.status === 'replied').length;
+
+    return (
+      <div className="space-y-6">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Contact Messages</h2>
+              <p className="text-pink-100">Manage and respond to customer inquiries</p>
+            </div>
+            <MessageSquare className="w-16 h-16 text-pink-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Messages</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalMessages}</p>
+              </div>
+              <div className="bg-indigo-100 p-3 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-indigo-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">New</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">{newMessages}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Mail className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Read</p>
+                <p className="text-2xl font-bold text-gray-600 mt-1">{readMessages}</p>
+              </div>
+              <div className="bg-gray-100 p-3 rounded-lg">
+                <Eye className="w-6 h-6 text-gray-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Replied</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{repliedMessages}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email, subject, or message..."
+                value={contactSearch}
+                onChange={(e) => setContactSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent w-80"
+              />
+            </div>
+
+            <select
+              value={contactFilterStatus}
+              onChange={(e) => setContactFilterStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="new">New</option>
+              <option value="read">Read</option>
+              <option value="replied">Replied</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setContactSearch('');
+                  setContactFilterStatus('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Download className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <button
+                onClick={() => handleServerExport('contacts', 'pdf')}
+                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleServerExport('contacts', 'csv')}
+                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => handleServerExport('contacts', 'excel')}
+                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              >
+                Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Results Summary */}
+        {hasActiveFilters && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            <p className="text-sm text-blue-800">
+              Showing <span className="font-semibold">{filteredContacts.length}</span> of <span className="font-semibold">{totalMessages}</span> messages
+            </p>
+          </div>
+        )}
+
+        {/* Contact Messages */}
+        {filteredContacts.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <MessageSquare className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {hasActiveFilters ? 'No messages match your filters' : 'No contact messages found'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                {hasActiveFilters
+                  ? 'Try adjusting your search criteria or clear the filters'
+                  : 'Contact messages from customers will appear here'}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setContactSearch('');
+                    setContactFilterStatus('all');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredContacts.map((contact) => (
+              <div
+                key={contact._id}
+                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-pink-100 p-3 rounded-lg">
+                      <MessageSquare className="w-6 h-6 text-pink-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900">{contact.subject}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="bg-gradient-to-br from-pink-100 to-rose-100 rounded-full w-8 h-8 flex items-center justify-center">
+                          <span className="text-xs font-semibold text-pink-700">
+                            {(contact.name || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{contact.name}</p>
+                          <p className="text-xs text-gray-600">{contact.email}</p>
+                        </div>
+                      </div>
+                      {contact.phone && (
+                        <p className="text-xs text-gray-600 mt-1">Phone: {contact.phone}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+                        <Calendar className="w-3 h-3" />
+                        Received: {new Date(contact.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={contact.status}
+                      onChange={(e) => handleUpdateContactStatus(contact._id, e.target.value)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${
+                        contact.status === 'new'
+                          ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                          : contact.status === 'read'
+                          ? 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                    >
+                      <option value="new">New</option>
+                      <option value="read">Read</option>
+                      <option value="replied">Replied</option>
+                    </select>
+                    <button
+                      onClick={() => handleDeleteContact(contact._id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete Message"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{contact.message}</p>
+                </div>
+
+                <div className="flex justify-end">
+                  <a
+                    href={`mailto:${contact.email}?subject=Re: ${contact.subject}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Reply via Email
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Content Management Tab
   const renderContentManagement = () => (
