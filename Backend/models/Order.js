@@ -43,7 +43,10 @@ const orderSchema = new mongoose.Schema({
     phone: String,
     address: String
   },
-  customerInvoiceUrl: { type: String } // URL to the generated "No Price" invoice
+  customerInvoiceUrl: { type: String }, // URL to the generated "No Price" invoice
+  
+  // Delivery Tracking
+  deliveryTrackingLink: { type: String } // Tracking link provided by admin for delivery status
 }, { timestamps: true });
 
 // Add indexes for performance

@@ -10,6 +10,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
 const { generateAndUploadInvoice, generateAndUploadDropshipInvoice, generateCustomerInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+const { getOrderConfirmationEmail, getDeliveryTrackingEmail, getInvoiceEmail } = require('../utils/emailTemplates');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
 const { recalculateProductInventory } = require('../utils/inventory');
 
@@ -20,6 +21,45 @@ const razorpay = new Razorpay({
 
 const MAX_DIRECT_PURCHASE = parseInt(process.env.MAX_DIRECT_PURCHASE_ITEMS) || 3;
 const PRICE_TOLERANCE = 0.01; // Tolerance for floating point price comparisons
+
+// @desc    Update order delivery tracking link
+// @route   PUT /api/orders/:id/tracking
+// @access  Private/Admin
+const updateOrderTrackingLink = async (req, res) => {
+  try {
+    const { deliveryTrackingLink } = req.body;
+    const order = await Order.findById(req.params.id).populate('user', 'name email');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    order.deliveryTrackingLink = deliveryTrackingLink;
+    const updatedOrder = await order.save();
+
+    // Send email notification to user
+    if (deliveryTrackingLink && order.user && order.user.email) {
+      const trackingEmailHtml = getDeliveryTrackingEmail(
+        order.user.name,
+        order.orderNumber || order._id.toString().slice(-8),
+        deliveryTrackingLink
+      );
+
+      sendEmail(
+        order.user.email,
+        'Your Order is On Its Way! - Telogica',
+        `Your order ${order.orderNumber || order._id} has been shipped. Track it here: ${deliveryTrackingLink}`,
+        'order_tracking',
+        { entityType: 'order', entityId: order._id },
+        trackingEmailHtml
+      ).catch(err => console.error('Failed to send tracking link email:', err));
+    }
+
+    res.json(updatedOrder);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -269,12 +309,24 @@ const createOrder = async (req, res) => {
     }
 
     // Send order confirmation email (Async - don't await)
+    const orderDetailsHtml = createdOrder.products.map(item => 
+      `<p style="margin: 5px 0;">• ${item.product?.name || 'Product'} - Qty: ${item.quantity} - ₹${item.price.toLocaleString('en-IN')}</p>`
+    ).join('');
+    
+    const confirmationEmailHtml = getOrderConfirmationEmail(
+      req.user.name,
+      createdOrder.orderNumber || createdOrder._id.toString().slice(-8),
+      finalAmount,
+      orderDetailsHtml
+    );
+    
     sendEmail(
       req.user.email,
-      'Order Created - Telogica',
-      `Your order has been created successfully. Order ID: ${createdOrder._id}. Total Amount: ₹${finalAmount}. Please complete the payment.`,
+      'Order Confirmation - Telogica',
+      `Your order has been created successfully. Order Number: ${createdOrder.orderNumber || createdOrder._id}. Total Amount: ₹${finalAmount}`,
       'order_confirmation',
-      { entityType: 'order', entityId: createdOrder._id }
+      { entityType: 'order', entityId: createdOrder._id },
+      confirmationEmailHtml
     ).catch(emailError => console.error('Error sending email:', emailError));
 
     res.status(201).json({ order: createdOrder, razorpayOrder });
@@ -564,7 +616,14 @@ const getMyOrders = async (req, res) => {
 // @access  Private/Admin
 const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find({})
+    const { userId } = req.query;
+    const filter = {};
+    
+    if (userId) {
+      filter.user = userId;
+    }
+    
+    const orders = await Order.find(filter)
       .populate('user', 'name email')
       .populate('products.product')
       .sort({ createdAt: -1 })
@@ -772,5 +831,6 @@ module.exports = {
   downloadInvoice,
   generateDropshipInvoice,
   getDropshipOrders,
-  generateCustomerInvoice
+  generateCustomerInvoice,
+  updateOrderTrackingLink
 };

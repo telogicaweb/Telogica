@@ -2,6 +2,7 @@ const Quote = require('../models/Quote');
 const Product = require('../models/Product');
 const RetailerQuotedProduct = require('../models/RetailerQuotedProduct');
 const { sendEmail } = require('../utils/mailer');
+const { getQuoteRequestAdminEmail, getQuoteResponseEmail, getDeliveryTrackingEmail } = require('../utils/emailTemplates');
 
 // @desc    Create a new quote
 // @route   POST /api/quotes
@@ -36,12 +37,19 @@ const createQuote = async (req, res) => {
 
     // Notify Admin (Non-blocking)
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
+    const quoteRequestEmailHtml = getQuoteRequestAdminEmail(
+      req.user.name,
+      req.user.email,
+      products.length
+    );
+    
     sendEmail(
       adminEmail,
-      'New Quote Request',
+      'New Quote Request - Telogica',
       `User ${req.user.name} (${req.user.email}) requested a quote with ${products.length} products.`,
       'quote_request',
-      { entityType: 'quote', entityId: createdQuote._id }
+      { entityType: 'quote', entityId: createdQuote._id },
+      quoteRequestEmailHtml
     ).catch(err => console.error('Failed to send admin notification email:', err));
 
     res.status(201).json(createdQuote);
@@ -61,9 +69,16 @@ const getQuotes = async (req, res) => {
       return res.status(401).json({ message: 'User not authenticated' });
     }
 
+    const { userId } = req.query;
     let quotes;
+    
     if (req.user.role === 'admin') {
-      quotes = await Quote.find({})
+      const filter = {};
+      if (userId) {
+        filter.user = userId;
+      }
+      
+      quotes = await Quote.find(filter)
         .populate('user', 'name email role')
         .populate('products.product')
         .sort({ createdAt: -1 })
@@ -129,40 +144,22 @@ const respondToQuote = async (req, res) => {
 
       const updatedQuote = await quote.save();
 
-      // Notify User with detailed email
-      const emailText = `Dear ${quote.user.name},\n\nYour quote request has been reviewed.\n\nDiscount offered: ${discountPercentage}%\nTotal Price: ₹${calculatedTotal}\nMessage: ${message}\n\nPlease login to accept or reject this quote.\n\nThank you!`;
-
-      // HTML escape function to prevent XSS
-      const escapeHtml = (text) => {
-        const map = {
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          '"': '&quot;',
-          "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, m => map[m]);
-      };
-
-      const emailHtml = `
-        <h2>Quote Response</h2>
-        <p>Dear ${escapeHtml(quote.user.name)},</p>
-        <p>Your quote request has been reviewed.</p>
-        <ul>
-          <li><strong>Discount offered:</strong> ${escapeHtml(String(discountPercentage))}%</li>
-          <li><strong>Total Price:</strong> ₹${escapeHtml(String(calculatedTotal))}</li>
-          <li><strong>Message:</strong> ${escapeHtml(message)}</li>
-        </ul>
-        <p>Please login to your account to accept or reject this quote.</p>
-        <p>Thank you!</p>
-      `;
+      // Notify User with email
+      const emailText = `Your quote request has been reviewed. Discount: ${discountPercentage}%, Total Price: ₹${calculatedTotal}. Message: ${message}`;
+      
+      const quoteResponseEmailHtml = getQuoteResponseEmail(
+        quote.user.name,
+        calculatedTotal,
+        message
+      );
+      
       sendEmail(
         quote.user.email,
-        'Quote Response - Action Required',
+        'Your Quote Response is Ready! - Telogica',
         emailText,
         'quote_approval',
         { entityType: 'quote', entityId: quote._id },
-        emailHtml
+        quoteResponseEmailHtml
       ).catch(err => console.error('Failed to send quote response email:', err));
 
       res.json(updatedQuote);
@@ -285,4 +282,43 @@ const rejectQuote = async (req, res) => {
   }
 };
 
-module.exports = { createQuote, getQuotes, respondToQuote, acceptQuote, rejectQuote };
+// @desc    Update quote delivery tracking link
+// @route   PUT /api/quotes/:id/tracking
+// @access  Private/Admin
+const updateQuoteTrackingLink = async (req, res) => {
+  try {
+    const { deliveryTrackingLink } = req.body;
+    const quote = await Quote.findById(req.params.id).populate('user', 'name email');
+
+    if (!quote) {
+      return res.status(404).json({ message: 'Quote not found' });
+    }
+
+    quote.deliveryTrackingLink = deliveryTrackingLink;
+    const updatedQuote = await quote.save();
+
+    // Send email notification to user
+    if (deliveryTrackingLink && quote.user && quote.user.email) {
+      const trackingEmailHtml = getDeliveryTrackingEmail(
+        quote.user.name,
+        `Quote-${quote._id.toString().slice(-8)}`,
+        deliveryTrackingLink
+      );
+
+      sendEmail(
+        quote.user.email,
+        'Your Order is On Its Way! - Telogica',
+        `Your quote order tracking link is now available. Track it here: ${deliveryTrackingLink}`,
+        'quote_tracking',
+        { entityType: 'quote', entityId: quote._id },
+        trackingEmailHtml
+      ).catch(err => console.error('Failed to send tracking link email:', err));
+    }
+
+    res.json(updatedQuote);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createQuote, getQuotes, respondToQuote, acceptQuote, rejectQuote, updateQuoteTrackingLink };

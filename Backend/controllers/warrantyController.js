@@ -3,6 +3,7 @@ const ProductUnit = require('../models/ProductUnit');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const { sendEmail } = require('../utils/mailer');
+const { getWarrantyRegistrationEmail } = require('../utils/emailTemplates');
 const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
@@ -93,19 +94,27 @@ exports.registerWarranty = async (req, res) => {
     await warranty.populate('product user');
 
     // Send email notification to user
+    const warrantyEmailHtml = getWarrantyRegistrationEmail(
+      req.user.name,
+      productName,
+      serialNumber,
+      productUnit.warrantyPeriodMonths || 12
+    );
+    
     await sendEmail(
       req.user.email,
-      'Warranty Registration Submitted',
-      `Your warranty registration for ${productName} (Serial: ${serialNumber}) has been submitted successfully. We will review it shortly.`,
+      'Warranty Registration Successful - Telogica',
+      `Your warranty registration for ${productName} (Serial: ${serialNumber}) has been submitted successfully.`,
       'warranty_submitted',
-      { entityType: 'warranty', entityId: warranty._id }
+      { entityType: 'warranty', entityId: warranty._id },
+      warrantyEmailHtml
     );
 
     // Send email notification to admin
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
     await sendEmail(
       adminEmail,
-      'New Warranty Registration',
+      'New Warranty Registration - Telogica',
       `New warranty registration from ${req.user.name} for ${productName} (Serial: ${serialNumber})`,
       'warranty_submitted',
       { entityType: 'warranty', entityId: warranty._id }
@@ -139,8 +148,11 @@ exports.getUserWarranties = async (req, res) => {
 // Get all warranties (Admin)
 exports.getAllWarranties = async (req, res) => {
   try {
-    const { status } = req.query;
-    const filter = status ? { status } : {};
+    const { status, userId } = req.query;
+    const filter = {};
+    
+    if (status) filter.status = status;
+    if (userId) filter.user = userId;
 
     const warranties = await Warranty.find(filter)
       .populate('user', 'name email phone')

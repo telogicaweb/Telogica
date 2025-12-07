@@ -35,35 +35,36 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      // Send welcome email to user
+      try {
+        const welcomeEmailHtml = role === 'retailer' 
+          ? getRetailerWelcomeEmail(name)
+          : getWelcomeEmail(name);
+        
+        await sendEmail(
+          email,
+          role === 'retailer' ? 'Welcome to Telogica Partner Network!' : 'Welcome to Telogica!',
+          `Welcome ${name}! Thank you for registering with Telogica.`,
+          'user_registration',
+          { entityType: 'user', entityId: user._id },
+          welcomeEmailHtml
+        );
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError.message);
+      }
+
       // Notify admin of new registration
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
       try {
         await sendEmail(
           adminEmail,
-          'New User Registration',
-          `New user registered: ${name} (${email}) - Role: ${role || 'user'}`,
+          role === 'retailer' ? 'New Retailer Registration - Approval Required' : 'New User Registration',
+          `New ${role || 'user'} registered: ${name} (${email})${role === 'retailer' ? ' - Needs approval before login.' : ''}`,
           'user_registration',
           { entityType: 'user', entityId: user._id }
         );
       } catch (emailError) {
         console.error('Failed to send admin notification email:', emailError.message);
-        // Don't fail registration if email fails
-      }
-
-      // Notify admin if retailer registers
-      if (role === 'retailer') {
-        try {
-          await sendEmail(
-            adminEmail,
-            'New Retailer Registration - Approval Required',
-            `Retailer ${name} (${email}) has registered and needs approval before they can login.`,
-            'user_registration',
-            { entityType: 'user', entityId: user._id }
-          );
-        } catch (emailError) {
-          console.error('Failed to send retailer notification email:', emailError.message);
-          // Don't fail registration if email fails
-        }
       }
 
       res.status(201).json({

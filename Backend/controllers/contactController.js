@@ -1,5 +1,6 @@
 const Contact = require('../models/Contact');
 const { sendEmail } = require('../utils/mailer');
+const { getContactAcknowledgmentEmail, getContactNotificationEmail } = require('../utils/emailTemplates');
 
 // @desc    Submit a contact form
 // @route   POST /api/contact
@@ -18,21 +19,27 @@ const submitContact = async (req, res) => {
 
     // Send email notification to admin
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
+    const adminNotificationHtml = getContactNotificationEmail(name, email, message);
+    
     await sendEmail(
       adminEmail,
-      `New Contact Form Submission: ${subject}`,
-      `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`,
+      `New Contact Form: ${subject} - Telogica`,
+      `New message from ${name} (${email}): ${message}`,
       'general',
-      { entityType: 'contact', entityId: contact._id }
+      { entityType: 'contact', entityId: contact._id },
+      adminNotificationHtml
     );
 
     // Send acknowledgement to user
+    const acknowledgmentHtml = getContactAcknowledgmentEmail(name);
+    
     await sendEmail(
       email,
-      'We received your message - Telogica',
-      `Dear ${name},\n\nThank you for contacting us. We have received your message regarding "${subject}" and will get back to you shortly.\n\nBest regards,\nTelogica Team`,
+      'Thank You for Contacting Telogica',
+      `Dear ${name}, Thank you for contacting us. We have received your message and will get back to you shortly.`,
       'general',
-      { entityType: 'contact', entityId: contact._id }
+      { entityType: 'contact', entityId: contact._id },
+      acknowledgmentHtml
     );
 
     res.status(201).json({ message: 'Message sent successfully', contact });

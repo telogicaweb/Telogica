@@ -684,4 +684,203 @@ async function handleExport(res, cursor, config, format, filename) {
   }
 }
 
+// ============================================
+// User 360 View Export
+// ============================================
+
+exports.exportUser360 = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const PDFDocument = require('pdfkit');
+    
+    // Fetch user data
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Fetch all related data
+    const [orders, quotes, warranties, inventory] = await Promise.all([
+      Order.find({ user: userId })
+        .populate('products.product')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Quote.find({ user: userId })
+        .populate('products.product')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Warranty.find({ user: userId })
+        .populate('product')
+        .sort({ createdAt: -1 })
+        .lean(),
+      user.role === 'retailer' 
+        ? RetailerInventory.find({ retailer: userId })
+            .populate('product')
+            .sort({ createdAt: -1 })
+            .lean()
+        : []
+    ]);
+    
+    // Create PDF
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="User_360_${user.name.replace(/\\s+/g, '_')}_${Date.now()}.pdf"`);
+    
+    doc.pipe(res);
+    
+    // Header
+    doc.fontSize(24).font('Helvetica-Bold').text('User 360° View Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica').fillColor('#666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(2);
+    
+    // User Information Section
+    doc.fontSize(16).font('Helvetica-Bold').fillColor('#000').text('User Information');
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Name: ${user.name}`);
+    doc.text(`Email: ${user.email}`);
+    doc.text(`Role: ${user.role.toUpperCase()}`);
+    doc.text(`Status: ${user.role === 'retailer' && !user.isApproved ? 'Pending Approval' : 'Active'}`);
+    doc.text(`Member Since: ${new Date(user.createdAt).toLocaleDateString()}`);
+    doc.text(`User ID: ${user._id}`);
+    doc.moveDown(2);
+    
+    // Summary Statistics
+    doc.fontSize(16).font('Helvetica-Bold').text('Summary Statistics');
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica');
+    
+    const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
+    doc.text(`Total Orders: ${orders.length}`);
+    doc.text(`Total Revenue: ₹${totalRevenue.toLocaleString()}`);
+    doc.text(`Quote Requests: ${quotes.length}`);
+    doc.text(`Warranties Registered: ${warranties.length}`);
+    if (user.role === 'retailer') {
+      doc.text(`Inventory Items: ${inventory.length}`);
+      const soldItems = inventory.filter(i => i.status === 'sold').length;
+      doc.text(`Items Sold: ${soldItems}`);
+    }
+    doc.moveDown(2);
+    
+    // Orders Section
+    if (orders.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Orders History');
+      doc.moveDown(1);
+      
+      orders.forEach((order, index) => {
+        doc.fontSize(12).font('Helvetica-Bold').text(`Order #${index + 1}: ${order.orderNumber || order._id.toString().slice(-8)}`);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString()}`);
+        doc.text(`Total: ₹${order.totalAmount.toLocaleString()}`);
+        doc.text(`Payment Status: ${order.paymentStatus}`);
+        doc.text(`Items: ${order.products.length}`);
+        
+        // List products
+        order.products.forEach((item, idx) => {
+          const productName = item.product?.name || item.productId?.name || 'Unknown Product';
+          doc.fontSize(9).text(`  ${idx + 1}. ${productName} - Qty: ${item.quantity} - ₹${item.price?.toLocaleString() || 'N/A'}`);
+        });
+        
+        doc.moveDown(1);
+        
+        if ((index + 1) % 5 === 0 && index < orders.length - 1) {
+          doc.addPage();
+        }
+      });
+    }
+    
+    // Quotes Section
+    if (quotes.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Quote Requests');
+      doc.moveDown(1);
+      
+      quotes.forEach((quote, index) => {
+        doc.fontSize(12).font('Helvetica-Bold').text(`Quote #${index + 1}: ${quote._id.toString().slice(-8)}`);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Date: ${new Date(quote.createdAt).toLocaleDateString()}`);
+        doc.text(`Status: ${quote.status}`);
+        doc.text(`Products Requested: ${quote.products.length}`);
+        if (quote.quotedPrice) {
+          doc.text(`Quoted Price: ₹${quote.quotedPrice.toLocaleString()}`);
+        }
+        
+        doc.moveDown(1);
+        
+        if ((index + 1) % 8 === 0 && index < quotes.length - 1) {
+          doc.addPage();
+        }
+      });
+    }
+    
+    // Warranties Section
+    if (warranties.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Warranty Registrations');
+      doc.moveDown(1);
+      
+      warranties.forEach((warranty, index) => {
+        doc.fontSize(12).font('Helvetica-Bold').text(`Warranty #${index + 1}`);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Product: ${warranty.productName || warranty.product?.name || 'N/A'}`);
+        doc.text(`Serial Number: ${warranty.serialNumber}`);
+        doc.text(`Model: ${warranty.modelNumber}`);
+        doc.text(`Status: ${warranty.status}`);
+        doc.text(`Registered: ${new Date(warranty.createdAt).toLocaleDateString()}`);
+        
+        doc.moveDown(1);
+        
+        if ((index + 1) % 10 === 0 && index < warranties.length - 1) {
+          doc.addPage();
+        }
+      });
+    }
+    
+    // Inventory Section (Retailers only)
+    if (user.role === 'retailer' && inventory.length > 0) {
+      doc.addPage();
+      doc.fontSize(16).font('Helvetica-Bold').text('Inventory Items');
+      doc.moveDown(1);
+      
+      inventory.forEach((item, index) => {
+        doc.fontSize(12).font('Helvetica-Bold').text(`Item #${index + 1}`);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Product: ${item.product?.name || 'N/A'}`);
+        doc.text(`Status: ${item.status}`);
+        doc.text(`Purchase Date: ${new Date(item.purchaseDate).toLocaleDateString()}`);
+        doc.text(`Purchase Price: ₹${item.purchasePrice?.toLocaleString() || 'N/A'}`);
+        if (item.soldDate) {
+          doc.text(`Sold Date: ${new Date(item.soldDate).toLocaleDateString()}`);
+          doc.text(`Selling Price: ₹${item.sellingPrice?.toLocaleString() || 'N/A'}`);
+        }
+        
+        doc.moveDown(1);
+        
+        if ((index + 1) % 8 === 0 && index < inventory.length - 1) {
+          doc.addPage();
+        }
+      });
+    }
+    
+    // Footer
+    doc.fontSize(8).fillColor('#999').text(
+      'This is a confidential document generated by Telogica Admin System',
+      50,
+      doc.page.height - 50,
+      { align: 'center' }
+    );
+    
+    doc.end();
+  } catch (error) {
+    console.error('User 360 export error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Failed to export user 360 report', error: error.message });
+    }
+  }
+};
+
 module.exports = exports;

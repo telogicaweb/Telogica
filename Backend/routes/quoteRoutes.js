@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createQuote, getQuotes, respondToQuote, acceptQuote, rejectQuote } = require('../controllers/quoteController');
+const { createQuote, getQuotes, respondToQuote, acceptQuote, rejectQuote, updateQuoteTrackingLink } = require('../controllers/quoteController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
@@ -15,5 +15,8 @@ router.route('/:id/accept')
 
 router.route('/:id/reject')
   .put(protect, rejectQuote);
+
+router.route('/:id/tracking')
+  .put(protect, admin, updateQuoteTrackingLink);
 
 module.exports = router;
