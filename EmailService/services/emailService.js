@@ -1,26 +1,56 @@
+require('dotenv').config();
 const nodemailer = require('nodemailer');
 const connectDB = require('../config/db');
 
 // Connect to MongoDB for email logs
 connectDB();
 
-// Create email transporter
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// Email transporter instance
+let transporter = null;
 
-// Verify transporter configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email transporter configuration error:', error);
-  } else {
-    console.log('✅ Email server is ready to send emails');
+// Function to get or create transporter
+const getTransporter = () => {
+  if (transporter) {
+    return transporter;
   }
-});
+
+  // Check credentials
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('❌ EMAIL_USER or EMAIL_PASS not set in environment variables');
+    console.error('EMAIL_USER:', process.env.EMAIL_USER ? 'SET' : 'NOT SET');
+    console.error('EMAIL_PASS:', process.env.EMAIL_PASS ? 'SET' : 'NOT SET');
+    return null;
+  }
+
+  try {
+    console.log('✅ Email credentials found, creating transporter...');
+    transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Verify transporter configuration
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error('❌ Email transporter configuration error:', error);
+        transporter = null; // Reset on error
+      } else {
+        console.log('✅ Email server is ready to send emails');
+      }
+    });
+
+    return transporter;
+  } catch (error) {
+    console.error('❌ Failed to create email transporter:', error);
+    return null;
+  }
+};
+
+// Initialize transporter on module load
+getTransporter();
 
 // Send Email Function with Logging
 const sendEmail = async (to, subject, text, emailType, relatedEntity = null, html = null) => {
@@ -82,6 +112,19 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
     return { success: false, error: errorMsg, emailLog };
   }
 
+  // Check if transporter is initialized
+  const emailTransporter = getTransporter();
+  if (!emailTransporter) {
+    const errorMsg = 'Email transporter not initialized. Check EMAIL_USER and EMAIL_PASS configuration.';
+    console.error(errorMsg);
+    if (emailLog) {
+      emailLog.status = 'failed';
+      emailLog.errorMessage = errorMsg;
+      await emailLog.save();
+    }
+    return { success: false, error: errorMsg, emailLog };
+  }
+
   // Send email
   try {
     const mailOptions = {
@@ -92,7 +135,7 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
       html: html || text
     };
     
-    const info = await transporter.sendMail(mailOptions);
+    const info = await emailTransporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully to:', to, '| MessageID:', info.messageId);
     
     // Update email log status to sent
@@ -123,6 +166,12 @@ const resendEmail = async (emailLogId) => {
   const EmailLog = require('../models/EmailLog');
   
   try {
+    // Get or create transporter
+    const emailTransporter = getTransporter();
+    if (!emailTransporter) {
+      throw new Error('Email transporter not initialized. Check EMAIL_USER and EMAIL_PASS configuration.');
+    }
+
     const emailLog = await EmailLog.findById(emailLogId);
     if (!emailLog) {
       throw new Error('Email log not found');
@@ -135,7 +184,7 @@ const resendEmail = async (emailLogId) => {
       html: emailLog.body
     };
     
-    const info = await transporter.sendMail(mailOptions);
+    const info = await emailTransporter.sendMail(mailOptions);
     
     // Update email log
     emailLog.status = 'sent';

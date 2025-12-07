@@ -54,7 +54,7 @@ router.post('/:id/resend', protect, admin, async (req, res) => {
     const response = await axios.post(`${EMAIL_SERVICE_URL}/api/email/resend/${req.params.id}`);
     res.json({ message: 'Email resent successfully', data: response.data });
   } catch (error) {
-    console.error('Error resending email via service:', error.message);
+    console.error('Error resending email via service:', error.response?.data || error.message);
     
     // Fallback to local mailer if service unavailable
     if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
@@ -71,8 +71,8 @@ router.post('/:id/resend', protect, admin, async (req, res) => {
       }
     } else {
       res.status(error.response?.status || 500).json({ 
-        message: error.response?.data?.message || 'Failed to resend email', 
-        error: error.message 
+        message: error.response?.data?.error || error.response?.data?.message || 'Failed to resend email', 
+        error: error.response?.data || error.message 
       });
     }
   }

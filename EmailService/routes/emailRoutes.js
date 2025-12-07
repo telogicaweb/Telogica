@@ -212,6 +212,8 @@ router.get('/stats', async (req, res) => {
 router.post('/resend/:emailLogId', async (req, res) => {
   try {
     const { emailLogId } = req.params;
+    console.log('Attempting to resend email with ID:', emailLogId);
+    
     const result = await emailService.resendEmail(emailLogId);
 
     if (result.success) {
@@ -221,7 +223,8 @@ router.post('/resend/:emailLogId', async (req, res) => {
         messageId: result.messageId
       });
     } else {
-      res.status(500).json({ 
+      console.error('Resend failed:', result.error);
+      res.status(400).json({ 
         success: false, 
         error: result.error 
       });

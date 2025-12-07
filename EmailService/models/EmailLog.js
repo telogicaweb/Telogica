@@ -25,7 +25,8 @@ const emailLogSchema = new mongoose.Schema({
       'welcome', 'password_reset', 'order_confirmation', 'order_shipped',
       'quote_request', 'quote_response', 'warranty_registration',
       'contact_confirmation', 'contact_notification', 'invoice',
-      'delivery_tracking', 'retailer_welcome', 'general'
+      'delivery_tracking', 'retailer_welcome', 'payment_confirmation',
+      'payment-success', 'general'
     ]
   },
   status: {
