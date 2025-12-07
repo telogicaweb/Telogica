@@ -556,21 +556,24 @@ const verifyPayment = async (req, res) => {
         console.error('Error generating invoice:', error);
       }
 
-      // Send payment confirmation email
-      const invoiceLink = invoice && invoice.invoiceUrl ? `\n\nYou can download your invoice here: ${invoice.invoiceUrl}` : '';
-
-      let warrantySection = '';
-      if (warrantyLinks.length > 0) {
-        warrantySection = '\n\nWarranty Certificates:\n' + warrantyLinks.map(w => `${w.name} (Serial: ${w.serial}): ${w.url}`).join('\n');
-      }
-
+      // Send professional payment confirmation email
       if (order.user && order.user.email) {
+        const { getPaymentSuccessEmail } = require('../utils/emailTemplates');
+        const emailHtml = getPaymentSuccessEmail(
+          order.user.name || 'Customer',
+          order._id.toString().slice(-8),
+          order.totalAmount,
+          invoice && invoice.invoiceUrl ? invoice.invoiceUrl : null,
+          warrantyLinks
+        );
+
         sendEmail(
           order.user.email,
-          'Payment Successful - Telogica',
-          `Your payment has been completed successfully. Order ID: ${order._id}. Amount Paid: ₹${order.totalAmount}.${invoiceLink}${warrantySection}`,
+          'Payment Successful - Order Confirmed | Telogica',
+          '',
           'payment_confirmation',
-          { entityType: 'order', entityId: order._id }
+          { entityType: 'order', entityId: order._id },
+          emailHtml
         ).catch(err => console.error('Error sending payment confirmation email:', err));
       }
 
