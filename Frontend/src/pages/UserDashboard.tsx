@@ -2,7 +2,7 @@ import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, TrendingUp, ShoppingBag, Star, Award, Gift, Zap, CreditCard, Calendar } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const UserDashboard = () => {
@@ -272,55 +272,174 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
-          <p className="text-gray-500 mt-2">Welcome back, {user?.name}</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-gray-50">
+      {/* Ultra Premium Header */}
+      <div className="relative bg-gradient-to-br from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] text-white overflow-hidden pt-32 pb-24">
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-purple-600/15 blur-[140px] animate-pulse"></div>
+          <div className="absolute top-[40%] right-[30%] w-[400px] h-[400px] rounded-full bg-blue-600/10 blur-[100px] animate-pulse"></div>
+          
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px overflow-x-auto">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between flex-wrap gap-6">
+            <div>
+              {/* Premium Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-900/50 to-purple-900/50 border border-indigo-700/50 text-indigo-200 text-sm font-bold mb-6 backdrop-blur-md shadow-2xl">
+                <Sparkles size={16} className="text-indigo-300 animate-pulse" />
+                <span>PREMIUM MEMBER</span>
+                <Award size={14} className="text-yellow-400" />
+              </div>
+
+              {/* Welcome Message */}
+              <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-purple-200 drop-shadow-2xl">
+                Welcome back!
+              </h1>
+              <p className="text-2xl md:text-3xl text-gray-300 font-light">
+                <span className="font-bold text-white">{user?.name}</span>
+              </p>
+              <p className="text-gray-400 mt-2 text-lg">{user?.email}</p>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-blue-500/20 rounded-xl">
+                    <Package size={20} className="text-blue-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{orders.length}</p>
+                    <p className="text-xs text-gray-300">Orders</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-purple-500/20 rounded-xl">
+                    <FileText size={20} className="text-purple-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{quotes.length}</p>
+                    <p className="text-xs text-gray-300">Quotes</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-green-500/20 rounded-xl">
+                    <Shield size={20} className="text-green-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{warranties.length}</p>
+                    <p className="text-xs text-gray-300">Warranties</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-orange-500/20 rounded-xl">
+                    <Download size={20} className="text-orange-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{invoices.length}</p>
+                    <p className="text-xs text-gray-300">Invoices</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20 pb-16">
+        {/* Premium Tab Navigation */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border-2 border-gray-200 overflow-hidden mb-8">
+          <div className="border-b-2 border-gray-100">
+            <nav className="flex overflow-x-auto">
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'orders'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'orders'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Package size={18} />
-                Orders
+                {activeTab === 'orders' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'orders' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Package size={20} />
+                </div>
+                <div>
+                  <span className="block">My Orders</span>
+                  <span className="text-xs opacity-70">{orders.length} total</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('quotes')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'quotes'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'quotes'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <FileText size={18} />
-                Quotes
+                {activeTab === 'quotes' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'quotes' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <span className="block">Quote Requests</span>
+                  <span className="text-xs opacity-70">{quotes.length} total</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('warranties')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'warranties'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'warranties'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Shield size={18} />
-                Warranties
+                {activeTab === 'warranties' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'warranties' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <span className="block">Warranties</span>
+                  <span className="text-xs opacity-70">{warranties.length} registered</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('invoices')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'invoices'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'invoices'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Download size={18} />
-                Invoices
+                {activeTab === 'invoices' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'invoices' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Download size={20} />
+                </div>
+                <div>
+                  <span className="block">Invoices</span>
+                  <span className="text-xs opacity-70">{invoices.length} available</span>
+                </div>
               </button>
             </nav>
           </div>

@@ -4,21 +4,27 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 const slides = [
   {
     id: 1,
-    title: 'Advanced Technology Solutions',
-    subtitle: 'Empowering Industries with Innovation',
-    image: 'https://images.pexels.com/photos/256381/pexels-photo-256381.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    title: 'Manufacturing Excellence',
+    subtitle: 'Quality Innovation',
+    description: 'For Industrial Applications',
+    text: 'Providing nationwide services to industries and government organizations with precision manufacturing and engineering excellence.',
+    image: '../hero-slide-1.jpg',
   },
   {
     id: 2,
-    title: 'Defence & Security Systems',
-    subtitle: 'Protecting What Matters Most',
-    image: 'https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    title: 'Defense Technology',
+    subtitle: 'Advanced Solutions',
+    description: 'For National Security',
+    text: 'Delivering cutting-edge electronics and communication solutions designed for mission-critical defense applications.',
+    image: '../hero-slide-2.jpg',
   },
   {
     id: 3,
-    title: 'Railway Infrastructure Excellence',
-    subtitle: 'Building the Future of Transportation',
-    image: 'https://images.pexels.com/photos/3779786/pexels-photo-3779786.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    title: 'Precision Engineering',
+    subtitle: 'For Critical Systems',
+    description: '',
+    text: 'Empowering Defence and Telecom sectors with advanced Test & Measuring Equipment. Where innovation meets reliability and performance.',
+    image: '../hero-slide-3.jpg',
   },
 ];
 
@@ -57,11 +63,19 @@ export default function Hero() {
           </div>
 
           <div className="relative h-full flex flex-col items-center justify-center text-white px-4">
-            <h2 className="text-5xl md:text-7xl font-bold text-center mb-4 max-w-4xl">
+            <h2 className="text-5xl md:text-7xl font-bold text-center mb-2 max-w-4xl">
               {slide.title}
             </h2>
-            <p className="text-xl md:text-2xl text-center mb-12 max-w-2xl">
+            <p className="text-2xl md:text-3xl text-center mb-3 max-w-2xl font-semibold">
               {slide.subtitle}
+            </p>
+            {slide.description && (
+              <p className="text-lg md:text-xl text-center mb-4 max-w-2xl text-gray-200">
+                {slide.description}
+              </p>
+            )}
+            <p className="text-base md:text-lg text-center mb-12 max-w-3xl text-gray-100 leading-relaxed">
+              {slide.text}
             </p>
             <div className="flex gap-6">
               <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded hover:bg-gray-100 transition-colors">

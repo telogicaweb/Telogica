@@ -4,14 +4,18 @@ const cloudinary = require('./cloudinary');
 // Telogica Official Company Details
 const COMPANY_INFO = {
   name: 'Telogica',
-  fullName: 'Telogica Technologies Pvt. Ltd.',
-  address: 'Plot No. 42, Electronics City Phase 1',
-  city: 'Bangalore, Karnataka - 560100',
+  fullName: 'TELOGICA LIMITED',
+  address: 'Empire Square, Plot No 233-A, 234 & 235',
+  addressLine2: '3rd Fl, Rd No 36, Jubilee Hills',
+  city: 'Hyderabad- 500 033, Telangana',
   country: 'India',
   email: 'support@telogica.com',
-  phone: '+91 80 4567 8900',
+  salesEmail: 'sales@telogica.com',
+  phone: '+91 9396610682',
+  phoneLandline: '+91-40-27531324 to 26',
+  fax: '+91-40-27535423',
   website: 'www.telogica.com',
-  warranty: 'warranty@telogica.com',
+  warranty: 'support@telogica.com',
   // Logo URL - using a tech/telecom themed placeholder
   logoUrl: 'https://www.aishwaryatechtele.com/images/telogica_logo.png'
 };

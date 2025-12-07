@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   LogEventType,
   LogSeverity
-} from '../types/logs.ts';
+} from '../types/logs';
 import type {
   Log,
   LogStats,
@@ -15,7 +15,7 @@ import type {
   LogAnalysis,
   AuditTrail,
   LogAlert
-} from '../types/logs.ts';
+} from '../types/logs';
 // Rate limiting configuration
 const RATE_LIMIT_CONFIG = {
   maxRequests: 100,

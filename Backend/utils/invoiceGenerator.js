@@ -410,17 +410,21 @@ function renderRetailerInvoice(doc, saleData, retailer, product, productUnit) {
     .fillColor('#444444')
     .fontSize(20)
     .font('Helvetica-Bold')
-    .text('Telogica Limited', 50, 50)
+    .text('TELOGICA LIMITED', 50, 50)
     .fontSize(10)
     .font('Helvetica')
-    .text('(Formerly Aishwarya Technologies and Telecom Limited)', 50, 75)
+    .text('Empire Square, Plot No 233-A, 234 & 235, 3rd Fl, Rd No 36, Jubilee Hills', 50, 75)
+    .text('Hyderabad - 500 033, Telangana, India', 50, 88)
+    .fontSize(9)
+    .text('Phone: +91 9396610682, +91-40-27531324 to 26 | Fax: +91-40-27535423', 50, 101)
+    .text('Email: sales@telogica.com | support@telogica.com', 50, 114)
     .fontSize(10)
     .text('Authorized Retailer Sale', 200, 50, { align: 'right' })
     .moveDown();
 
-  generateHr(doc, 95);
+  generateHr(doc, 130);
 
-  const customerInformationTop = 120;
+  const customerInformationTop = 150;
 
   // Seller (Retailer) Info
   doc
@@ -519,30 +523,39 @@ function renderOrderInvoice(doc, order, productUnits) {
     .fillColor('#444444')
     .fontSize(20)
     .font('Helvetica-Bold')
-    .text('Telogica Limited', 50, 50)
+    .text('TELOGICA LIMITED', 50, 50)
     .fontSize(10)
     .font('Helvetica')
-    .text('(Formerly Aishwarya Technologies and Telecom Limited)', 50, 75)
+    .text('Empire Square, Plot No 233-A, 234 & 235, 3rd Fl, Rd No 36, Jubilee Hills', 50, 75)
+    .text('Hyderabad - 500 033, Telangana, India', 50, 88)
+    .fontSize(9)
+    .text('Phone: +91 9396610682, +91-40-27531324 to 26 | Fax: +91-40-27535423', 50, 101)
+    .text('Email: sales@telogica.com | support@telogica.com', 50, 114)
     .fontSize(10)
     .text('Tax Invoice', 200, 50, { align: 'right' })
     .moveDown();
 
-  generateHr(doc, 95);
+  generateHr(doc, 130);
 
-  const customerInformationTop = 120;
+  const customerInformationTop = 150;
 
   // Seller Info (Telogica)
   doc
     .fontSize(10)
     .text('Sold By:', 50, customerInformationTop)
     .font('Helvetica-Bold')
-    .text('Telogica Limited', 50, customerInformationTop + 15)
+    .text('TELOGICA LIMITED', 50, customerInformationTop + 15)
     .font('Helvetica')
-    .text('123 Tech Street', 50, customerInformationTop + 30)
-    .text('Bangalore, India', 50, customerInformationTop + 45);
+    .text('Empire Square, Plot No 233-A, 234 & 235', 50, customerInformationTop + 30)
+    .text('3rd Fl, Rd No 36, Jubilee Hills', 50, customerInformationTop + 45)
+    .text('Hyderabad - 500 033, Telangana, India', 50, customerInformationTop + 60)
+    .fontSize(9)
+    .text('Phone: +91 9396610682, +91-40-27531324 to 26', 50, customerInformationTop + 75)
+    .text('Email: sales@telogica.com | support@telogica.com', 50, customerInformationTop + 90);
 
   // Buyer Info (Retailer)
   doc
+    .fontSize(10)
     .font('Helvetica')
     .text('Sold To:', 300, customerInformationTop)
     .font('Helvetica-Bold')
@@ -552,7 +565,7 @@ function renderOrderInvoice(doc, order, productUnits) {
     .text(order.shippingAddress, 300, customerInformationTop + 45, { width: 200 });
 
   // Invoice Details
-  const invoiceDetailsTop = customerInformationTop + 100;
+  const invoiceDetailsTop = customerInformationTop + 120;
   doc
     .text('Invoice Number:', 50, invoiceDetailsTop)
     .font('Helvetica-Bold')
