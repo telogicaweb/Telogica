@@ -372,6 +372,7 @@ const AdminDashboard: React.FC = () => {
   const [trackingLinkInput, setTrackingLinkInput] = useState('');
   const [trackingType, setTrackingType] = useState<'order' | 'quote'>('order');
   const [selectedTrackingId, setSelectedTrackingId] = useState<string>('');
+  const [trackingEmail, setTrackingEmail] = useState<string>('');
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
@@ -945,10 +946,11 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Tracking Link Management
-  const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string) => {
+  const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string, email?: string) => {
     setSelectedTrackingId(id);
     setTrackingType(type);
     setTrackingLinkInput(currentLink || '');
+    setTrackingEmail(email || '');
     setShowTrackingModal(true);
   };
 
@@ -964,13 +966,15 @@ const AdminDashboard: React.FC = () => {
         : `/api/quotes/${selectedTrackingId}/tracking`;
 
       await api.put(endpoint, { deliveryTrackingLink: trackingLinkInput });
-      alert('Tracking link updated successfully and email sent to user');
+      alert(`Tracking link updated successfully and email sent to ${trackingEmail || 'customer'}`);
 
       setShowTrackingModal(false);
       setTrackingLinkInput('');
+      setTrackingEmail('');
 
       if (trackingType === 'order') {
         loadOrders();
+        loadDropshipOrders();
       } else {
         loadQuotes();
       }
@@ -2784,8 +2788,8 @@ const AdminDashboard: React.FC = () => {
                     <button
                       onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink)}
                       className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${quote.deliveryTrackingLink
-                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
-                          : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-md hover:shadow-lg'
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
+                        : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-md hover:shadow-lg'
                         }`}
                     >
                       <LinkIcon className="w-5 h-5" />
@@ -3124,8 +3128,8 @@ const AdminDashboard: React.FC = () => {
                           <button
                             onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink)}
                             className={`p-2 rounded-lg transition-colors ${order.deliveryTrackingLink
-                                ? 'text-green-600 hover:bg-green-50'
-                                : 'text-orange-600 hover:bg-orange-50'
+                              ? 'text-green-600 hover:bg-green-50'
+                              : 'text-orange-600 hover:bg-orange-50'
                               }`}
                             title={order.deliveryTrackingLink ? 'Update Tracking Link' : 'Add Tracking Link'}
                           >
@@ -4207,7 +4211,7 @@ const AdminDashboard: React.FC = () => {
                   <th className="px-6 py-4">Customer</th>
                   <th className="px-6 py-4">Items</th>
                   <th className="px-6 py-4">Payment</th>
-
+                  <th className="px-6 py-4">Tracking</th>
                   <th className="px-6 py-4">Invoice</th>
                   <th className="px-6 py-4">Actions</th>
                 </tr>
@@ -4215,7 +4219,7 @@ const AdminDashboard: React.FC = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredDropshipOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                       No shipments found
                     </td>
                   </tr>
@@ -4249,6 +4253,27 @@ const AdminDashboard: React.FC = () => {
                           }`}>
                           {order.paymentStatus}
                         </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        {order.deliveryTrackingLink ? (
+                          <button
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, order.customerDetails?.email)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            title={order.deliveryTrackingLink}
+                          >
+                            <LinkIcon className="w-3 h-3" />
+                            Edit Link
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', undefined, order.customerDetails?.email)}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Link
+                          </button>
+                        )}
                       </td>
 
                       <td className="px-6 py-4">
@@ -4462,6 +4487,80 @@ const AdminDashboard: React.FC = () => {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Tracking Link Management */}
+                  <div className="bg-white border rounded-xl p-4 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4 text-blue-600" /> Tracking Information
+                    </h4>
+
+                    {selectedDropshipOrder.deliveryTrackingLink ? (
+                      <div className="mb-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 break-all">
+                            <span className="text-xs text-blue-600 uppercase font-bold block mb-1">Current Link</span>
+                            <a
+                              href={selectedDropshipOrder.deliveryTrackingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-800 hover:underline block mb-2"
+                            >
+                              {selectedDropshipOrder.deliveryTrackingLink}
+                            </a>
+
+                            <button
+                              onClick={() => {
+                                setShowDropshipModal(false);
+                                handleOpenTrackingModal(
+                                  selectedDropshipOrder._id,
+                                  'order',
+                                  selectedDropshipOrder.deliveryTrackingLink,
+                                  selectedDropshipOrder.customerDetails?.email
+                                );
+                              }}
+                              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 text-sm font-medium"
+                            >
+                              <LinkIcon className="w-3 h-3" />
+                              Edit Link
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-4">
+                        <button
+                          onClick={() => {
+                            setShowDropshipModal(false);
+                            handleOpenTrackingModal(
+                              selectedDropshipOrder._id,
+                              'order',
+                              undefined,
+                              selectedDropshipOrder.customerDetails?.email
+                            );
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors font-medium border border-gray-200"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Link
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+                      <Mail className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-amber-800 font-bold uppercase tracking-wide mb-1">
+                          Email Notification Recipient
+                        </p>
+                        <p className="text-sm font-bold text-gray-900 break-all">
+                          {selectedDropshipOrder.customerDetails?.email}
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                          The customer will automatically receive an email update when you save the tracking link.
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -4746,10 +4845,10 @@ const AdminDashboard: React.FC = () => {
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Payment Status</p>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid'
-                        ? 'bg-green-100 text-green-800 border border-green-200'
-                        : selectedOrder.paymentStatus === 'failed'
-                          ? 'bg-red-100 text-red-800 border border-red-200'
-                          : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      : selectedOrder.paymentStatus === 'failed'
+                        ? 'bg-red-100 text-red-800 border border-red-200'
+                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                       }`}>
                       {selectedOrder.paymentStatus?.toUpperCase()}
                     </span>
@@ -4912,7 +5011,7 @@ const AdminDashboard: React.FC = () => {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${selectedUser360.role === 'admin' ? 'bg-purple-500' :
-                    selectedUser360.role === 'retailer' ? 'bg-blue-500' : 'bg-gray-400'
+                  selectedUser360.role === 'retailer' ? 'bg-blue-500' : 'bg-gray-400'
                   }`}>
                   {selectedUser360.name?.charAt(0).toUpperCase()}
                 </div>
@@ -4954,8 +5053,8 @@ const AdminDashboard: React.FC = () => {
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Role</p>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${selectedUser360.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                        selectedUser360.role === 'retailer' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                          'bg-gray-100 text-gray-800 border border-gray-200'
+                      selectedUser360.role === 'retailer' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                        'bg-gray-100 text-gray-800 border border-gray-200'
                       }`}>
                       {selectedUser360.role.toUpperCase()}
                     </span>
@@ -5058,8 +5157,8 @@ const AdminDashboard: React.FC = () => {
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-semibold text-gray-900">Order #{order.orderNumber || order._id.slice(-8)}</span>
                               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {order.paymentStatus}
                               </span>
@@ -5095,8 +5194,8 @@ const AdminDashboard: React.FC = () => {
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-semibold text-gray-900">Quote #{quote._id.slice(-8)}</span>
                               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${quote.status === 'responded' ? 'bg-green-100 text-green-800' :
-                                  quote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-gray-100 text-gray-800'
+                                quote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
                                 }`}>
                                 {quote.status}
                               </span>
@@ -5130,8 +5229,8 @@ const AdminDashboard: React.FC = () => {
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-semibold text-gray-900">{warranty.productName}</span>
                               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${warranty.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                  warranty.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
+                                warranty.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
                                 }`}>
                                 {warranty.status}
                               </span>
@@ -5165,8 +5264,8 @@ const AdminDashboard: React.FC = () => {
                               <div className="flex items-center justify-between mb-2">
                                 <span className="font-semibold text-gray-900">{item.product?.name || 'Product'}</span>
                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.status === 'in_stock' ? 'bg-green-100 text-green-800' :
-                                    item.status === 'sold' ? 'bg-blue-100 text-blue-800' :
-                                      'bg-gray-100 text-gray-800'
+                                  item.status === 'sold' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-gray-100 text-gray-800'
                                   }`}>
                                   {item.status}
                                 </span>
@@ -5239,12 +5338,21 @@ const AdminDashboard: React.FC = () => {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-blue-900 text-sm mb-1">
-                      Automatic Email Notification
-                    </h4>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-blue-800 font-bold uppercase tracking-wide mb-1">
+                      Email Notification Recipient
+                    </p>
+                    {trackingEmail ? (
+                      <p className="text-sm font-bold text-gray-900 break-all mb-1">
+                        {trackingEmail}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic mb-1">
+                        Standard Customer Contact
+                      </p>
+                    )}
+                    <p className="text-xs text-blue-700 leading-relaxed">
                       The customer will receive an email with the tracking link automatically after you save it.
                     </p>
                   </div>
