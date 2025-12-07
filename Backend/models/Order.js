@@ -7,10 +7,10 @@ const orderSchema = new mongoose.Schema({
     quantity: { type: Number, required: true },
     price: { type: Number, required: true }, // Price at time of purchase
     serialNumbers: [{ type: String }], // Assigned serial numbers
-    warrantyOption: { 
-      type: String, 
-      enum: ['standard', 'extended'], 
-      default: 'standard' 
+    warrantyOption: {
+      type: String,
+      enum: ['standard', 'extended'],
+      default: 'standard'
     }, // Warranty option chosen by user
     warrantyMonths: { type: Number, default: 12 }, // Actual warranty period (12 or extended)
     warrantyPrice: { type: Number, default: 0 } // Additional price paid for extended warranty
@@ -33,7 +33,17 @@ const orderSchema = new mongoose.Schema({
   orderNumber: { type: String, unique: true }, // Custom order number (e.g., ORD-20251204-1234)
   quoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quote' }, // Reference to quote if order is from quote
   isQuoteBased: { type: Boolean, default: false }, // Flag to indicate if order is based on a quote
-  discountApplied: { type: Number, default: 0 } // Discount amount/percentage applied
+  discountApplied: { type: Number, default: 0 }, // Discount amount/percentage applied
+
+  // Dropshipping Fields
+  isDropship: { type: Boolean, default: false },
+  customerDetails: {
+    name: String,
+    email: String,
+    phone: String,
+    address: String
+  },
+  customerInvoiceUrl: { type: String } // URL to the generated "No Price" invoice
 }, { timestamps: true });
 
 // Add indexes for performance

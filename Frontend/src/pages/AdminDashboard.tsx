@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
@@ -36,14 +36,14 @@ import {
   Star,
   Calendar,
   ClipboardList,
-  Info
+  Info,
+  Truck
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
 import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
 import WarrantyValidator from '../components/AdminDashboard/WarrantyValidator';
-
 import ProductUnitManager from '../components/AdminDashboard/ProductUnitManager';
 
 interface User {
@@ -138,6 +138,7 @@ interface Order {
   _id: string;
   orderNumber?: string;
   userId: { _id: string; name: string; email: string };
+  user?: { _id: string; name: string; email: string };
   products: Array<{
     productId: { _id: string; name: string };
     quantity: number;
@@ -148,6 +149,24 @@ interface Order {
   orderStatus: string;
   paymentStatus: string;
   createdAt: string;
+  isDropship?: boolean;
+  customerDetails?: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+  customerInvoiceUrl?: string;
+}
+
+interface DropshipOrder extends Order {
+  isDropship: true;
+  customerDetails: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
 }
 
 interface Warranty {
@@ -292,29 +311,29 @@ const AdminDashboard: React.FC = () => {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
   const [productFilterStatus, setProductFilterStatus] = useState<string>('all');
-  
+
   // User management filters
   const [userSearch, setUserSearch] = useState('');
   const [userFilterRole, setUserFilterRole] = useState<string>('all');
   const [userFilterStatus, setUserFilterStatus] = useState<string>('all');
-  
+
   // Quote management filters
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteFilterStatus, setQuoteFilterStatus] = useState<string>('all');
-  
+
   // Order management filters
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilterStatus, setOrderFilterStatus] = useState<string>('all');
   const [orderFilterPayment, setOrderFilterPayment] = useState<string>('all');
-  
+
   // Warranty management filters
   const [warrantySearch, setWarrantySearch] = useState('');
   const [warrantyFilterStatus, setWarrantyFilterStatus] = useState<string>('all');
-  
+
   // Contact messages filters
   const [contactSearch, setContactSearch] = useState('');
   const [contactFilterStatus, setContactFilterStatus] = useState<string>('all');
-  
+
   // Email logs filters
   const [emailSearch, setEmailSearch] = useState('');
   const [emailFilterStatus, setEmailFilterStatus] = useState<string>('all');
@@ -323,6 +342,12 @@ const AdminDashboard: React.FC = () => {
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+
+  // Dropship Orders state
+  const [dropshipOrders, setDropshipOrders] = useState<DropshipOrder[]>([]);
+  const [dropshipSearch, setDropshipSearch] = useState('');
+  const [showDropshipModal, setShowDropshipModal] = useState(false);
+  const [selectedDropshipOrder, setSelectedDropshipOrder] = useState<DropshipOrder | null>(null);
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
@@ -353,20 +378,7 @@ const AdminDashboard: React.FC = () => {
     return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
   }, [orders]);
 
-  const handleRecommendationSelection = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = Array.from(event.target.selectedOptions, option => option.value);
-    setProductForm(prev => ({
-      ...prev,
-      recommendedProductIds: selected,
-    }));
-  };
 
-  const handleRemoveRecommendation = (id: string) => {
-    setProductForm(prev => ({
-      ...prev,
-      recommendedProductIds: prev.recommendedProductIds.filter(existingId => existingId !== id),
-    }));
-  };
 
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
@@ -419,7 +431,9 @@ const AdminDashboard: React.FC = () => {
         loadOrders(),
         loadWarranties(),
         loadEmailLogs(),
+        loadEmailLogs(),
         loadContacts(),
+        loadDropshipOrders(),
       ]);
     } catch (error: any) {
       console.error('Error loading dashboard data:', error);
@@ -489,6 +503,15 @@ const AdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error loading orders:', error);
       // Keep existing data on error
+    }
+  };
+
+  const loadDropshipOrders = async () => {
+    try {
+      const response = await api.get('/api/orders/dropship-shipments');
+      setDropshipOrders(response.data);
+    } catch (error) {
+      console.error('Error loading dropship orders:', error);
     }
   };
 
@@ -1020,7 +1043,7 @@ const AdminDashboard: React.FC = () => {
                     ))}
                   </Pie>
                   <RechartsTooltip />
-                  <Legend verticalAlign="bottom" height={36}/>
+                  <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -1068,12 +1091,11 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4">{order.userId?.name || 'Unknown'}</td>
                       <td className="px-6 py-4">{formatCurrency(order.totalAmount)}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
                           order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                          order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
+                            order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-700'
+                          }`}>
                           {order.orderStatus}
                         </span>
                       </td>
@@ -1111,12 +1133,11 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4 font-medium text-gray-900">{quote.user?.name || 'Unknown'}</td>
                       <td className="px-6 py-4">{quote.products?.length || 0} items</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          quote.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${quote.status === 'accepted' ? 'bg-green-100 text-green-700' :
                           quote.status === 'responded' ? 'bg-blue-100 text-blue-700' :
-                          quote.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>
+                            quote.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-yellow-100 text-yellow-700'
+                          }`}>
                           {quote.status}
                         </span>
                       </td>
@@ -1234,12 +1255,12 @@ const AdminDashboard: React.FC = () => {
         const combined = `${product.name} ${product.category || ''}`.toLowerCase();
         if (!combined.includes(searchTerm)) return false;
       }
-      
+
       // Category filter
       if (productFilterCategory !== 'all' && product.category !== productFilterCategory) {
         return false;
       }
-      
+
       // Status filter
       const stock = product.stockQuantity ?? product.stock ?? 0;
       if (productFilterStatus !== 'all') {
@@ -1261,7 +1282,7 @@ const AdminDashboard: React.FC = () => {
             break;
         }
       }
-      
+
       return true;
     });
 
@@ -1343,7 +1364,7 @@ const AdminDashboard: React.FC = () => {
                   className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
                 />
               </div>
-              
+
               <select
                 value={productFilterCategory}
                 onChange={(e) => setProductFilterCategory(e.target.value)}
@@ -1386,21 +1407,19 @@ const AdminDashboard: React.FC = () => {
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setProductViewMode('table')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    productViewMode === 'table'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${productViewMode === 'table'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
                 >
                   Table
                 </button>
                 <button
                   onClick={() => setProductViewMode('grid')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    productViewMode === 'grid'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${productViewMode === 'grid'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
                 >
                   Grid
                 </button>
@@ -1672,7 +1691,7 @@ const AdminDashboard: React.FC = () => {
                   onChange={(ids) => setProductForm({ ...productForm, recommendedProductIds: ids })}
                 />
               </div>
-              
+
               {/* Warranty Configuration */}
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Warranty Options</h3>
@@ -1703,7 +1722,7 @@ const AdminDashboard: React.FC = () => {
                     </label>
                   </div>
                 </div>
-                
+
                 {productForm.extendedWarrantyAvailable && (
                   <div className="grid md:grid-cols-2 gap-4 mt-3">
                     <div>
@@ -1738,7 +1757,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -1899,110 +1918,9 @@ const AdminDashboard: React.FC = () => {
 
   // Render Users Tab
   const renderUsers = () => {
-    const handleExportUsersPDF = async () => {
-      try {
-        const { default: jsPDF } = await import('jspdf');
-        const autoTable = (await import('jspdf-autotable')).default as any;
 
-        const doc = new jsPDF();
 
-        // Title
-        doc.setFillColor(33, 150, 243);
-        doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TELOGICA', 105, 20, { align: 'center' });
-
-        doc.setFontSize(18);
-        doc.text('USER MANAGEMENT REPORT', 105, 30, { align: 'center' });
-
-        // Report details
-        doc.setFillColor(245, 245, 245);
-        doc.rect(10, 45, 190, 15, 'F');
-
-        doc.setTextColor(33, 33, 33);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
-        doc.text(`Total Users: ${users.length}`, 100, 55);
-
-        // Table
-        const headers = [['No.', 'Name', 'Email', 'Role', 'Status', 'Joined']];
-
-        const body = users.map((u, i) => [
-          i + 1,
-          u.name,
-          u.email,
-          u.role,
-          u.role === 'retailer' && !u.isApproved ? 'Pending' : 'Active',
-          new Date(u.createdAt).toLocaleDateString()
-        ]);
-
-        autoTable(doc, {
-          startY: 65,
-          head: headers,
-          body: body,
-          theme: 'striped',
-          headStyles: {
-            fillColor: [33, 150, 243],
-            textColor: 255,
-            fontStyle: 'bold'
-          }
-        });
-
-        doc.save(`Telogica-Users-${new Date().toISOString().split('T')[0]}.pdf`);
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export PDF');
-      }
-    };
-
-    const handleExportUsersExcel = async () => {
-      try {
-        const ExcelJS = await import('exceljs');
-
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Telogica';
-
-        const worksheet = workbook.addWorksheet('Users');
-        worksheet.columns = [
-          { header: 'No.', key: 'no', width: 5 },
-          { header: 'Name', key: 'name', width: 25 },
-          { header: 'Email', key: 'email', width: 30 },
-          { header: 'Role', key: 'role', width: 12 },
-          { header: 'Status', key: 'status', width: 15 },
-          { header: 'Joined', key: 'joined', width: 12 }
-        ];
-
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        worksheet.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF2196F3' }
-        };
-
-        users.forEach((u, index) => {
-          worksheet.addRow({
-            no: index + 1,
-            name: u.name,
-            email: u.email,
-            role: u.role,
-            status: u.role === 'retailer' && !u.isApproved ? 'Pending Approval' : 'Active',
-            joined: new Date(u.createdAt).toLocaleDateString()
-          });
-        });
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `Telogica-Users-${new Date().toISOString().split('T')[0]}.xlsx`;
-        link.click();
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export Excel');
-      }
-    };
 
     const handleChangeUserRole = async (userId: string, currentRole: string) => {
       const roles = ['user', 'retailer', 'admin'];
@@ -2048,7 +1966,7 @@ const AdminDashboard: React.FC = () => {
       if (userFilterStatus !== 'all') {
         const isPending = user.role === 'retailer' && !user.isApproved;
         const isActive = user.role !== 'retailer' || user.isApproved;
-        
+
         if (userFilterStatus === 'pending' && !isPending) return false;
         if (userFilterStatus === 'active' && !isActive) return false;
       }
@@ -2259,11 +2177,10 @@ const AdminDashboard: React.FC = () => {
                     <tr key={user._id} className="hover:bg-purple-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${
-                            user.role === 'admin' ? 'bg-purple-500' :
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${user.role === 'admin' ? 'bg-purple-500' :
                             user.role === 'retailer' ? 'bg-blue-500' :
-                            'bg-gray-400'
-                          }`}>
+                              'bg-gray-400'
+                            }`}>
                             {user.name?.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -2272,92 +2189,91 @@ const AdminDashboard: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">{user.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {user.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
-                        {user.role === 'retailer' && <Store className="w-4 h-4 text-blue-600" />}
-                        {user.role === 'user' && <Users className="w-4 h-4 text-gray-600" />}
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'admin'
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-900">{user.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {user.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
+                          {user.role === 'retailer' && <Store className="w-4 h-4 text-blue-600" />}
+                          {user.role === 'user' && <Users className="w-4 h-4 text-gray-600" />}
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
                               ? 'bg-purple-100 text-purple-800 border border-purple-200'
                               : user.role === 'retailer'
                                 ? 'bg-blue-100 text-blue-800 border border-blue-200'
                                 : 'bg-gray-100 text-gray-800 border border-gray-200'
-                          }`}
-                        >
-                          {user.role.toUpperCase()}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {user.role === 'retailer' && !user.isApproved ? (
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 text-orange-500" />
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
-                            PENDING APPROVAL
+                              }`}
+                          >
+                            {user.role.toUpperCase()}
                           </span>
                         </div>
-                      ) : (
+                      </td>
+                      <td className="px-6 py-4">
+                        {user.role === 'retailer' && !user.isApproved ? (
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-orange-500" />
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                              PENDING APPROVAL
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-green-500" />
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                              ACTIVE
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-green-500" />
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                            ACTIVE
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-900">
+                            {new Date(user.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
                           </span>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">
-                          {new Date(user.createdAt).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                        {user.role === 'retailer' && !user.isApproved && (
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                          {user.role === 'retailer' && !user.isApproved && (
+                            <button
+                              onClick={() => handleApproveRetailer(user._id)}
+                              className="text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 flex items-center gap-1.5 px-3 py-2 border border-green-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              title="Approve Retailer Access"
+                            >
+                              <Check className="w-4 h-4" />
+                              <span className="text-xs">Approve</span>
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleApproveRetailer(user._id)}
-                            className="text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 flex items-center gap-1.5 px-3 py-2 border border-green-300 rounded-lg hover:shadow-md transition-all font-medium"
-                            title="Approve Retailer Access"
+                            onClick={() => handleChangeUserRole(user._id, user.role)}
+                            className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
                           >
-                            <Check className="w-4 h-4" />
-                            <span className="text-xs">Approve</span>
+                            <Edit className="w-4 h-4" />
+                            <span className="text-xs">Role</span>
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleChangeUserRole(user._id, user.role)}
-                          className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg hover:shadow-md transition-all font-medium"
-                          title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
-                        >
-                          <Edit className="w-4 h-4" />
-                          <span className="text-xs">Role</span>
-                        </button>
-                        {user.role !== 'admin' && (
-                          <button
-                            onClick={() => handleDeleteUser(user._id)}
-                            className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 px-3 py-2 border border-red-300 rounded-lg hover:shadow-md transition-all font-medium"
-                            title="Delete User Account"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span className="text-xs">Delete</span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                          {user.role !== 'admin' && (
+                            <button
+                              onClick={() => handleDeleteUser(user._id)}
+                              className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 px-3 py-2 border border-red-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              title="Delete User Account"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span className="text-xs">Delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>
@@ -2370,119 +2286,9 @@ const AdminDashboard: React.FC = () => {
 
   // Render Quotes Tab
   const renderQuotes = () => {
-    const handleExportQuotesPDF = async () => {
-      try {
-        const { default: jsPDF } = await import('jspdf');
-        const autoTable = (await import('jspdf-autotable')).default as any;
 
-        const doc = new jsPDF();
 
-        // Title
-        doc.setFillColor(33, 150, 243);
-        doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TELOGICA', 105, 20, { align: 'center' });
-
-        doc.setFontSize(18);
-        doc.text('QUOTE MANAGEMENT REPORT', 105, 30, { align: 'center' });
-
-        // Report details
-        doc.setFillColor(245, 245, 245);
-        doc.rect(10, 45, 190, 15, 'F');
-
-        doc.setTextColor(33, 33, 33);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
-        doc.text(`Total Quotes: ${quotes.length}`, 100, 55);
-
-        // Table
-        const headers = [['No.', 'Customer', 'Products', 'Status', 'Quoted Price', 'Date']];
-
-        const body = quotes.map((q, i) => [
-          i + 1,
-          q.user?.name || q.userId?.name || 'Unknown',
-          q.products.map(p => (p.product?.name || p.productId?.name || 'Unknown')).join(', '),
-          q.status || 'pending',
-          q.quotedPrice ? `₹${q.quotedPrice}` : '-',
-          q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
-        ]);
-
-        autoTable(doc, {
-          startY: 65,
-          head: headers,
-          body: body,
-          theme: 'striped',
-          headStyles: {
-            fillColor: [33, 150, 243],
-            textColor: 255,
-            fontStyle: 'bold'
-          },
-          columnStyles: {
-            2: { cellWidth: 50 }
-          }
-        });
-
-        doc.save(`Telogica-Quotes-${new Date().toISOString().split('T')[0]}.pdf`);
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export PDF');
-      }
-    };
-
-    const handleExportQuotesExcel = async () => {
-      try {
-        const ExcelJS = await import('exceljs');
-
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Telogica';
-
-        const worksheet = workbook.addWorksheet('Quotes');
-        worksheet.columns = [
-          { header: 'No.', key: 'no', width: 5 },
-          { header: 'Customer', key: 'customer', width: 20 },
-          { header: 'Email', key: 'email', width: 25 },
-          { header: 'Products', key: 'products', width: 40 },
-          { header: 'Message', key: 'message', width: 30 },
-          { header: 'Status', key: 'status', width: 12 },
-          { header: 'Quoted Price', key: 'quotedPrice', width: 15 },
-          { header: 'Admin Response', key: 'adminResponse', width: 30 },
-          { header: 'Date', key: 'date', width: 12 }
-        ];
-
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        worksheet.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF2196F3' }
-        };
-
-        quotes.forEach((q, index) => {
-          worksheet.addRow({
-            no: index + 1,
-            customer: q.user?.name || q.userId?.name || 'Unknown',
-            email: q.user?.email || q.userId?.email || '',
-            products: q.products.map(p => `${p.product?.name || p.productId?.name || 'Unknown'} (${p.quantity})`).join(', '),
-            message: q.message || '',
-            status: q.status || 'pending',
-            quotedPrice: q.quotedPrice ? `₹${q.quotedPrice}` : '-',
-            adminResponse: typeof q.adminResponse === 'string' ? q.adminResponse : (q.adminResponse?.message || ''),
-            date: q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'
-          });
-        });
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `Telogica-Quotes-${new Date().toISOString().split('T')[0]}.xlsx`;
-        link.click();
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export Excel');
-      }
-    };
 
     // Filter quotes
     const filteredQuotes = quotes.filter((quote) => {
@@ -2492,7 +2298,7 @@ const AdminDashboard: React.FC = () => {
         const customerName = (quote.user?.name || quote.userId?.name || '').toLowerCase();
         const customerEmail = (quote.user?.email || quote.userId?.email || '').toLowerCase();
         const products = quote.products.map(p => (p.product?.name || p.productId?.name || '').toLowerCase()).join(' ');
-        
+
         if (!customerName.includes(searchLower) && !customerEmail.includes(searchLower) && !products.includes(searchLower)) {
           return false;
         }
@@ -2664,179 +2470,178 @@ const AdminDashboard: React.FC = () => {
             </div>
           ) : (
             filteredQuotes.map((quote) => (
-            <div
-              key={quote._id}
-              className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {quote.user?.name || quote.userId?.name || 'Unknown User'}
-                  </h3>
-                  <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
-                  </p>
-                </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    quote.status === 'pending'
+              <div
+                key={quote._id}
+                className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      {quote.user?.name || quote.userId?.name || 'Unknown User'}
+                    </h3>
+                    <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-800'
                       : quote.status === 'responded'
-                      ? 'bg-blue-100 text-blue-800'
-                      : quote.status === 'accepted' || quote.status === 'approved'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}
-                >
-                  {quote.status}
-                </span>
-              </div>
-
-              <div className="mb-4">
-                <h4 className="font-medium text-sm text-gray-700 mb-2">Products:</h4>
-                <ul className="space-y-1">
-                  {quote.products.map((item, idx) => (
-                    <li key={idx} className="text-sm text-gray-600">
-                      • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {quote.message && (
-                <div className="mb-4">
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">Message:</h4>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                    {quote.message}
-                  </p>
+                        ? 'bg-blue-100 text-blue-800'
+                        : quote.status === 'accepted' || quote.status === 'approved'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                  >
+                    {quote.status}
+                  </span>
                 </div>
-              )}
 
-              {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
                 <div className="mb-4">
-                  <h4 className="font-medium text-sm text-gray-700 mb-1">
-                    Admin Response:
-                  </h4>
-                  <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                    {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
-                  </p>
-                  {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
-                    <p className="text-sm font-semibold text-gray-800 mt-2">
-                      Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">Products:</h4>
+                  <ul className="space-y-1">
+                    {quote.products.map((item, idx) => (
+                      <li key={idx} className="text-sm text-gray-600">
+                        • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {quote.message && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-sm text-gray-700 mb-1">Message:</h4>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      {quote.message}
                     </p>
-                  )}
-                </div>
-              )}
-
-              {quote.status === 'pending' && (
-                <div className="mt-4 border-t pt-4">
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Provide Quote Response:</h4>
-
-                  {/* Product Pricing Table */}
-                  <div className="mb-4 overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium text-gray-500">Product</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-500">Qty</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-500">Original Price</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-500">Offered Price (Per Unit)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {quote.products.map((item, idx) => {
-                          const productId = item.product?._id || item.productId?._id || `unknown-${idx}`;
-                          const productName = item.product?.name || item.productId?.name || 'Unknown Product';
-                          // @ts-ignore
-                          const originalPrice = item.product?.price || item.product?.normalPrice || item.originalPrice || 0;
-
-                          return (
-                            <tr key={idx}>
-                              <td className="px-3 py-2">{productName}</td>
-                              <td className="px-3 py-2">{item.quantity}</td>
-                              <td className="px-3 py-2">₹{originalPrice}</td>
-                              <td className="px-3 py-2">
-                                <input
-                                  type="number"
-                                  value={quoteResponse.id === quote._id ? (quoteResponse.products[productId] ?? '') : ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setQuoteResponse(prev => ({
-                                      ...prev,
-                                      id: quote._id,
-                                      products: {
-                                        ...prev.products,
-                                        [productId]: val
-                                      }
-                                    }));
-                                  }}
-                                  className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                  placeholder="Enter Price"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
                   </div>
+                )}
 
-                  {/* Calculated Total Display */}
-                  <div className="mb-4 flex justify-end bg-gray-50 p-3 rounded border border-gray-200">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Calculated Total Amount</p>
-                      <p className="text-xl font-bold text-green-600">
-                        ₹{quote.products.reduce((sum, item) => {
-                          const productId = item.product?._id || item.productId?._id;
-                          // @ts-ignore
-                          const price = (quoteResponse.id === quote._id && quoteResponse.products[productId]) ? Number(quoteResponse.products[productId]) : 0;
-                          return sum + (price * item.quantity);
-                        }, 0).toLocaleString('en-IN')}
+                {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-sm text-gray-700 mb-1">
+                      Admin Response:
+                    </h4>
+                    <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                      {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
+                    </p>
+                    {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
+                      <p className="text-sm font-semibold text-gray-800 mt-2">
+                        Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
                       </p>
-                    </div>
+                    )}
                   </div>
+                )}
 
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Admin Response Message
-                      </label>
-                      <textarea
-                        value={
-                          quoteResponse.id === quote._id ? quoteResponse.response : ''
-                        }
-                        onChange={(e) =>
-                          setQuoteResponse(prev => ({
-                            ...prev,
-                            id: quote._id,
-                            response: e.target.value,
-                            products: prev.products // Keep products
-                          }))
-                        }
-                        rows={2}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter your response message to the customer..."
-                      />
+                {quote.status === 'pending' && (
+                  <div className="mt-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">Provide Quote Response:</h4>
+
+                    {/* Product Pricing Table */}
+                    <div className="mb-4 overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-gray-500">Product</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-500">Qty</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-500">Original Price</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-500">Offered Price (Per Unit)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {quote.products.map((item, idx) => {
+                            const productId = item.product?._id || item.productId?._id || `unknown-${idx}`;
+                            const productName = item.product?.name || item.productId?.name || 'Unknown Product';
+                            // @ts-ignore
+                            const originalPrice = item.product?.price || item.product?.normalPrice || item.originalPrice || 0;
+
+                            return (
+                              <tr key={idx}>
+                                <td className="px-3 py-2">{productName}</td>
+                                <td className="px-3 py-2">{item.quantity}</td>
+                                <td className="px-3 py-2">₹{originalPrice}</td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="number"
+                                    value={quoteResponse.id === quote._id ? (quoteResponse.products[productId] ?? '') : ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setQuoteResponse(prev => ({
+                                        ...prev,
+                                        id: quote._id,
+                                        products: {
+                                          ...prev.products,
+                                          [productId]: val
+                                        }
+                                      }));
+                                    }}
+                                    className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter Price"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    <button
-                      onClick={() => handleRespondToQuote(quote._id)}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Check className="w-4 h-4" />
-                      Approve Quote
-                    </button>
-                    <button
-                      onClick={() => handleRejectQuote(quote._id)}
-                      className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      <X className="w-4 h-4\" />
-                      Reject Quote
-                    </button>
+
+                    {/* Calculated Total Display */}
+                    <div className="mb-4 flex justify-end bg-gray-50 p-3 rounded border border-gray-200">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Calculated Total Amount</p>
+                        <p className="text-xl font-bold text-green-600">
+                          ₹{quote.products.reduce((sum, item) => {
+                            const productId = item.product?._id || item.productId?._id;
+                            // @ts-ignore
+                            const price = (quoteResponse.id === quote._id && quoteResponse.products[productId]) ? Number(quoteResponse.products[productId]) : 0;
+                            return sum + (price * item.quantity);
+                          }, 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Admin Response Message
+                        </label>
+                        <textarea
+                          value={
+                            quoteResponse.id === quote._id ? quoteResponse.response : ''
+                          }
+                          onChange={(e) =>
+                            setQuoteResponse(prev => ({
+                              ...prev,
+                              id: quote._id,
+                              response: e.target.value,
+                              products: prev.products // Keep products
+                            }))
+                          }
+                          rows={2}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter your response message to the customer..."
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleRespondToQuote(quote._id)}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        <Check className="w-4 h-4" />
+                        Approve Quote
+                      </button>
+                      <button
+                        onClick={() => handleRejectQuote(quote._id)}
+                        className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        <X className="w-4 h-4\" />
+                        Reject Quote
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -2846,151 +2651,9 @@ const AdminDashboard: React.FC = () => {
 
   // Render Orders Tab
   const renderOrders = () => {
-    const handleExportOrdersPDF = async () => {
-      try {
-        const { default: jsPDF } = await import('jspdf');
-        const autoTable = (await import('jspdf-autotable')).default as any;
 
-        const doc = new jsPDF();
 
-        // Title
-        doc.setFillColor(33, 150, 243);
-        doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text('TELOGICA', 105, 20, { align: 'center' });
-
-        doc.setFontSize(18);
-        doc.text('ORDER MANAGEMENT REPORT', 105, 30, { align: 'center' });
-
-        // Report details
-        doc.setFillColor(245, 245, 245);
-        doc.rect(10, 45, 190, 15, 'F');
-
-        doc.setTextColor(33, 33, 33);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 15, 55);
-        doc.text(`Total Orders: ${orders.length}`, 100, 55);
-
-        // Table
-        const headers = [['Order ID', 'Customer', 'Items', 'Amount', 'Payment', 'Date']];
-
-        const body = orders.map((o) => [
-          o.orderNumber || o._id.slice(-8),
-          o.userId?.name || 'Unknown',
-          o.products.length,
-          `₹${o.totalAmount.toLocaleString()}`,
-          o.paymentStatus,
-          new Date(o.createdAt).toLocaleDateString()
-        ]);
-
-        autoTable(doc, {
-          startY: 65,
-          head: headers,
-          body: body,
-          theme: 'striped',
-          headStyles: {
-            fillColor: [33, 150, 243],
-            textColor: 255,
-            fontStyle: 'bold'
-          }
-        });
-
-        // Summary
-        const finalY = (doc as any).lastAutoTable.finalY || 70;
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SUMMARY', 15, finalY + 15);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-        doc.text(`Total Revenue: ₹${totalRevenue.toLocaleString()}`, 15, finalY + 25);
-        doc.text(`Total Orders: ${orders.length}`, 15, finalY + 32);
-
-        doc.save(`Telogica-Orders-${new Date().toISOString().split('T')[0]}.pdf`);
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export PDF');
-      }
-    };
-
-    const handleExportOrdersExcel = async () => {
-      try {
-        const ExcelJS = await import('exceljs');
-
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Telogica';
-
-        // Orders worksheet
-        const worksheet = workbook.addWorksheet('Orders');
-        worksheet.columns = [
-          { header: 'No.', key: 'no', width: 5 },
-          { header: 'Order ID', key: 'orderId', width: 20 },
-          { header: 'Customer Name', key: 'customerName', width: 20 },
-          { header: 'Customer Email', key: 'customerEmail', width: 25 },
-          { header: 'Products', key: 'products', width: 40 },
-          { header: 'Total Items', key: 'totalItems', width: 10 },
-          { header: 'Total Amount (₹)', key: 'totalAmount', width: 15 },
-          { header: 'Payment Status', key: 'paymentStatus', width: 15 },
-          { header: 'Date', key: 'date', width: 12 }
-        ];
-
-        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        worksheet.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF2196F3' }
-        };
-
-        orders.forEach((o, index) => {
-          worksheet.addRow({
-            no: index + 1,
-            orderId: o.orderNumber || o._id,
-            customerName: o.userId?.name || 'Unknown',
-            customerEmail: o.userId?.email || '',
-            products: o.products.map(p => `${(p.productId || (p as any).product)?.name || 'Unknown'} (${p.quantity})`).join(', '),
-            totalItems: o.products.length,
-            totalAmount: o.totalAmount,
-            paymentStatus: o.paymentStatus,
-            date: new Date(o.createdAt).toLocaleDateString()
-          });
-        });
-
-        // Summary worksheet
-        const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-        const summaryWs = workbook.addWorksheet('Summary');
-        summaryWs.columns = [
-          { header: 'Metric', key: 'metric', width: 25 },
-          { header: 'Value', key: 'value', width: 20 }
-        ];
-
-        summaryWs.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        summaryWs.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF2196F3' }
-        };
-
-        summaryWs.addRows([
-          { metric: 'Total Orders', value: orders.length },
-          { metric: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}` },
-          { metric: 'Pending Payments', value: orders.filter(o => o.paymentStatus === 'pending').length },
-          { metric: 'Completed Payments', value: orders.filter(o => o.paymentStatus === 'completed').length }
-        ]);
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `Telogica-Orders-${new Date().toISOString().split('T')[0]}.xlsx`;
-        link.click();
-      } catch (err: any) {
-        alert(err?.message || 'Failed to export Excel');
-      }
-    };
 
     // Filter orders
     const filteredOrders = orders.filter((order) => {
@@ -3001,9 +2664,9 @@ const AdminDashboard: React.FC = () => {
         const customerEmail = (order.userId?.email || '').toLowerCase();
         const orderNumber = (order.orderNumber || order._id || '').toLowerCase();
         const products = order.products.map(p => ((p.productId || (p as any).product)?.name || '').toLowerCase()).join(' ');
-        
-        if (!customerName.includes(searchLower) && !customerEmail.includes(searchLower) && 
-            !orderNumber.includes(searchLower) && !products.includes(searchLower)) {
+
+        if (!customerName.includes(searchLower) && !customerEmail.includes(searchLower) &&
+          !orderNumber.includes(searchLower) && !products.includes(searchLower)) {
           return false;
         }
       }
@@ -3287,13 +2950,12 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          order.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
                           order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                          order.orderStatus === 'processing' ? 'bg-indigo-100 text-indigo-800' :
-                          order.orderStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
+                            order.orderStatus === 'processing' ? 'bg-indigo-100 text-indigo-800' :
+                              order.orderStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                          }`}>
                           {order.orderStatus === 'delivered' && <CheckCircle className="w-3 h-3 mr-1" />}
                           {order.orderStatus === 'shipped' && <Package className="w-3 h-3 mr-1" />}
                           {order.orderStatus === 'cancelled' && <X className="w-3 h-3 mr-1" />}
@@ -3305,13 +2967,12 @@ const AdminDashboard: React.FC = () => {
                         <select
                           value={order.paymentStatus || 'pending'}
                           onChange={(e) => handleUpdatePaymentStatus(order._id, e.target.value)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${
-                            order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                              : order.paymentStatus === 'failed'
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : order.paymentStatus === 'failed'
                               ? 'bg-red-100 text-red-800 hover:bg-red-200'
                               : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                          }`}
+                            }`}
                         >
                           <option value="pending">Pending</option>
                           <option value="completed">Completed</option>
@@ -3359,10 +3020,10 @@ const AdminDashboard: React.FC = () => {
         const customerEmail = (warranty.userId?.email || '').toLowerCase();
         const serialNumber = (warranty.serialNumber || '').toLowerCase();
         const modelNumber = (warranty.modelNumber || '').toLowerCase();
-        
+
         if (!productName.includes(searchLower) && !customerName.includes(searchLower) &&
-            !customerEmail.includes(searchLower) && !serialNumber.includes(searchLower) &&
-            !modelNumber.includes(searchLower)) {
+          !customerEmail.includes(searchLower) && !serialNumber.includes(searchLower) &&
+          !modelNumber.includes(searchLower)) {
           return false;
         }
       }
@@ -3584,13 +3245,12 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                      warranty.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : warranty.status === 'approved'
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${warranty.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : warranty.status === 'approved'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
-                    }`}
+                      }`}
                   >
                     {warranty.status === 'pending' && <Clock className="w-4 h-4 mr-1" />}
                     {warranty.status === 'approved' && <CheckCircle className="w-4 h-4 mr-1" />}
@@ -3671,7 +3331,7 @@ const AdminDashboard: React.FC = () => {
         const recipient = (log.recipient || '').toLowerCase();
         const subject = (log.subject || '').toLowerCase();
         const emailType = (log.emailType || '').toLowerCase();
-        
+
         if (!recipient.includes(searchLower) && !subject.includes(searchLower) && !emailType.includes(searchLower)) {
           return false;
         }
@@ -3921,11 +3581,10 @@ const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                            log.status === 'sent'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${log.status === 'sent'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}
                         >
                           {log.status === 'sent' && <CheckCircle className="w-3 h-3 mr-1" />}
                           {log.status === 'failed' && <AlertCircle className="w-3 h-3 mr-1" />}
@@ -3974,9 +3633,9 @@ const AdminDashboard: React.FC = () => {
         const email = (contact.email || '').toLowerCase();
         const subject = (contact.subject || '').toLowerCase();
         const message = (contact.message || '').toLowerCase();
-        
+
         if (!name.includes(searchLower) && !email.includes(searchLower) &&
-            !subject.includes(searchLower) && !message.includes(searchLower)) {
+          !subject.includes(searchLower) && !message.includes(searchLower)) {
           return false;
         }
       }
@@ -4201,13 +3860,12 @@ const AdminDashboard: React.FC = () => {
                     <select
                       value={contact.status}
                       onChange={(e) => handleUpdateContactStatus(contact._id, e.target.value)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${
-                        contact.status === 'new'
-                          ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                          : contact.status === 'read'
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${contact.status === 'new'
+                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        : contact.status === 'read'
                           ? 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                           : 'bg-green-100 text-green-800 hover:bg-green-200'
-                      }`}
+                        }`}
                     >
                       <option value="new">New</option>
                       <option value="read">Read</option>
@@ -4366,6 +4024,143 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
+  // Render Dropship Shipments Tab
+  const renderDropshipOrders = () => {
+    const filteredDropshipOrders = dropshipOrders.filter(order => {
+      if (!dropshipSearch) return true;
+      const term = dropshipSearch.toLowerCase();
+      const retailerName = (order.user?.name || order.userId?.name || '').toLowerCase();
+      const customerName = order.customerDetails?.name?.toLowerCase() || '';
+      const OrderId = (order.orderNumber || order._id).toLowerCase();
+      return retailerName.includes(term) || customerName.includes(term) || OrderId.includes(term);
+    });
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Retailer Shipments</h2>
+              <p className="text-purple-100">Manage direct shipments from retailers to their customers</p>
+            </div>
+            <Package className="w-16 h-16 text-purple-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Filter */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by retailer, customer, or Order ID..."
+              value={dropshipSearch}
+              onChange={(e) => setDropshipSearch(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 w-80"
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-500 font-medium">
+                <tr>
+                  <th className="px-6 py-4">Order ID</th>
+                  <th className="px-6 py-4">Retailer</th>
+                  <th className="px-6 py-4">Customer</th>
+                  <th className="px-6 py-4">Items</th>
+                  <th className="px-6 py-4">Payment</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Invoice</th>
+                  <th className="px-6 py-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredDropshipOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                      No shipments found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDropshipOrders.map((order) => (
+                    <tr key={order._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 font-medium">
+                        {order.orderNumber || order._id.slice(-6)}
+                        <div className="text-xs text-gray-400">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{order.user?.name || order.userId?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500">{order.user?.email || order.userId?.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{order.customerDetails?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500">{order.customerDetails?.phone}</div>
+                        <div className="text-xs text-gray-400 truncate max-w-[150px]" title={order.customerDetails?.address}>
+                          {order.customerDetails?.address}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {order.products.length} Items
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' :
+                          order.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                          {order.paymentStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
+                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                            order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-700'
+                          }`}>
+                          {order.orderStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {order.customerInvoiceUrl ? (
+                          <a
+                            href={order.customerInvoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                          >
+                            <FileText size={14} />
+                            View Invoice
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Not generated</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedDropshipOrder(order);
+                              setShowDropshipModal(true);
+                            }}
+                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'products', name: 'Products', icon: Package },
@@ -4373,12 +4168,235 @@ const AdminDashboard: React.FC = () => {
     { id: 'retailers', name: 'Retailers', icon: Store },
     { id: 'quotes', name: 'Quotes', icon: FileText },
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
+    { id: 'shipments', name: 'Retailer-Customer Shipments', icon: Package },
     { id: 'warranties', name: 'Warranties', icon: Shield },
     { id: 'messages', name: 'Messages', icon: MessageSquare },
     { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
     { id: 'logs', name: 'Activity Logs', icon: ClipboardList },
   ];
+  // Render Dropship Order Details Modal
+  const renderDropshipOrderDetails = () => {
+    if (!selectedDropshipOrder) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowDropshipModal(false)}></div>
+          <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+          <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            {/* Header */}
+            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl leading-6 font-bold text-gray-900" id="modal-title">
+                  Dropship Order Details
+                </h3>
+                <button
+                  onClick={() => setShowDropshipModal(false)}
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <span className="sr-only">Close</span>
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-4 py-5 sm:p-6 space-y-6">
+              {/* Top Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Order ID</p>
+                  <p className="font-mono text-sm font-bold text-gray-900 mt-1">
+                    {selectedDropshipOrder.orderNumber || selectedDropshipOrder._id}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Date</p>
+                  <p className="text-sm font-medium text-gray-900 mt-1">
+                    {new Date(selectedDropshipOrder.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Status</p>
+                  <span className={`inline-flex mt-1 px-2 py-1 rounded-full text-xs font-bold ${selectedDropshipOrder.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
+                    selectedDropshipOrder.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                    {selectedDropshipOrder.orderStatus.toUpperCase()}
+                  </span>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Invoice</p>
+                  {selectedDropshipOrder.customerInvoiceUrl ? (
+                    <a
+                      href={selectedDropshipOrder.customerInvoiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <FileText size={14} />
+                      View PDF
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400 mt-1 block">Not Generated</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column: Parties */}
+                <div className="space-y-6">
+                  {/* Retailer Info */}
+                  <div className="bg-white border text-sm rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-purple-50 px-4 py-3 border-b flex items-center justify-between">
+                      <h4 className="font-semibold text-purple-900 flex items-center gap-2">
+                        <Store className="w-4 h-4" /> Retailer (Seller)
+                      </h4>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Name</span>
+                        <span className="font-medium text-gray-900">{selectedDropshipOrder.user?.name || selectedDropshipOrder.userId?.name || 'Unknown'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Email</span>
+                        <span className="text-gray-900">{selectedDropshipOrder.user?.email || selectedDropshipOrder.userId?.email}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Customer Info */}
+                  <div className="bg-white border text-sm rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-indigo-50 px-4 py-3 border-b flex items-center justify-between">
+                      <h4 className="font-semibold text-indigo-900 flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Customer (Buyer)
+                      </h4>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Name</span>
+                        <span className="font-medium text-gray-900">{selectedDropshipOrder.customerDetails?.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Phone</span>
+                        <span className="text-gray-900">{selectedDropshipOrder.customerDetails?.phone}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Email</span>
+                        <span className="text-gray-900">{selectedDropshipOrder.customerDetails?.email}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-xs uppercase tracking-wide">Shipping Address</span>
+                        <span className="text-gray-700 whitespace-pre-line">{selectedDropshipOrder.customerDetails?.address}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Products & Actions */}
+                <div className="space-y-6">
+                  <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-50 px-4 py-3 border-b">
+                      <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <Package className="w-4 h-4" /> Shipments Items
+                      </h4>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {selectedDropshipOrder.products.map((item, idx) => (
+                        <div key={idx} className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium text-gray-900">{item.productId?.name}</span>
+                            <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded-full">
+                              x{item.quantity}
+                            </span>
+                          </div>
+
+                          {(item.serialNumbers && item.serialNumbers.length > 0) ? (
+                            <div className="mt-2 text-xs">
+                              <span className="text-gray-500 font-medium">Serial Numbers:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.serialNumbers.map((sn, sidx) => (
+                                  <span key={sidx} className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 font-mono">
+                                    {sn}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-orange-500 italic mt-1">No serial numbers assigned</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Management Actions */}
+                  <div className="bg-white border rounded-xl p-4 shadow-sm">
+                    <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Shipment Actions</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Mark this shipment as SHIPPED?')) {
+                            try {
+                              await api.put(`/api/orders/${selectedDropshipOrder._id}`, { status: 'shipped' });
+                              alert('Order marked as shipped');
+                              loadDropshipOrders();
+                              setShowDropshipModal(false);
+                            } catch (err) {
+                              alert('Failed to update status');
+                            }
+                          }
+                        }}
+                        disabled={selectedDropshipOrder.orderStatus === 'shipped' || selectedDropshipOrder.orderStatus === 'delivered'}
+                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.orderStatus === 'shipped' || selectedDropshipOrder.orderStatus === 'delivered'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                      >
+                        <Truck className="w-4 h-4" /> Mark Shipped
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Mark this shipment as DELIVERED?')) {
+                            try {
+                              await api.put(`/api/orders/${selectedDropshipOrder._id}`, { status: 'delivered' });
+                              alert('Order marked as delivered');
+                              loadDropshipOrders();
+                              setShowDropshipModal(false);
+                            } catch (err) {
+                              alert('Failed to update status');
+                            }
+                          }
+                        }}
+                        disabled={selectedDropshipOrder.orderStatus === 'delivered'}
+                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.orderStatus === 'delivered'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                      >
+                        <CheckCircle className="w-4 h-4" /> Mark Delivered
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-100">
+              <button
+                type="button"
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                onClick={() => setShowDropshipModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -4467,6 +4485,7 @@ const AdminDashboard: React.FC = () => {
             )}
             {activeTab === 'quotes' && renderQuotes()}
             {activeTab === 'orders' && renderOrders()}
+            {activeTab === 'shipments' && renderDropshipOrders()}
             {activeTab === 'warranties' && renderWarranties()}
             {activeTab === 'messages' && renderContacts()}
             {activeTab === 'content' && renderContentManagement()}
@@ -4488,6 +4507,7 @@ const AdminDashboard: React.FC = () => {
           }}
         />
       )}
+      {showDropshipModal && renderDropshipOrderDetails()}
     </div>
   );
 };

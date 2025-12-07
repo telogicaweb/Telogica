@@ -642,4 +642,135 @@ function renderOrderInvoice(doc, order, productUnits) {
     );
 }
 
-module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer, generateRetailerInvoice, generateOrderInvoicePdfBuffer };
+const generateAndUploadDropshipInvoice = async (data) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'invoices',
+        public_id: `dropship_invoice_${data.invoiceNumber || Date.now()}_${Date.now()}`,
+        resource_type: 'auto',
+        format: 'pdf'
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else {
+          resolve(result.secure_url);
+        }
+      }
+    );
+
+    doc.pipe(uploadStream);
+    renderDropshipInvoice(doc, data);
+    doc.end();
+  });
+};
+
+const generateDropshipInvoicePdfBuffer = async (data) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on('data', (data) => buffers.push(data));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    renderDropshipInvoice(doc, data);
+    doc.end();
+  });
+};
+
+function renderDropshipInvoice(doc, { retailer, customerDetails, items, invoiceNumber, date }) {
+  // Header with Company Name
+  doc
+    .fillColor('#444444')
+    .fontSize(20)
+    .font('Helvetica-Bold')
+    .text('TELOGICA LIMITED', 50, 50)
+    .fontSize(10)
+    .font('Helvetica')
+    .text('(formerly Aishwarya Technologies & Limited)', 50, 75)
+    .moveDown();
+
+  generateHr(doc, 95);
+
+  const customerInformationTop = 120;
+
+  // Seller (Retailer) Info
+  doc
+    .fontSize(10)
+    .fillColor('#000000')
+    .text('Sold By:', 50, customerInformationTop)
+    .font('Helvetica-Bold')
+    .text(retailer.name, 50, customerInformationTop + 15)
+    .font('Helvetica')
+    .text(retailer.email, 50, customerInformationTop + 30)
+    .text(retailer.phone || '', 50, customerInformationTop + 45);
+
+  const shipToTop = 200;
+
+  // Ship To (Customer)
+  doc
+    .fontSize(10)
+    .font('Helvetica-Bold')
+    .text('SHIP TO:', 50, shipToTop)
+    .font('Helvetica')
+    .text(customerDetails.name, 50, shipToTop + 15)
+    .text(customerDetails.email, 50, shipToTop + 30)
+    .text(customerDetails.phone, 50, shipToTop + 45)
+    .text(customerDetails.address, 50, shipToTop + 60, { width: 200 });
+
+  // Invoice/Slip Details
+  const invoiceDetailsTop = shipToTop;
+  doc
+    .font('Helvetica-Bold')
+    .text('Invoice', 300, invoiceDetailsTop, { align: 'right' }) // Renamed from Delivery Note
+    .font('Helvetica')
+    .text(`Number: ${invoiceNumber}`, 300, invoiceDetailsTop + 15, { align: 'right' })
+    .text(`Date: ${formatDate(new Date(date))}`, 300, invoiceDetailsTop + 30, { align: 'right' });
+
+  generateHr(doc, shipToTop + 100);
+
+  // Product Table (No Prices)
+  const tableTop = shipToTop + 120;
+  doc.font('Helvetica-Bold');
+
+  // Custom headers for dropship (Product, Quantity)
+  doc
+    .text('Product', 50, tableTop)
+    .text('Quantity', 400, tableTop, { align: 'right' });
+
+  generateHr(doc, tableTop + 20);
+  doc.font('Helvetica');
+
+  let position = tableTop + 35;
+
+  items.forEach((item) => {
+    const name = item.product.name || 'Product';
+    const quantity = item.quantity;
+
+    doc
+      .fontSize(10)
+      .text(name, 50, position, { width: 300 })
+      .text(quantity.toString(), 400, position, { align: 'right' });
+
+    position += 20;
+  });
+
+  generateHr(doc, position + 10);
+
+  // Footer
+  doc
+    .fontSize(10)
+    .text(
+      'Thank you for your order.',
+      50,
+      700,
+      { align: 'center', width: 500 }
+    );
+}
+
+module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer, generateRetailerInvoice, generateOrderInvoicePdfBuffer, generateDropshipInvoicePdfBuffer, generateAndUploadDropshipInvoice };

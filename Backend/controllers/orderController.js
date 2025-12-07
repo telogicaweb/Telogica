@@ -8,7 +8,7 @@ const RetailerInventory = require('../models/RetailerInventory');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
-const { generateAndUploadInvoice } = require('../utils/invoiceGenerator');
+const { generateAndUploadInvoice, generateAndUploadDropshipInvoice } = require('../utils/invoiceGenerator');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
 const { recalculateProductInventory } = require('../utils/inventory');
 
@@ -23,8 +23,9 @@ const PRICE_TOLERANCE = 0.01; // Tolerance for floating point price comparisons
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
+// @access  Private
 const createOrder = async (req, res) => {
-  const { products, totalAmount, shippingAddress, quoteId, isRetailerDirectPurchase } = req.body;
+  const { products, totalAmount, shippingAddress, quoteId, isRetailerDirectPurchase, isDropship, customerDetails, customerInvoiceUrl } = req.body;
 
   if (products && products.length === 0) {
     return res.status(400).json({ message: 'No order items' });
@@ -150,6 +151,28 @@ const createOrder = async (req, res) => {
       discountApplied = quote.adminResponse.discountPercentage || 0;
     }
 
+    // Generate persistent dropship invoice if applicable
+    let finalCustomerInvoiceUrl = customerInvoiceUrl;
+    if (isDropship) {
+      try {
+        const invoiceItems = products.map(p => ({
+          quantity: p.quantity,
+          product: productMap.get(p.product)
+        }));
+
+        finalCustomerInvoiceUrl = await generateAndUploadDropshipInvoice({
+          retailer: req.user,
+          customerDetails,
+          items: invoiceItems,
+          invoiceNumber: `DS-${Date.now()}`,
+          date: new Date()
+        });
+      } catch (err) {
+        console.error('Error generating persistent dropship invoice:', err);
+        // Continue without invoice if generation fails, or handle error
+      }
+    }
+
     // Ensure stock availability before creating payment order
     const userStockPreference = req.user.role === 'retailer' ? 'offline' : 'online';
     for (const item of products) {
@@ -198,9 +221,13 @@ const createOrder = async (req, res) => {
       shippingAddress,
       razorpayOrderId: razorpayOrder.id,
       orderNumber,
+      orderNumber,
       quoteId: quoteId || null,
       isQuoteBased,
-      discountApplied
+      discountApplied,
+      isDropship: !!isDropship,
+      customerDetails: isDropship ? customerDetails : undefined,
+      customerInvoiceUrl: isDropship ? finalCustomerInvoiceUrl : undefined
     });
 
     const createdOrder = await order.save();
@@ -356,7 +383,7 @@ const verifyPayment = async (req, res) => {
 
               const startDate = new Date();
               startDate.setDate(startDate.getDate() + 3); // Today + 3 days
-              
+
               const endDate = new Date(startDate);
               endDate.setMonth(endDate.getMonth() + warrantyMonths); // + warranty months
 
@@ -378,10 +405,10 @@ const verifyPayment = async (req, res) => {
               // Generate PDF
               const pdfUrl = await generateAndUploadWarranty(warranty, order.user);
               warranty.warrantyCertificateUrl = pdfUrl;
-              
+
               await warranty.save();
               console.log(`Warranty generated for ${serialNumber}: ${pdfUrl}`);
-              
+
               warrantyLinks.push({
                 name: item.product.name,
                 serial: serialNumber,
@@ -448,7 +475,7 @@ const verifyPayment = async (req, res) => {
 
       // Send payment confirmation email
       const invoiceLink = invoice && invoice.invoiceUrl ? `\n\nYou can download your invoice here: ${invoice.invoiceUrl}` : '';
-      
+
       let warrantySection = '';
       if (warrantyLinks.length > 0) {
         warrantySection = '\n\nWarranty Certificates:\n' + warrantyLinks.map(w => `${w.name} (Serial: ${w.serial}): ${w.url}`).join('\n');
@@ -564,40 +591,99 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Download Order Invoice
-const { generateOrderInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+// Generate Dropship Invoice (Delivery Note)
+const { generateDropshipInvoicePdfBuffer } = require('../utils/invoiceGenerator');
 
-const downloadInvoice = async (req, res) => {
+// @desc    Generate dropship invoice PDF
+// @route   POST /api/orders/dropship-invoice
+// @access  Private (Retailer)
+const generateDropshipInvoice = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
-      .populate('user')
-      .populate('products.product');
+    const { customerDetails, items } = req.body;
 
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+    // Validate inputs
+    if (!customerDetails || !items || items.length === 0) {
+      return res.status(400).json({ message: 'Missing customer details or items' });
     }
 
-    // Verify user owns this order
-    if (req.user.role !== 'admin' && order.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // Generate a temporary invoice number
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const invoiceNumber = `DS-${dateStr}-${randomStr}`;
 
-    // Fetch product units for this order to get serials/models
-    const productUnits = await ProductUnit.find({ order: order._id });
-
-    const buffer = await generateOrderInvoicePdfBuffer(order, productUnits);
+    const buffer = await generateDropshipInvoicePdfBuffer({
+      retailer: req.user,
+      customerDetails,
+      items,
+      invoiceNumber,
+      date: new Date()
+    });
 
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=invoice-${order.orderNumber || order._id}.pdf`,
+      'Content-Disposition': `attachment; filename=delivery-note-${invoiceNumber}.pdf`,
       'Content-Length': buffer.length
     });
 
     res.send(buffer);
   } catch (error) {
-    console.error('Error downloading invoice:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error generating dropship invoice:', error);
+    res.status(500).json({ message: 'Failed to generate invoice' });
   }
 };
 
-module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice };
+// @desc    Get all dropship orders (Admin)
+// @route   GET /api/orders/dropship-shipments
+// @access  Private/Admin
+const getDropshipOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ isDropship: true })
+      .populate('user', 'id name email') // Retailer info
+      .populate('products.product', 'name price')
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Download Invoice
+// @route   GET /api/orders/:id/invoice
+// @access  Private
+const downloadInvoice = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Authorization check
+    if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Check for dropship invoice first if it's a dropship order
+    // REMOVED: Prioritize standard Tax Invoice for retailers over the customer delivery note
+    /*
+    if (order.isDropship && order.customerInvoiceUrl) {
+      return res.redirect(order.customerInvoiceUrl);
+    }
+    */
+
+    // Find standard invoice
+    const invoice = await Invoice.findOne({ order: req.params.id });
+
+    if (invoice && invoice.invoiceUrl) {
+      return res.redirect(invoice.invoiceUrl);
+    }
+
+    res.status(404).json({ message: 'Invoice not generated for this order' });
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice, generateDropshipInvoice, getDropshipOrders };
