@@ -752,7 +752,7 @@ const RetailerDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -799,11 +799,8 @@ const RetailerDashboard = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(order.orderStatus)}`}>
-                            {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
-                          </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            Payment: {order.paymentStatus}
+                            {order.paymentStatus.toUpperCase()}
                           </span>
                         </div>
                       </td>

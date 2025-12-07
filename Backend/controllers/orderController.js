@@ -749,7 +749,7 @@ const getDropshipOrders = async (req, res) => {
   try {
     const orders = await Order.find({ isDropship: true })
       .populate('user', 'id name email') // Retailer info
-      .populate('products.product', 'name price')
+      .populate('products.product', 'name price modelNumberPrefix')
       .sort({ createdAt: -1 });
 
     res.json(orders);
