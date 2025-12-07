@@ -4,7 +4,7 @@ const axios = require('axios');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Email Service URL
-const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'http://localhost:5001';
+const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'https://telogica-mail-service.vercel.app';
 
 // Admin routes - Get email logs from Email Service
 router.get('/', protect, admin, async (req, res) => {
