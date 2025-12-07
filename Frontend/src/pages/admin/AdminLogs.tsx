@@ -6,6 +6,7 @@ import logService, {
   clearLogs
 } from '../../services/logService';
 import { Log, LogEventType } from '../../types/logs';
+import DateFilter from '../../components/AdminDashboard/DateFilter';
 import { 
   Plus, 
   RefreshCw, 
@@ -546,24 +547,15 @@ const AdminLogs = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  name="startDate"
-                  value={filters.startDate}
-                  onChange={handleFilterChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-                <input
-                  type="date"
-                  name="endDate"
-                  value={filters.endDate}
-                  onChange={handleFilterChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-              </div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-2">
+              <DateFilter
+                dateFrom={filters.startDate}
+                dateTo={filters.endDate}
+                onDateFromChange={(val) => setFilters(prev => ({ ...prev, startDate: val }))}
+                onDateToChange={(val) => setFilters(prev => ({ ...prev, endDate: val }))}
+                label="Date Range"
+                showPresets={true}
+              />
             </div>
             
             <div>

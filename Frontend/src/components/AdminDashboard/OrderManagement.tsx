@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Eye, Download, FileDown } from 'lucide-react';
 import api from '../../api';
 import { Order } from './types';
+import DateFilter from './DateFilter';
 
 interface OrderManagementProps {
   orders: Order[];
@@ -65,8 +66,8 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
   const exportOrders = () => {
     const data = filteredOrders.map((o) => ({
       OrderNumber: o.orderNumber || o._id,
-      User: o.userId?.name || 'Unknown',
-      Email: o.userId?.email || 'Unknown',
+      User: o.userId?.name || (o as any).userName || 'Guest User',
+      Email: o.userId?.email || (o as any).userEmail || 'N/A',
       Amount: o.totalAmount,
       Status: o.orderStatus,
       PaymentStatus: o.paymentStatus,
@@ -104,8 +105,8 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
         head: [['Order #', 'Customer', 'Email', 'Amount (₹)', 'Status', 'Payment', 'Date', 'Items']],
         body: filteredOrders.map((o) => [
           o.orderNumber || o._id,
-          o.userId?.name || 'Unknown',
-          o.userId?.email || 'Unknown',
+          o.userId?.name || (o as any).userName || 'Guest User',
+          o.userId?.email || (o as any).userEmail || 'N/A',
           String(o.totalAmount),
           o.orderStatus,
           o.paymentStatus,
@@ -196,8 +197,8 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
                   </td>
 
                   <td className="px-6 py-4 text-sm">
-                    <div className="font-semibold text-gray-900">{order.userId?.name || 'Unknown'}</div>
-                    <div className="text-gray-600">{order.userId?.email || 'Unknown'}</div>
+                    <div className="font-semibold text-gray-900">{order.userId?.name || (order as any).userName || 'Guest User'}</div>
+                    <div className="text-gray-600">{order.userId?.email || (order as any).userEmail || 'N/A'}</div>
                   </td>
 
                   <td className="px-6 py-4 text-sm text-gray-900">{order.products.length} item(s)</td>

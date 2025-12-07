@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Star,
   Download,
-  Calendar,
   Grid,
   List,
   Shield,
@@ -27,6 +26,7 @@ import {
 import api from '../../api';
 import { Product, ProductFormState } from './types';
 import ProductEditor from './ProductEditor';
+import DateFilter from './DateFilter';
 
 interface ProductManagementProps {
   products: Product[];
@@ -73,7 +73,12 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const resolveStock = (p: Product) => p.stockQuantity ?? p.stock ?? 0;
-  const resolvePrice = (p: Product) => p.normalPrice ?? p.price ?? undefined;
+  const resolvePrice = (p: Product) => {
+    // Check normalPrice first (legacy field), then price from backend
+    const price = p.normalPrice ?? p.price;
+    // Return the price if it exists and is a number (including 0)
+    return (price !== undefined && price !== null) ? price : undefined;
+  };
 
   useEffect(() => {
     if (!editingProduct) return;
@@ -625,7 +630,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
           {/* Pricing */}
           <div className="space-y-1 mb-3">
-            {price ? (
+            {price !== undefined && price !== null ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Normal Price</span>
                 <span className="font-bold text-gray-900">₹{price.toLocaleString()}</span>
@@ -893,26 +898,18 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               <option value="quote-only">Quote Only</option>
               <option value="recommended">Suggested</option>
             </select>
-
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <span className="text-gray-400">to</span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Products by Date"
+      />
 
       {/* Product Form Modal */}
       {showProductForm && (

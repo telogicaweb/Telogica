@@ -1,9 +1,10 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useMemo } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, TrendingUp, ShoppingBag, Star, Award, Gift, Zap, CreditCard, Calendar } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, TrendingUp, ShoppingBag, Star, Award, Gift, Zap, CreditCard, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
+import DateFilter from '../components/AdminDashboard/DateFilter';
 
 const UserDashboard = () => {
   const auth = useContext(AuthContext);
@@ -20,6 +21,9 @@ const UserDashboard = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
+  const [quoteDateFrom, setQuoteDateFrom] = useState<string>('');
+  const [quoteDateTo, setQuoteDateTo] = useState<string>('');
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
@@ -94,6 +98,36 @@ const UserDashboard = () => {
       setActionLoading(false);
     }
   };
+
+  const toggleQuoteExpand = (quoteId: string) => {
+    setExpandedQuotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quoteId)) {
+        newSet.delete(quoteId);
+      } else {
+        newSet.add(quoteId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredQuotes = useMemo(() => {
+    if (!quoteDateFrom && !quoteDateTo) return quotes;
+    const fromTime = quoteDateFrom ? new Date(quoteDateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    let toTime = Number.POSITIVE_INFINITY;
+
+    if (quoteDateTo) {
+      const toDate = new Date(quoteDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      toTime = toDate.getTime();
+    }
+
+    return quotes.filter((q) => {
+      const created = q.createdAt ? new Date(q.createdAt).getTime() : undefined;
+      if (created === undefined) return true;
+      return created >= fromTime && created <= toTime;
+    });
+  }, [quotes, quoteDateFrom, quoteDateTo]);
 
 
   const proceedToCheckout = async (quote: any) => {
@@ -520,113 +554,172 @@ const UserDashboard = () => {
 
             {activeTab === 'quotes' && (
               <div>
+                {/* Date Filter */}
+                <DateFilter
+                  dateFrom={quoteDateFrom}
+                  dateTo={quoteDateTo}
+                  onDateFromChange={setQuoteDateFrom}
+                  onDateToChange={setQuoteDateTo}
+                  label="Filter Quotes by Date"
+                  className="mb-6"
+                />
+
                 {/* Active Quotes Section */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
-                  {quotes.filter(q => q.status !== 'completed').length === 0 ? (
+                  {filteredQuotes.filter(q => q.status !== 'completed').length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                       <FileText size={32} className="mx-auto text-gray-300 mb-2" />
                       <p className="text-gray-500 text-sm">No active quotes found.</p>
                     </div>
                   ) : (
                     <div className="grid gap-6 md:grid-cols-2">
-                      {quotes.filter(q => q.status !== 'completed').map(quote => (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
-                          <div className="flex justify-between items-start mb-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                              {getStatusIcon(quote.status)}
-                              {quote.status}
-                            </span>
-                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                          </div>
-
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {quote.products.map((p: any) => (
-                                <li key={p._id} className="flex justify-between">
-                                  <span>{p.product?.name || 'Product Unavailable'}</span>
-                                  <span className="text-gray-500">Qty: {p.quantity}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          {quote.message && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
-                              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                      {filteredQuotes.filter(q => q.status !== 'completed').map(quote => {
+                        const isExpanded = expandedQuotes.has(quote._id);
+                        return (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
+                          {/* Condensed Preview */}
+                          <div className="p-6">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
+                                {getStatusIcon(quote.status)}
+                                {quote.status}
+                              </span>
+                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
                             </div>
-                          )}
 
-                          {quote.adminResponse && (
-                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                              <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-indigo-700">Offered Price:</span>
-                                <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-900">
+                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
+                                </h4>
+                                {quote.adminResponse && (
+                                  <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                                )}
                               </div>
-                              {quote.adminResponse.discountPercentage > 0 && (
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm text-indigo-700">Discount:</span>
-                                  <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
-                                </div>
+                              {!isExpanded && quote.products.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {quote.products[0].product?.name || 'Product Unavailable'}
+                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                </p>
                               )}
-                              <p className="text-sm text-indigo-800">{quote.adminResponse.message}</p>
                             </div>
-                          )}
 
-                          {quote.status === 'responded' && (
-                            <div className="flex gap-2 mt-4">
-                              <button
-                                onClick={() => acceptQuote(quote._id)}
-                                disabled={actionLoading}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                              >
-                                <ThumbsUp size={16} />
-                                Accept
-                              </button>
-                              <button
-                                onClick={() => rejectQuote(quote._id)}
-                                disabled={actionLoading}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                              >
-                                <ThumbsDown size={16} />
-                                Reject
-                              </button>
-                            </div>
-                          )}
-
-                          {quote.status === 'accepted' && (
-                            <>
-                              {quote.orderId ? (
-                                <button
-                                  onClick={() => setActiveTab('orders')}
-                                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                                >
-                                  <CheckCircle size={16} />
-                                  Order Created - View in Orders
-                                </button>
+                            {/* View Quote Toggle Button */}
+                            <button
+                              onClick={() => toggleQuoteExpand(quote._id)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium mb-3"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={16} />
+                                  Hide Details
+                                </>
                               ) : (
-                                <button
-                                  onClick={() => proceedToCheckout(quote)}
-                                  disabled={actionLoading}
-                                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
-                                >
-                                  {actionLoading ? (
-                                    <>
-                                      <Loader2 size={16} className="mr-2 animate-spin" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    'Proceed to Checkout'
-                                  )}
-                                </button>
+                                <>
+                                  <ChevronDown size={16} />
+                                  View Quote
+                                </>
                               )}
-                            </>
-                          )}
+                            </button>
+
+                            {/* Expanded Details */}
+                            {isExpanded && (
+                              <div className="space-y-4 pt-4 border-t border-gray-200">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                                  <ul className="text-sm text-gray-600 space-y-2">
+                                    {quote.products.map((p: any) => (
+                                      <li key={p._id} className="flex justify-between items-start bg-gray-50 p-2 rounded">
+                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
+                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {quote.message && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
+                                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                                  </div>
+                                )}
+
+                                {quote.adminResponse && (
+                                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                    <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                                      <Sparkles size={16} />
+                                      Admin Response
+                                    </h4>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-sm text-indigo-700">Offered Price:</span>
+                                      <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                                    </div>
+                                    {quote.adminResponse.discountPercentage > 0 && (
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-indigo-700">Discount:</span>
+                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                      </div>
+                                    )}
+                                    <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            {quote.status === 'responded' && (
+                              <div className="flex gap-2 mt-4">
+                                <button
+                                  onClick={() => acceptQuote(quote._id)}
+                                  disabled={actionLoading}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                >
+                                  <ThumbsUp size={16} />
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => rejectQuote(quote._id)}
+                                  disabled={actionLoading}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                >
+                                  <ThumbsDown size={16} />
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+
+                            {quote.status === 'accepted' && (
+                              <>
+                                {quote.orderId ? (
+                                  <button
+                                    onClick={() => setActiveTab('orders')}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                  >
+                                    <CheckCircle size={16} />
+                                    Order Created - View in Orders
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => proceedToCheckout(quote)}
+                                    disabled={actionLoading}
+                                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
+                                  >
+                                    {actionLoading ? (
+                                      <>
+                                        <Loader2 size={16} className="mr-2 animate-spin" />
+                                        Processing...
+                                      </>
+                                    ) : (
+                                      'Proceed to Checkout'
+                                    )}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>
@@ -634,45 +727,95 @@ const UserDashboard = () => {
                 {/* Quote History Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
-                  {quotes.filter(q => q.status === 'completed').length === 0 ? (
+                  {filteredQuotes.filter(q => q.status === 'completed').length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                       <Clock size={32} className="mx-auto text-gray-300 mb-2" />
                       <p className="text-gray-500 text-sm">No completed quotes found.</p>
                     </div>
                   ) : (
                     <div className="grid gap-6 md:grid-cols-2">
-                      {quotes.filter(q => q.status === 'completed').map(quote => (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
-                          <div className="flex justify-between items-start mb-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
-                              <CheckCircle size={14} />
-                              Completed
-                            </span>
-                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                          </div>
-
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {quote.products.map((p: any) => (
-                                <li key={p._id} className="flex justify-between">
-                                  <span>{p.product?.name || 'Product Unavailable'}</span>
-                                  <span className="text-gray-500">Qty: {p.quantity}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          {quote.adminResponse && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Final Price:</span>
-                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
-                              </div>
+                      {filteredQuotes.filter(q => q.status === 'completed').map(quote => {
+                        const isExpanded = expandedQuotes.has(quote._id);
+                        return (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
+                          <div className="p-6">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                                <CheckCircle size={14} />
+                                Completed
+                              </span>
+                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
                             </div>
-                          )}
+
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-900">
+                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
+                                </h4>
+                                {quote.adminResponse && (
+                                  <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                                )}
+                              </div>
+                              {!isExpanded && quote.products.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {quote.products[0].product?.name || 'Product Unavailable'}
+                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* View Quote Toggle Button */}
+                            <button
+                              onClick={() => toggleQuoteExpand(quote._id)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={16} />
+                                  Hide Details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={16} />
+                                  View Quote
+                                </>
+                              )}
+                            </button>
+
+                            {/* Expanded Details */}
+                            {isExpanded && (
+                              <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                                  <ul className="text-sm text-gray-600 space-y-2">
+                                    {quote.products.map((p: any) => (
+                                      <li key={p._id} className="flex justify-between items-start bg-white p-2 rounded">
+                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
+                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {quote.adminResponse && (
+                                  <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm text-gray-600">Final Price:</span>
+                                      <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                                    </div>
+                                    {quote.adminResponse.discountPercentage > 0 && (
+                                      <div className="flex justify-between items-center mt-2">
+                                        <span className="text-sm text-gray-600">Discount Applied:</span>
+                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>

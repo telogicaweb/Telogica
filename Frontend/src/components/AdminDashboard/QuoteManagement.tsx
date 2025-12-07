@@ -4,28 +4,25 @@ import {
   X, 
   Download, 
   FileDown, 
-  Filter, 
   Search, 
-  Calendar, 
   User, 
   Mail, 
   Package, 
   MessageSquare,
   DollarSign,
-  ChevronDown,
   ChevronUp,
   Eye,
   RefreshCw,
-  Printer,
-  MoreVertical,
   AlertCircle,
   CheckCircle,
   XCircle,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Calendar
 } from 'lucide-react';
 import api from '../../api';
 import { Quote } from './types';
+import DateFilter from './DateFilter';
 
 interface QuoteManagementProps {
   quotes: Quote[];
@@ -48,7 +45,6 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
   const [selectedQuotes, setSelectedQuotes] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const toggleQuoteExpansion = (quoteId: string) => {
     const newExpanded = new Set(expandedQuotes);
@@ -84,7 +80,14 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
     // Date filtering
     if (dateFrom || dateTo) {
       const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
-      const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+      let toTime = Number.POSITIVE_INFINITY;
+      
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        toTime = toDate.getTime();
+      }
+
       filtered = filtered.filter((q) => {
         const created = q.createdAt ? new Date(q.createdAt).getTime() : undefined;
         if (created === undefined) return true;
@@ -392,25 +395,6 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-gray-400" />
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  aria-label="From Date"
-                />
-                <span className="text-gray-500">to</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  aria-label="To Date"
-                />
-              </div>
-
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -443,6 +427,15 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Quotes by Date"
+      />
 
       {/* Bulk Actions Bar */}
       {selectedQuotes.size > 0 && (
@@ -507,7 +500,9 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
           </div>
         ) : (
           <div className="grid gap-4">
-            {filteredQuotes.map((quote) => (
+            {filteredQuotes.map((quote) => {
+              const isExpanded = expandedQuotes.has(quote._id);
+              return (
               <div
                 key={quote._id}
                 className={`bg-white rounded-xl border transition-all hover:shadow-md ${
@@ -516,9 +511,9 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                     : 'border-gray-200'
                 }`}
               >
-                {/* Quote Header */}
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex items-start justify-between">
+                {/* Quote Header - Condensed View */}
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="mt-1">
                         <input
@@ -535,12 +530,12 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                           </div>
                           <div>
                             <h3 className="font-semibold text-lg text-gray-900">
-                              {quote.user?.name || quote.userId?.name || 'Unknown User'}
+                              {quote.user?.name || quote.userId?.name || (quote as any).userName || 'Guest User'}
                             </h3>
                             <div className="flex items-center gap-3 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
                                 <Mail className="w-3.5 h-3.5" />
-                                {quote.user?.email || quote.userId?.email}
+                                {quote.user?.email || quote.userId?.email || (quote as any).userEmail || 'N/A'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5" />
@@ -558,7 +553,7 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-3">
+                    <div className="flex flex-col items-end gap-2">
                       <StatusBadge status={quote.status ?? 'pending'} />
                       {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
                         <div className="text-right">
@@ -568,53 +563,79 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                           </p>
                         </div>
                       )}
-                      <button
-                        onClick={() => toggleQuoteExpansion(quote._id)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        {expandedQuotes.has(quote._id) ? (
-                          <ChevronUp className="w-5 h-5 text-gray-500" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-500" />
-                        )}
-                      </button>
                     </div>
                   </div>
-                </div>
 
-                {/* Expanded Content */}
-                {expandedQuotes.has(quote._id) && (
-                  <div className="p-6 border-t border-gray-100">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Products Section */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-4">
-                          <Package className="w-5 h-5 text-gray-500" />
-                          <h4 className="font-medium text-gray-900">Products Requested</h4>
-                        </div>
-                        <div className="space-y-3">
-                          {quote.products.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                            >
-                              <div className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
-                                <Package className="w-5 h-5 text-gray-400" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium text-gray-900">
-                                  {item.product?.name || item.productId?.name || 'Unknown Product'}
-                                </p>
-                                <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                  {/* Condensed Product Summary */}
+                  {!isExpanded && (
+                    <div className="mb-3 ml-14">
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">{quote.products.length} Product{quote.products.length > 1 ? 's' : ''}</span>
+                        {quote.products.length > 0 && (
+                          <span className="text-gray-600">
+                            {' • '}{quote.products[0].product?.name || quote.products[0].productId?.name || 'Unknown Product'}
+                            {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                          </span>
+                        )}
+                      </p>
+                      {quote.message && (
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+                          Message: {quote.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-                      {/* Messages Section */}
-                      <div className="space-y-6">
-                        {quote.message && (
+                  {/* View Quote Toggle Button */}
+                  <button
+                    onClick={() => toggleQuoteExpansion(quote._id)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 rounded-lg transition-all text-sm font-medium border border-indigo-200"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUp className="w-4 h-4" />
+                        Hide Details
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        View Quote
+                      </>
+                    )}
+                  </button>
+
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {/* Products Section */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-4">
+                            <Package className="w-5 h-5 text-gray-500" />
+                            <h4 className="font-medium text-gray-900">Products Requested</h4>
+                          </div>
+                          <div className="space-y-3">
+                            {quote.products.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                              >
+                                <div className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
+                                  <Package className="w-5 h-5 text-gray-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">
+                                    {item.product?.name || item.productId?.name || 'Unknown Product'}
+                                  </p>
+                                  <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Messages Section */}
+                        <div className="space-y-6">{quote.message && (
                           <div>
                             <div className="flex items-center gap-2 mb-3">
                               <MessageSquare className="w-5 h-5 text-gray-500" />
@@ -650,12 +671,12 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                             </div>
                           </div>
                         )}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Action Buttons for Pending Quotes */}
-                    {quote.status === 'pending' && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
+                      {/* Action Buttons for Pending Quotes */}
+                      {quote.status === 'pending' && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
                         <div className="flex flex-col lg:flex-row gap-4">
                           <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -719,10 +740,11 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

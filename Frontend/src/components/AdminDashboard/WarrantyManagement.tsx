@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Download, CheckCircle, X } from 'lucide-react';
 import api from '../../api';
 import { Warranty } from './types';
+import DateFilter from './DateFilter';
 
 interface WarrantyManagementProps {
   warranties: Warranty[];
@@ -12,6 +13,27 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
   warranties,
   onWarrantiesUpdated,
 }) => {
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
+  const filteredWarranties = useMemo(() => {
+    if (!dateFrom && !dateTo) return warranties;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    let toTime = Number.POSITIVE_INFINITY;
+
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      toTime = toDate.getTime();
+    }
+
+    return warranties.filter((w) => {
+      const created = w.createdAt ? new Date(w.createdAt).getTime() : undefined;
+      if (created === undefined) return true;
+      return created >= fromTime && created <= toTime;
+    });
+  }, [warranties, dateFrom, dateTo]);
+
   const handleWarrantyAction = async (warrantyId: string, action: string) => {
     try {
       await api.put(`/api/warranties/${warrantyId}`, { status: action });
@@ -28,8 +50,17 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
 
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Warranties by Registration Date"
+      />
+
       <div className="space-y-4">
-        {warranties.map((warranty) => (
+        {filteredWarranties.map((warranty) => (
           <div
             key={warranty._id}
             className="bg-white p-6 rounded-lg shadow border border-gray-200"
