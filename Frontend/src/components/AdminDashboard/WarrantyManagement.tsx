@@ -138,9 +138,9 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
         doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
       }
 
-      doc.save(`warranties_${Date.now()}.pdf`);
+      doc.save(`warranties_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err: any) {
-      alert(err?.message || 'Failed to export PDF');
+      alert(err?.message || 'Failed to generate PDF export');
     } finally {
       setExporting(false);
     }

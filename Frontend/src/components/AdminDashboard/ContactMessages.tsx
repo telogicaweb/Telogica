@@ -162,9 +162,9 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
         doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
       }
 
-      doc.save(`contact_messages_${Date.now()}.pdf`);
+      doc.save(`contact_messages_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err: any) {
-      alert(err?.message || 'Failed to export PDF');
+      alert(err?.message || 'Failed to generate PDF export');
     } finally {
       setExporting(false);
     }
