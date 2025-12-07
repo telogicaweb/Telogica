@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import api from '../../api';
 import { Quote } from './types';
-import DateFilter from './DateFilter';
 
 interface QuoteManagementProps {
   quotes: Quote[];
@@ -379,7 +378,7 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
         </div>
 
         {/* Filters Bar */}
-        <div className="bg-white p-4 rounded-xl border border-gray-200">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-4">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -425,17 +424,51 @@ const QuoteManagement: React.FC<QuoteManagementProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Date Filter - Integrated within filters bar */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-5 h-5 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-700">Filter by Date</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+            {(dateFrom || dateTo) && (
+              <div className="mt-2 text-xs text-gray-600">
+                {dateFrom && dateTo ? (
+                  <span>Showing quotes from {dateFrom} to {dateTo}</span>
+                ) : dateFrom ? (
+                  <span>Showing quotes from {dateFrom} onwards</span>
+                ) : (
+                  <span>Showing quotes up to {dateTo}</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Date Filter */}
-      <DateFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        label="Filter Quotes by Date"
-      />
 
       {/* Bulk Actions Bar */}
       {selectedQuotes.size > 0 && (
