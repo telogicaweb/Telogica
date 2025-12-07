@@ -45,7 +45,12 @@ const createOrder = async (req, res) => {
       const productIds = products.map(p => p.product);
       const dbProducts = await Product.find({ _id: { $in: productIds } });
 
-      const nonTelecomProducts = dbProducts.filter(p => !p.isTelecom);
+      const nonTelecomProducts = dbProducts.filter(p => {
+        // Check both isTelecom field and category field (case-insensitive)
+        const isTelecomByFlag = p.isTelecom === true;
+        const isTelecomByCategory = p.category && p.category.toLowerCase() === 'telecommunication';
+        return !isTelecomByFlag && !isTelecomByCategory;
+      });
 
       if (nonTelecomProducts.length > 0) {
         return res.status(400).json({
@@ -532,7 +537,7 @@ const getMyOrders = async (req, res) => {
 const getOrders = async (req, res) => {
   try {
     const orders = await Order.find({})
-      .populate('user', 'id name')
+      .populate('user', 'name email')
       .populate('products.product')
       .sort({ createdAt: -1 })
       .lean();

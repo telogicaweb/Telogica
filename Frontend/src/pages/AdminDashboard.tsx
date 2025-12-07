@@ -137,7 +137,7 @@ interface Quote {
 interface Order {
   _id: string;
   orderNumber?: string;
-  userId: { _id: string; name: string; email: string };
+  userId?: { _id: string; name: string; email: string };
   user?: { _id: string; name: string; email: string };
   products: Array<{
     productId: { _id: string; name: string };
@@ -323,7 +323,6 @@ const AdminDashboard: React.FC = () => {
 
   // Order management filters
   const [orderSearch, setOrderSearch] = useState('');
-  const [orderFilterStatus, setOrderFilterStatus] = useState<string>('all');
   const [orderFilterPayment, setOrderFilterPayment] = useState<string>('all');
 
   // Warranty management filters
@@ -366,19 +365,6 @@ const AdminDashboard: React.FC = () => {
     const cats = new Set(products.map(p => p.category).filter(Boolean));
     return Array.from(cats).sort();
   }, [products]);
-
-
-  // Dashboard Chart Data (Moved to top level to avoid hook violation)
-  const orderStatusData = useMemo(() => {
-    const statusCounts: Record<string, number> = {};
-    orders.forEach(order => {
-      const status = order.orderStatus || 'Unknown';
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
-    });
-    return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
-  }, [orders]);
-
-
 
   // Product units modal state
   const [showUnitsModal, setShowUnitsModal] = useState(false);
@@ -1049,21 +1035,6 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Order Status */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-6">Order Status Overview</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={orderStatusData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} />
-                  <RechartsTooltip cursor={{ fill: '#F3F4F6' }} />
-                  <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
         </div>
 
         {/* Recent Activity Section */}
@@ -1081,29 +1052,19 @@ const AdminDashboard: React.FC = () => {
                     <th className="px-6 py-3">Order ID</th>
                     <th className="px-6 py-3">Customer</th>
                     <th className="px-6 py-3">Amount</th>
-                    <th className="px-6 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {recentOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-gray-900">#{order._id.slice(-6)}</td>
-                      <td className="px-6 py-4">{order.userId?.name || 'Unknown'}</td>
+                      <td className="px-6 py-4">{order.user?.name || order.userId?.name || 'Unknown'}</td>
                       <td className="px-6 py-4">{formatCurrency(order.totalAmount)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                            order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-gray-100 text-gray-700'
-                          }`}>
-                          {order.orderStatus}
-                        </span>
-                      </td>
                     </tr>
                   ))}
                   {recentOrders.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent orders found</td>
+                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500">No recent orders found</td>
                     </tr>
                   )}
                 </tbody>
@@ -2671,11 +2632,6 @@ const AdminDashboard: React.FC = () => {
         }
       }
 
-      // Order status filter
-      if (orderFilterStatus !== 'all' && order.orderStatus !== orderFilterStatus) {
-        return false;
-      }
-
       // Payment status filter
       if (orderFilterPayment !== 'all' && order.paymentStatus !== orderFilterPayment) {
         return false;
@@ -2684,7 +2640,7 @@ const AdminDashboard: React.FC = () => {
       return true;
     });
 
-    const hasActiveFilters = orderSearch || orderFilterStatus !== 'all' || orderFilterPayment !== 'all';
+    const hasActiveFilters = orderSearch || orderFilterPayment !== 'all';
 
     // Calculate stats
     const totalOrders = orders.length;
@@ -2771,19 +2727,6 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <select
-              value={orderFilterStatus}
-              onChange={(e) => setOrderFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            >
-              <option value="all">All Order Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-
-            <select
               value={orderFilterPayment}
               onChange={(e) => setOrderFilterPayment(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -2799,7 +2742,6 @@ const AdminDashboard: React.FC = () => {
               <button
                 onClick={() => {
                   setOrderSearch('');
-                  setOrderFilterStatus('all');
                   setOrderFilterPayment('all');
                 }}
                 className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
@@ -2863,7 +2805,6 @@ const AdminDashboard: React.FC = () => {
                 <button
                   onClick={() => {
                     setOrderSearch('');
-                    setOrderFilterStatus('all');
                     setOrderFilterPayment('all');
                   }}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -2891,9 +2832,6 @@ const AdminDashboard: React.FC = () => {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Order Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Payment Status
@@ -2947,20 +2885,6 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4">
                         <span className="text-base font-bold text-gray-900">
                           ₹{order.totalAmount.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
-                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                            order.orderStatus === 'processing' ? 'bg-indigo-100 text-indigo-800' :
-                              order.orderStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                          }`}>
-                          {order.orderStatus === 'delivered' && <CheckCircle className="w-3 h-3 mr-1" />}
-                          {order.orderStatus === 'shipped' && <Package className="w-3 h-3 mr-1" />}
-                          {order.orderStatus === 'cancelled' && <X className="w-3 h-3 mr-1" />}
-                          {order.orderStatus === 'pending' && <Clock className="w-3 h-3 mr-1" />}
-                          {order.orderStatus || 'Pending'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
