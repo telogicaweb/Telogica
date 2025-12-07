@@ -462,7 +462,14 @@ const verifyPayment = async (req, res) => {
             for (const serialNumber of item.serialNumbers) {
               // Find the unit to link it properly
               const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
-              const warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
+              
+              // Determine warranty period based on product category
+              let warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
+              
+              // Check if product category is "Premium Extra" - add 1 extra year (12 months)
+              if (item.product.category && item.product.category.toLowerCase().includes('premium extra')) {
+                warrantyMonths = 24; // 2 years total (1 year base + 1 year extra)
+              }
 
               const startDate = new Date();
               startDate.setDate(startDate.getDate() + 3); // Today + 3 days

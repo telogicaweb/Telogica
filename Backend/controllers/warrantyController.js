@@ -189,15 +189,23 @@ exports.approveWarranty = async (req, res) => {
       startDate.setDate(startDate.getDate() + 3);
     }
 
+    // Determine warranty period based on product category
+    let warrantyMonths = warranty.warrantyPeriodMonths || 12;
+    if (warranty.product && warranty.product.category && 
+        warranty.product.category.toLowerCase().includes('premium extra')) {
+      warrantyMonths = 24; // 2 years for Premium Extra products
+    }
+
     // If end date not provided, calculate from start date + warranty period
     if (!endDate) {
       endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + (warranty.warrantyPeriodMonths || 12));
+      endDate.setMonth(endDate.getMonth() + warrantyMonths);
     }
 
     warranty.status = 'approved';
     warranty.warrantyStartDate = startDate;
     warranty.warrantyEndDate = endDate;
+    warranty.warrantyPeriodMonths = warrantyMonths; // Update the warranty period
     warranty.adminNotes = adminNotes;
 
     // Generate Warranty Certificate PDF
