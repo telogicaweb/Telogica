@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Trash2, Mail } from 'lucide-react';
+import { Trash2, Mail, Download, FileDown } from 'lucide-react';
 import api from '../../api';
 import { ContactMessage } from './types';
 import DateFilter from './DateFilter';
@@ -16,6 +16,7 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const handleStatusChange = async (
     messageId: string,
@@ -55,7 +56,14 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
     // Date filter
     if (dateFrom || dateTo) {
       const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
-      const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+      let toTime = Number.POSITIVE_INFINITY;
+      
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        toTime = toDate.getTime();
+      }
+
       filtered = filtered.filter((msg) => {
         const created = msg.createdAt ? new Date(msg.createdAt).getTime() : undefined;
         if (created === undefined) return true;
@@ -66,20 +74,131 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
     return filtered;
   }, [messages, statusFilter, dateFrom, dateTo]);
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data.length) {
+      alert('No data to export');
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const cell =
+              row[header] === null || row[header] === undefined ? '' : row[header];
+            return JSON.stringify(cell);
+          })
+          .join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const exportMessages = () => {
+    const data = filteredMessages.map((m) => ({
+      ID: m._id,
+      Name: m.name,
+      Email: m.email,
+      Phone: m.phone,
+      Subject: m.subject,
+      Message: m.message,
+      Status: m.status,
+      Date: new Date(m.createdAt).toLocaleDateString(),
+    }));
+    downloadCSV(
+      data,
+      `contact_messages_export_${new Date().toISOString().split('T')[0]}.csv`
+    );
+  };
+
+  const exportMessagesPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Contact Messages Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Messages: ${filteredMessages.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+
+      const head = [['Name', 'Email', 'Phone', 'Subject', 'Status', 'Date']];
+      const body = filteredMessages.map((m) => [
+        m.name,
+        m.email,
+        m.phone,
+        m.subject,
+        m.status,
+        new Date(m.createdAt).toLocaleDateString(),
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [33, 150, 243] },
+      });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`contact_messages_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">All Messages</option>
-          <option value="new">New</option>
-          <option value="read">Read</option>
-          <option value="replied">Replied</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Messages</option>
+            <option value="new">New</option>
+            <option value="read">Read</option>
+            <option value="replied">Replied</option>
+          </select>
+          <button
+            onClick={exportMessages}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
+          <button
+            onClick={exportMessagesPDF}
+            disabled={exporting}
+            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" /> {exporting ? 'Exporting...' : 'PDF'}
+          </button>
+        </div>
       </div>
 
       {/* Date Filter */}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Download, CheckCircle, X } from 'lucide-react';
+import { Download, CheckCircle, X, FileDown } from 'lucide-react';
 import api from '../../api';
 import { Warranty } from './types';
 import DateFilter from './DateFilter';
@@ -15,6 +15,7 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
 }) => {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [exporting, setExporting] = useState(false);
 
   const filteredWarranties = useMemo(() => {
     if (!dateFrom && !dateTo) return warranties;
@@ -46,9 +47,125 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
     }
   };
 
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data.length) {
+      alert('No data to export');
+      return;
+    }
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const cell =
+              row[header] === null || row[header] === undefined ? '' : row[header];
+            return JSON.stringify(cell);
+          })
+          .join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const exportWarranties = () => {
+    const data = filteredWarranties.map((w) => ({
+      ID: w._id,
+      Customer: w.userId?.name || 'Unknown',
+      Email: w.userId?.email || 'N/A',
+      ProductName: w.productName,
+      SerialNumber: w.serialNumber,
+      ModelNumber: w.modelNumber,
+      PurchaseDate: new Date(w.purchaseDate).toLocaleDateString(),
+      PurchaseType: w.purchaseType,
+      Status: w.status,
+      RegisteredDate: new Date(w.createdAt).toLocaleDateString(),
+    }));
+    downloadCSV(
+      data,
+      `warranties_export_${new Date().toISOString().split('T')[0]}.csv`
+    );
+  };
+
+  const exportWarrantiesPDF = async () => {
+    try {
+      setExporting(true);
+      const { default: jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default as any;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text('Telogica Warranties Report', 14, 18);
+      doc.setFontSize(11);
+      const subtitle = `Warranties: ${filteredWarranties.length} | Generated: ${new Date().toLocaleString()}`;
+      doc.text(subtitle, 14, 26);
+      if (dateFrom || dateTo) doc.text(`Date Filter: ${dateFrom || 'Any'} to ${dateTo || 'Any'}`, 14, 32);
+
+      const head = [['Customer', 'Email', 'Product', 'Serial #', 'Status', 'Purchase Date', 'Registered']];
+      const body = filteredWarranties.map((w) => [
+        w.userId?.name || 'Unknown',
+        w.userId?.email || 'N/A',
+        w.productName,
+        w.serialNumber,
+        w.status,
+        new Date(w.purchaseDate).toLocaleDateString(),
+        new Date(w.createdAt).toLocaleDateString(),
+      ]);
+
+      autoTable(doc, {
+        startY: 38,
+        head,
+        body,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [76, 175, 80] },
+      });
+
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(9);
+        doc.text(`Page ${i} of ${pageCount}`, 200 - 14, 287, { align: 'right' });
+      }
+
+      doc.save(`warranties_${Date.now()}.pdf`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={exportWarranties}
+            className="bg-white border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
+          <button
+            onClick={exportWarrantiesPDF}
+            disabled={exporting}
+            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
+          >
+            <FileDown className="w-4 h-4" /> {exporting ? 'Exporting...' : 'PDF'}
+          </button>
+        </div>
+      </div>
 
       {/* Date Filter */}
       <DateFilter

@@ -19,8 +19,14 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
   const filteredOrders = useMemo(() => {
     if (!dateFrom && !dateTo) return orders;
 
-    const fromTime = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-    const toTime = dateTo ? new Date(dateTo).getTime() : Infinity;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    let toTime = Number.POSITIVE_INFINITY;
+    
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      toTime = toDate.getTime();
+    }
 
     return orders.filter((o) => {
       const created = o.createdAt ? new Date(o.createdAt).getTime() : undefined;
@@ -139,22 +145,6 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Order Management</h2>
 
         <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500"
-          />
-
-          <span className="text-gray-600 font-medium">to</span>
-
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500"
-          />
-
           <button
             onClick={exportOrders}
             className="bg-white border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
@@ -171,6 +161,15 @@ const OrderManagement: React.FC<OrderManagementProps> = ({ orders, onOrdersUpdat
           </button>
         </div>
       </div>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Orders by Date"
+      />
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
