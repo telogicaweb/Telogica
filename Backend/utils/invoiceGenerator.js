@@ -3,13 +3,13 @@ const cloudinary = require('./cloudinary');
 
 // Telogica Official Company Details
 const COMPANY_INFO = {
-  name: 'Telogica',
-  fullName: 'Telogica Technologies Pvt. Ltd.',
-  address: 'Plot No. 42, Electronics City Phase 1',
-  city: 'Bangalore, Karnataka - 560100',
+  name: 'TELOGICA LIMITED',
+  fullName: 'TELOGICA LIMITED',
+  address: 'Empire Square, Plot No 233-A, 234 & 235',
+  city: 'Hyderabad- 500 033, Telangana',
   country: 'India',
-  email: 'sales@telogica.com',
-  phone: '+91 80 4567 8900',
+  email: 'support@telogica.com',
+  phone: '+91 9396610682',
   website: 'www.telogica.com',
   gst: 'GST: 29AABCT1332L1Z3',
   cin: 'CIN: U72200KA2015PTC081234',
