@@ -124,6 +124,16 @@ router.post('/send-template', async (req, res) => {
           templateData.amount
         );
         break;
+      case 'payment-success':
+        subject = `Payment Successful - Order #${templateData.orderNumber}`;
+        html = emailTemplates.getPaymentSuccessEmail(
+          templateData.customerName,
+          templateData.orderNumber,
+          templateData.amount,
+          templateData.invoiceUrl,
+          templateData.warrantyLinks
+        );
+        break;
       default:
         return res.status(400).json({ 
           success: false, 

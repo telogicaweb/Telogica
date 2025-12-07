@@ -429,6 +429,114 @@ const getInvoiceEmail = (customerName, invoiceNumber, amount) => {
   `;
 };
 
+const getPaymentSuccessEmail = (customerName, orderNumber, amount, invoiceUrl = null, warrantyLinks = []) => {
+  let invoiceSection = '';
+  if (invoiceUrl) {
+    invoiceSection = `
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${invoiceUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">Download Invoice</a>
+      </div>
+    `;
+  }
+
+  let warrantySection = '';
+  if (warrantyLinks && warrantyLinks.length > 0) {
+    const warrantyItems = warrantyLinks.map(w => `
+      <div style="background-color: #f0fdf4; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #10b981;">
+        <p style="margin: 5px 0; color: #065f46;"><strong>${w.name}</strong></p>
+        <p style="margin: 5px 0; color: #047857; font-size: 14px;">Serial Number: ${w.serial}</p>
+        <a href="${w.url}" style="color: #059669; text-decoration: none; font-weight: 600; font-size: 14px;">📄 Download Warranty Certificate</a>
+      </div>
+    `).join('');
+
+    warrantySection = `
+      <div style="margin: 30px 0;">
+        <h3 style="color: #065f46; margin-bottom: 15px; font-size: 18px;">📋 Warranty Certificates</h3>
+        ${warrantyItems}
+      </div>
+    `;
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white;">
+        ${getEmailHeader()}
+        <div style="padding: 40px 30px;">
+          <div style="text-align: center; margin: 20px 0;">
+            <div style="display: inline-block; background-color: #dcfce7; padding: 15px 30px; border-radius: 50px;">
+              <span style="font-size: 40px;">✅</span>
+            </div>
+          </div>
+
+          <h2 style="color: #065f46; text-align: center; margin: 20px 0; font-size: 28px;">Payment Successful!</h2>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Dear ${customerName},</p>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Thank you for your payment! We're pleased to confirm that your payment has been processed successfully.</p>
+
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 25px; border-radius: 12px; margin: 30px 0; text-align: center;">
+            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Order Number</p>
+            <p style="margin: 10px 0 0 0; font-size: 28px; font-weight: 700;">#${orderNumber}</p>
+          </div>
+
+          <div style="background-color: #f9fafb; padding: 25px; border-radius: 12px; margin: 25px 0;">
+            <div style="border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 15px;">
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">Payment Amount</p>
+              <p style="margin: 10px 0 0 0; color: #059669; font-size: 32px; font-weight: 700;">₹${typeof amount === 'number' ? amount.toLocaleString('en-IN') : amount}</p>
+            </div>
+            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Payment Status</span>
+              <span style="color: #059669; font-weight: 600;">✓ Completed</span>
+            </div>
+            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Payment Date</span>
+              <span style="color: #1f2937; font-weight: 600;">${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Order ID</span>
+              <span style="color: #1f2937; font-weight: 600;">#${orderNumber}</span>
+            </div>
+          </div>
+
+          ${invoiceSection}
+          ${warrantySection}
+
+          <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 30px 0; border-radius: 6px;">
+            <h4 style="margin: 0 0 10px 0; color: #1e40af; font-size: 16px;">📦 What's Next?</h4>
+            <ul style="margin: 10px 0; padding-left: 20px; color: #1e3a8a; line-height: 1.8;">
+              <li>Your order is being processed and will be shipped soon</li>
+              <li>You'll receive a tracking link once your order is dispatched</li>
+              <li>Keep your invoice and warranty certificates safe</li>
+              <li>Contact our support team if you have any questions</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${COMPANY_INFO.website}/user-dashboard" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">View Order Status</a>
+          </div>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Thank you for choosing ${COMPANY_INFO.name}! We appreciate your business and look forward to serving you.</p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">If you have any questions or concerns, please don't hesitate to reach out to our customer support team.</p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Best regards,<br>
+            <strong>The ${COMPANY_INFO.name} Team</strong>
+          </p>
+        </div>
+        ${getEmailFooter()}
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 module.exports = {
   getWelcomeEmail,
   getRetailerWelcomeEmail,
@@ -439,5 +547,6 @@ module.exports = {
   getWarrantyEmail,
   getContactConfirmationEmail,
   getPasswordResetEmail,
-  getInvoiceEmail
+  getInvoiceEmail,
+  getPaymentSuccessEmail
 };

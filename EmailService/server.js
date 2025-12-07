@@ -18,16 +18,26 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS Configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5000','http://localhost:3000','https://telogica-lac.vercel.app','*'];
+// CORS Configuration - Allow all origins for deployed service
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // If wildcard is in allowed origins, allow all
+    if (allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }
+  },
+  credentials: true
 }));
 
 // Body Parser
@@ -47,7 +57,7 @@ app.get('/health', (req, res) => {
     service: 'Email Service',
     timestamp: new Date().toISOString()
   });
-});
+}); 
 
 // Error Handler
 app.use((err, req, res, next) => {
