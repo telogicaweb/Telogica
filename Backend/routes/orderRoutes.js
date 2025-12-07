@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice, generateCustomerInvoice } = require('../controllers/orderController');
+const { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice, generateCustomerInvoice, updateOrderTrackingLink } = require('../controllers/orderController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
@@ -13,6 +13,7 @@ router.route('/:id/invoice').get(protect, downloadInvoice);
 router.route('/dropship-invoice').post(protect, require('../controllers/orderController').generateDropshipInvoice);
 router.route('/:id/customer-invoice').post(protect, generateCustomerInvoice);
 router.route('/dropship-shipments').get(protect, admin, require('../controllers/orderController').getDropshipOrders);
+router.route('/:id/tracking').put(protect, admin, updateOrderTrackingLink);
 router.route('/:id').put(protect, admin, updateOrderStatus);
 
 module.exports = router;

@@ -45,4 +45,7 @@ router.get('/email-logs', protect, admin, exportController.exportEmailLogs);
 // Blog exports
 router.get('/blogs', protect, admin, exportController.exportBlogs);
 
+// User 360 view export
+router.get('/user-360/:userId', protect, admin, exportController.exportUser360);
+
 module.exports = router;

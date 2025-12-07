@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 const ProductUnit = require('../models/ProductUnit');
 const { sendEmail } = require('../utils/mailer');
 const { generateInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+const { getInvoiceEmail } = require('../utils/emailTemplates');
 
 // Generate invoice for an order
 exports.generateInvoice = async (req, res) => {
@@ -71,12 +72,19 @@ exports.generateInvoice = async (req, res) => {
     await invoice.populate('user order');
 
     // Send invoice email to user
+    const invoiceEmailHtml = getInvoiceEmail(
+      order.user.name,
+      invoice.invoiceNumber,
+      invoice.invoiceUrl || '#'
+    );
+    
     await sendEmail(
       order.user.email,
       `Invoice ${invoice.invoiceNumber} - Telogica`,
-      `Thank you for your purchase! Your invoice ${invoice.invoiceNumber} for order ${order._id} is ready. Total amount: ₹${totalAmount}`,
+      `Your invoice ${invoice.invoiceNumber} for order ${order._id} is ready. Total amount: ₹${totalAmount}`,
       'invoice_generated',
-      { entityType: 'invoice', entityId: invoice._id }
+      { entityType: 'invoice', entityId: invoice._id },
+      invoiceEmailHtml
     );
 
     res.status(201).json({

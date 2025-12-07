@@ -37,7 +37,9 @@ import {
   Calendar,
   ClipboardList,
   Info,
-  Truck
+  Truck,
+  Link as LinkIcon,
+  Send
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -132,6 +134,7 @@ interface Quote {
   adminResponse?: any;
   quotedPrice?: number;
   createdAt?: string;
+  deliveryTrackingLink?: string;
 }
 
 interface Order {
@@ -157,6 +160,7 @@ interface Order {
     address: string;
   };
   customerInvoiceUrl?: string;
+  deliveryTrackingLink?: string;
 }
 
 interface DropshipOrder extends Order {
@@ -288,6 +292,7 @@ const getDefaultAnalytics = (): Analytics => ({
 
 const AdminDashboard: React.FC = () => {
   const authContext = useContext(AuthContext);
+  const user = authContext?.user;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -347,6 +352,26 @@ const AdminDashboard: React.FC = () => {
   const [dropshipSearch, setDropshipSearch] = useState('');
   const [showDropshipModal, setShowDropshipModal] = useState(false);
   const [selectedDropshipOrder, setSelectedDropshipOrder] = useState<DropshipOrder | null>(null);
+
+  // User 360 View state
+  const [showUser360Modal, setShowUser360Modal] = useState(false);
+  const [selectedUser360, setSelectedUser360] = useState<User | null>(null);
+  const [user360Data, setUser360Data] = useState<{
+    orders: Order[];
+    quotes: Quote[];
+    warranties: any[];
+    inventory: any[];
+  }>({ orders: [], quotes: [], warranties: [], inventory: [] });
+
+  // Order Details Modal state
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Tracking Link Modal states
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [trackingLinkInput, setTrackingLinkInput] = useState('');
+  const [trackingType, setTrackingType] = useState<'order' | 'quote'>('order');
+  const [selectedTrackingId, setSelectedTrackingId] = useState<string>('');
 
   // Form states
   const [showProductForm, setShowProductForm] = useState(false);
@@ -559,6 +584,117 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleViewUserWarranties = async (userId: string) => {
+    try {
+      const response = await api.get(`/api/warranties?userId=${userId}`);
+      const warranties = response.data;
+      
+      if (!warranties || warranties.length === 0) {
+        alert('No warranties found for this user');
+        return;
+      }
+
+      // Filter warranties that have invoice PDFs
+      const warrantyPDFs = warranties.filter((w: any) => w.invoice);
+      
+      if (warrantyPDFs.length === 0) {
+        alert('No warranty PDFs found for this user');
+        return;
+      }
+
+      // Open each PDF in a new tab
+      warrantyPDFs.forEach((warranty: any, index: number) => {
+        setTimeout(() => {
+          window.open(warranty.invoice, '_blank');
+        }, index * 500); // Stagger opens to avoid popup blockers
+      });
+      
+      alert(`Opening ${warrantyPDFs.length} warranty PDF(s)`);
+    } catch (error: any) {
+      console.error('Error fetching warranties:', error);
+      alert(error.response?.data?.message || 'Failed to fetch warranty PDFs');
+    }
+  };
+
+  const handleViewUserInventory = async (userId: string) => {
+    try {
+      const response = await api.get(`/api/retailer-inventory?retailerId=${userId}`);
+      const inventory = response.data;
+      
+      if (!inventory || inventory.length === 0) {
+        alert('No inventory found for this retailer');
+        return;
+      }
+
+      // Filter inventory that have customer invoice PDFs
+      const inventoryPDFs = inventory.filter((inv: any) => inv.customerInvoice);
+      
+      if (inventoryPDFs.length === 0) {
+        alert('No inventory PDFs found for this retailer');
+        return;
+      }
+
+      // Open each PDF in a new tab
+      inventoryPDFs.forEach((inv: any, index: number) => {
+        setTimeout(() => {
+          window.open(inv.customerInvoice, '_blank');
+        }, index * 500); // Stagger opens to avoid popup blockers
+      });
+      
+      alert(`Opening ${inventoryPDFs.length} inventory PDF(s)`);
+    } catch (error: any) {
+      console.error('Error fetching inventory:', error);
+      alert(error.response?.data?.message || 'Failed to fetch inventory PDFs');
+    }
+  };
+
+  const handleView360User = async (user: User) => {
+    try {
+      setSelectedUser360(user);
+      setShowUser360Modal(true);
+      
+      // Fetch all user data in parallel
+      const [ordersRes, quotesRes, warrantiesRes, inventoryRes] = await Promise.all([
+        api.get(`/api/orders?userId=${user._id}`),
+        api.get(`/api/quotes?userId=${user._id}`),
+        api.get(`/api/warranties?userId=${user._id}`),
+        user.role === 'retailer' ? api.get(`/api/retailer-inventory?retailerId=${user._id}`) : Promise.resolve({ data: [] })
+      ]);
+
+      setUser360Data({
+        orders: ordersRes.data,
+        quotes: quotesRes.data,
+        warranties: warrantiesRes.data,
+        inventory: inventoryRes.data
+      });
+    } catch (error: any) {
+      console.error('Error fetching user 360 data:', error);
+      alert(error.response?.data?.message || 'Failed to fetch user data');
+    }
+  };
+
+  const handleExportUser360 = async (userId: string, userName: string) => {
+    try {
+      const response = await api.get(`/api/export/user-360/${userId}`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `User_360_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      alert('User 360 report exported successfully!');
+    } catch (error: any) {
+      console.error('Error exporting user 360:', error);
+      alert(error.response?.data?.message || 'Failed to export user 360 report');
+    }
+  };
+
   // Product Management
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -642,29 +778,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleEditProduct = (product: Product) => {
-    setEditingProduct(product);
-    setProductForm({
-      name: product.name,
-      description: product.description,
-      category: product.category,
-      normalPrice: product.normalPrice?.toString() || '',
-      retailerPrice: product.retailerPrice?.toString() || '',
-      quantity: 0, // Quantity is managed separately via product units
-      warrantyPeriodMonths: product.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
-      extendedWarrantyAvailable: product.extendedWarrantyAvailable !== false,
-      extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
-      extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
-      isRecommended: product.isRecommended || false,
-      requiresQuote: product.requiresQuote,
-      manualImageUrl: '',
-      images: product.images || [],
-      recommendedProductIds: Array.isArray(product.recommendedProductIds)
-        ? product.recommendedProductIds
-          .map(id => (typeof id === 'string' ? id : id?._id))
-          .filter((id): id is string => Boolean(id))
-        : [],
-    });
-    setShowProductForm(true);
+    navigate(`/admin/edit-product/${product._id}`);
   };
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
@@ -827,6 +941,41 @@ const AdminDashboard: React.FC = () => {
       loadOrders();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to update payment status');
+    }
+  };
+
+  // Tracking Link Management
+  const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string) => {
+    setSelectedTrackingId(id);
+    setTrackingType(type);
+    setTrackingLinkInput(currentLink || '');
+    setShowTrackingModal(true);
+  };
+
+  const handleUpdateTrackingLink = async () => {
+    if (!trackingLinkInput.trim()) {
+      alert('Please enter a tracking link');
+      return;
+    }
+
+    try {
+      const endpoint = trackingType === 'order' 
+        ? `/api/orders/${selectedTrackingId}/tracking`
+        : `/api/quotes/${selectedTrackingId}/tracking`;
+      
+      await api.put(endpoint, { deliveryTrackingLink: trackingLinkInput });
+      alert('Tracking link updated successfully and email sent to user');
+      
+      setShowTrackingModal(false);
+      setTrackingLinkInput('');
+      
+      if (trackingType === 'order') {
+        loadOrders();
+      } else {
+        loadQuotes();
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update tracking link');
     }
   };
 
@@ -1266,11 +1415,11 @@ const AdminDashboard: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => setShowProductForm(!showProductForm)}
+              onClick={() => navigate('/admin/add-product')}
               className="bg-white text-indigo-600 px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-indigo-50 transition-colors font-semibold shadow-md"
             >
               <Plus className="w-5 h-5" />
-              {showProductForm ? 'Close Form' : 'Add New Product'}
+              Add New Product
             </button>
           </div>
         </div>
@@ -2215,6 +2364,32 @@ const AdminDashboard: React.FC = () => {
                             </button>
                           )}
                           <button
+                            onClick={() => handleView360User(user)}
+                            className="text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 px-3 py-2 border border-indigo-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            title="View 360° User Profile"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="text-xs">360 View</span>
+                          </button>
+                          <button
+                            onClick={() => handleViewUserWarranties(user._id)}
+                            className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 flex items-center gap-1.5 px-3 py-2 border border-purple-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            title="View Warranty PDFs"
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span className="text-xs">Warranty</span>
+                          </button>
+                          {user.role === 'retailer' && (
+                            <button
+                              onClick={() => handleViewUserInventory(user._id)}
+                              className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 flex items-center gap-1.5 px-3 py-2 border border-teal-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              title="View Inventory PDFs"
+                            >
+                              <Package className="w-4 h-4" />
+                              <span className="text-xs">Inventory</span>
+                            </button>
+                          )}
+                          <button
                             onClick={() => handleChangeUserRole(user._id, user.role)}
                             className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg hover:shadow-md transition-all font-medium"
                             title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
@@ -2596,10 +2771,32 @@ const AdminDashboard: React.FC = () => {
                         onClick={() => handleRejectQuote(quote._id)}
                         className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
                       >
-                        <X className="w-4 h-4\" />
+                        <X className="w-4 h-4" />
                         Reject Quote
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Tracking Link Button - Shows for all quotes */}
+                {quote.status && quote.status !== 'pending' && quote.status !== 'rejected' && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink)}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+                        quote.deliveryTrackingLink
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
+                          : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-md hover:shadow-lg'
+                      }`}
+                    >
+                      <LinkIcon className="w-5 h-5" />
+                      {quote.deliveryTrackingLink ? 'Update Delivery Tracking Link' : 'Add Delivery Tracking Link'}
+                    </button>
+                    {quote.deliveryTrackingLink && (
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Current: <a href={quote.deliveryTrackingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{quote.deliveryTrackingLink}</a>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -2856,14 +3053,14 @@ const AdminDashboard: React.FC = () => {
                         <div className="flex items-center gap-3">
                           <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full w-10 h-10 flex items-center justify-center">
                             <span className="text-sm font-semibold text-indigo-700">
-                              {(order.userId?.name || 'U').charAt(0).toUpperCase()}
+                              {(order.user?.name || order.userId?.name || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
                             <div className="font-medium text-gray-900">
-                              {order.userId?.name || 'Unknown User'}
+                              {order.user?.name || order.userId?.name || 'Unknown User'}
                             </div>
-                            <div className="text-sm text-gray-600">{order.userId?.email}</div>
+                            <div className="text-sm text-gray-600">{order.user?.email || order.userId?.email}</div>
                           </div>
                         </div>
                       </td>
@@ -2914,12 +3111,29 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View Order Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setShowOrderDetailsModal(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Order Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              order.deliveryTrackingLink 
+                                ? 'text-green-600 hover:bg-green-50' 
+                                : 'text-orange-600 hover:bg-orange-50'
+                            }`}
+                            title={order.deliveryTrackingLink ? 'Update Tracking Link' : 'Add Tracking Link'}
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -4323,43 +4537,20 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={loadDashboardData}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Refresh Data"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50">
       {/* Tabs */}
-      <div className="bg-white shadow sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+      <div className="bg-white shadow-md sticky top-0 z-50 border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  className={`flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-3 transition-all ${activeTab === tab.id
+                    ? 'border-emerald-600 text-emerald-700 bg-emerald-50'
+                    : 'border-transparent text-gray-600 hover:text-emerald-600 hover:bg-gray-50'
                     }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -4367,6 +4558,76 @@ const AdminDashboard: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 shadow-lg sticky top-[57px] z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+            {/* Left Section - Logo & Title */}
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <div className="bg-white rounded-lg p-1.5 sm:p-2 shadow-md flex-shrink-0">
+                <img 
+                  src="https://aishwaryatechtele.com/images/telogica_logo.png" 
+                  alt="Telogica Logo" 
+                  className="h-6 sm:h-8 w-auto"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-2xl font-bold text-white truncate">Admin Dashboard</h1>
+                <p className="text-emerald-100 text-xs sm:text-sm truncate">Welcome back, {user?.name || 'Admin'}</p>
+              </div>
+            </div>
+
+            {/* Right Section - Actions */}
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+              {/* Notification Badge */}
+              <div className="relative">
+                <button
+                  className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm"
+                  title="Notifications"
+                >
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {contacts.filter(c => c.status === 'new').length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center">
+                      {contacts.filter(c => c.status === 'new').length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                onClick={loadDashboardData}
+                className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm"
+                title="Refresh Data"
+              >
+                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              {/* User Menu */}
+              <div className="hidden sm:flex items-center gap-2 sm:gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-4 py-1.5 sm:py-2">
+                <div className="text-right hidden lg:block">
+                  <p className="text-white font-semibold text-xs sm:text-sm truncate max-w-[120px]">{user?.name || 'Admin'}</p>
+                  <p className="text-emerald-100 text-xs truncate max-w-[120px]">{user?.email}</p>
+                </div>
+                <div className="bg-white rounded-lg p-1.5 sm:p-2">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
+                </div>
+              </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 hover:bg-red-500 text-white rounded-lg transition-all font-medium backdrop-blur-sm text-sm"
+                title="Logout"
+              >
+                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -4432,6 +4693,608 @@ const AdminDashboard: React.FC = () => {
         />
       )}
       {showDropshipModal && renderDropshipOrderDetails()}
+      
+      {/* Order Details Modal */}
+      {showOrderDetailsModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShoppingCart className="w-8 h-8" />
+                <div>
+                  <h2 className="text-2xl font-bold">Order Details</h2>
+                  <p className="text-emerald-100 text-sm">Order #{selectedOrder.orderNumber || selectedOrder._id.slice(-8)}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowOrderDetailsModal(false);
+                  setSelectedOrder(null);
+                }}
+                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+              {/* Customer Information */}
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-6 mb-6 border border-emerald-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                  Customer Information
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedOrder.userId?.name || selectedOrder.user?.name || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Email</p>
+                    <p className="text-sm text-gray-900">{selectedOrder.userId?.email || selectedOrder.user?.email || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                  Order Summary
+                </h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Order Date</p>
+                    <p className="text-sm text-gray-900">
+                      {new Date(selectedOrder.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">{new Date(selectedOrder.createdAt).toLocaleTimeString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Payment Status</p>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid'
+                        ? 'bg-green-100 text-green-800 border border-green-200'
+                        : selectedOrder.paymentStatus === 'failed'
+                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}>
+                      {selectedOrder.paymentStatus?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Total Amount</p>
+                    <p className="text-2xl font-bold text-emerald-600">₹{selectedOrder.totalAmount.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Products List */}
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-gray-600" />
+                    Products ({selectedOrder.products.length})
+                  </h3>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {selectedOrder.products.map((item, index) => {
+                      const product = item.productId || (item as any).product;
+                      return (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="bg-gradient-to-br from-emerald-100 to-green-100 rounded-lg p-3">
+                              <Package className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900">{product?.name || 'Unknown Product'}</p>
+                              <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                              {item.serialNumbers && item.serialNumbers.length > 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Serial Numbers: {item.serialNumbers.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">Price</p>
+                            <p className="text-lg font-bold text-gray-900">₹{item.price?.toLocaleString() || 'N/A'}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dropship Information (if applicable) */}
+              {selectedOrder.isDropship && selectedOrder.customerDetails && (
+                <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-blue-600" />
+                    Dropship Customer Details
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Customer Name</p>
+                      <p className="text-sm text-gray-900">{selectedOrder.customerDetails.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Customer Email</p>
+                      <p className="text-sm text-gray-900">{selectedOrder.customerDetails.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Customer Phone</p>
+                      <p className="text-sm text-gray-900">{selectedOrder.customerDetails.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Delivery Address</p>
+                      <p className="text-sm text-gray-900">{selectedOrder.customerDetails.address}</p>
+                    </div>
+                  </div>
+                  {selectedOrder.customerInvoiceUrl && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => window.open(selectedOrder.customerInvoiceUrl, '_blank')}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Customer Invoice
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Delivery Tracking Link Section */}
+              {selectedOrder.deliveryTrackingLink && (
+                <div className="bg-green-50 rounded-xl border border-green-200 p-6 mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <LinkIcon className="w-5 h-5 text-green-600" />
+                    Delivery Tracking
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={selectedOrder.deliveryTrackingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-blue-600 hover:text-blue-800 hover:underline font-medium break-all"
+                    >
+                      {selectedOrder.deliveryTrackingLink}
+                    </a>
+                    <button
+                      onClick={() => handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold flex items-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Update
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
+                {!selectedOrder.deliveryTrackingLink && (
+                  <button
+                    onClick={() => {
+                      setShowOrderDetailsModal(false);
+                      handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink);
+                    }}
+                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <LinkIcon className="w-5 h-5" />
+                    Add Tracking Link
+                  </button>
+                )}
+                <button
+                  onClick={() => handleUpdatePaymentStatus(selectedOrder._id, 
+                    selectedOrder.paymentStatus === 'pending' ? 'completed' : 'pending'
+                  )}
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Check className="w-5 h-5" />
+                  Mark as {selectedOrder.paymentStatus === 'pending' ? 'Completed' : 'Pending'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowOrderDetailsModal(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* User 360 View Modal */}
+      {showUser360Modal && selectedUser360 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                  selectedUser360.role === 'admin' ? 'bg-purple-500' :
+                  selectedUser360.role === 'retailer' ? 'bg-blue-500' : 'bg-gray-400'
+                }`}>
+                  {selectedUser360.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">360° User View</h2>
+                  <p className="text-indigo-100 text-sm">{selectedUser360.name} • {selectedUser360.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportUser360(selectedUser360._id, selectedUser360.name)}
+                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center gap-2 font-semibold"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Report
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUser360Modal(false);
+                    setSelectedUser360(null);
+                    setUser360Data({ orders: [], quotes: [], warranties: [], inventory: [] });
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+              {/* User Info Card */}
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 mb-6 border border-indigo-200">
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">User ID</p>
+                    <p className="text-sm font-mono text-gray-900">{selectedUser360._id.slice(-8)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Role</p>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedUser360.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                      selectedUser360.role === 'retailer' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                      'bg-gray-100 text-gray-800 border border-gray-200'
+                    }`}>
+                      {selectedUser360.role.toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                    {selectedUser360.role === 'retailer' && !selectedUser360.isApproved ? (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
+                        PENDING APPROVAL
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Member Since</p>
+                    <p className="text-sm text-gray-900">
+                      {new Date(selectedUser360.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statistics Cards */}
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Orders</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{user360Data.orders.length}</p>
+                    </div>
+                    <div className="bg-emerald-100 p-3 rounded-lg">
+                      <ShoppingCart className="w-6 h-6 text-emerald-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quote Requests</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{user360Data.quotes.length}</p>
+                    </div>
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <FileText className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Warranties</p>
+                      <p className="text-2xl font-bold text-gray-900 mt-1">{user360Data.warranties.length}</p>
+                    </div>
+                    <div className="bg-purple-100 p-3 rounded-lg">
+                      <Shield className="w-6 h-6 text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {selectedUser360.role === 'retailer' && (
+                  <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Inventory Items</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">{user360Data.inventory.length}</p>
+                      </div>
+                      <div className="bg-teal-100 p-3 rounded-lg">
+                        <Package className="w-6 h-6 text-teal-600" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Data Sections */}
+              <div className="space-y-6">
+                {/* Orders Section */}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-emerald-50 to-green-50 px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Orders ({user360Data.orders.length})</h3>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    {user360Data.orders.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No orders found</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {user360Data.orders.map((order) => (
+                          <div key={order._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-gray-900">Order #{order.orderNumber || order._id.slice(-8)}</span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {order.paymentStatus}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">
+                                {order.products.length} item(s) • {new Date(order.createdAt).toLocaleDateString()}
+                              </span>
+                              <span className="font-bold text-gray-900">₹{order.totalAmount.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quotes Section */}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Quote Requests ({user360Data.quotes.length})</h3>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    {user360Data.quotes.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No quote requests found</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {user360Data.quotes.map((quote) => (
+                          <div key={quote._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-gray-900">Quote #{quote._id.slice(-8)}</span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                quote.status === 'responded' ? 'bg-green-100 text-green-800' :
+                                quote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {quote.status}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {quote.products.length} product(s) requested
+                              {quote.createdAt && ` • ${new Date(quote.createdAt).toLocaleDateString()}`}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Warranties Section */}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Warranties ({user360Data.warranties.length})</h3>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    {user360Data.warranties.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No warranties registered</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {user360Data.warranties.map((warranty: any) => (
+                          <div key={warranty._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-gray-900">{warranty.productName}</span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                warranty.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                warranty.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {warranty.status}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              S/N: {warranty.serialNumber} • Model: {warranty.modelNumber}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inventory Section (Retailers Only) */}
+                {selectedUser360.role === 'retailer' && (
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-4 border-b border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <Package className="w-5 h-5 text-teal-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Inventory ({user360Data.inventory.length})</h3>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      {user360Data.inventory.length === 0 ? (
+                        <p className="text-gray-500 text-center py-8">No inventory items found</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {user360Data.inventory.map((item: any) => (
+                            <div key={item._id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-gray-900">{item.product?.name || 'Product'}</span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  item.status === 'in_stock' ? 'bg-green-100 text-green-800' :
+                                  item.status === 'sold' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Purchase Date: {new Date(item.purchaseDate).toLocaleDateString()}
+                                {item.soldDate && ` • Sold: ${new Date(item.soldDate).toLocaleDateString()}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tracking Link Modal */}
+      {showTrackingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <LinkIcon className="w-8 h-8" />
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {trackingLinkInput ? 'Update' : 'Add'} Delivery Tracking Link
+                  </h2>
+                  <p className="text-blue-100 text-sm">
+                    {trackingType === 'order' ? 'Order' : 'Quote'} Tracking
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTrackingModal(false);
+                  setTrackingLinkInput('');
+                }}
+                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tracking Link URL
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={trackingLinkInput}
+                    onChange={(e) => setTrackingLinkInput(e.target.value)}
+                    placeholder="https://example.com/track/ABC123"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                  <LinkIcon className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Enter the complete URL where customers can track their delivery
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 text-sm mb-1">
+                      Automatic Email Notification
+                    </h4>
+                    <p className="text-xs text-blue-700">
+                      The customer will receive an email with the tracking link automatically after you save it.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleUpdateTrackingLink}
+                  disabled={!trackingLinkInput.trim()}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                >
+                  <Send className="w-5 h-5" />
+                  Save & Send to Customer
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTrackingModal(false);
+                    setTrackingLinkInput('');
+                  }}
+                  className="px-6 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

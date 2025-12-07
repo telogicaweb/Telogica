@@ -22,7 +22,10 @@ const quoteSchema = new mongoose.Schema({
   },
   acceptedAt: { type: Date }, // When user accepted the quote
   rejectionReason: { type: String }, // Reason for rejection (by admin or user)
-  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' } // Link to order if quote is converted
+  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' }, // Link to order if quote is converted
+  
+  // Delivery Tracking
+  deliveryTrackingLink: { type: String } // Tracking link provided by admin for delivery status
 }, { timestamps: true });
 
 // Add indexes for performance
