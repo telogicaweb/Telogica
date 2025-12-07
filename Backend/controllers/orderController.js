@@ -8,7 +8,7 @@ const RetailerInventory = require('../models/RetailerInventory');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
-const { generateAndUploadInvoice, generateAndUploadDropshipInvoice } = require('../utils/invoiceGenerator');
+const { generateAndUploadInvoice, generateAndUploadDropshipInvoice, generateCustomerInvoicePdfBuffer } = require('../utils/invoiceGenerator');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
 const { recalculateProductInventory } = require('../utils/inventory');
 
@@ -573,10 +573,10 @@ const updateOrderStatus = async (req, res) => {
       if (updatedOrder.user && updatedOrder.user.email) {
         const statusChanged = status && previousStatus !== status;
         const paymentStatusChanged = paymentStatus && order.paymentStatus !== paymentStatus;
-        
+
         if (statusChanged || paymentStatusChanged) {
           let subject, message;
-          
+
           if (statusChanged) {
             subject = `Order Status Updated - ${status.toUpperCase()}`;
             message = `Your order ${order.orderNumber || order._id} status has been updated to ${status}.`;
@@ -584,7 +584,7 @@ const updateOrderStatus = async (req, res) => {
             subject = `Payment Status Updated - ${paymentStatus.toUpperCase()}`;
             message = `Your order ${order.orderNumber || order._id} payment status has been updated to ${paymentStatus}.`;
           }
-          
+
           if (subject && message) {
             sendEmail(
               updatedOrder.user.email,
@@ -701,4 +701,43 @@ const downloadInvoice = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, verifyPayment, getMyOrders, getOrders, updateOrderStatus, downloadInvoice, generateDropshipInvoice, getDropshipOrders };
+// Generate Customer Invoice (Retailer to Customer)
+const generateCustomerInvoice = async (req, res) => {
+  try {
+    const { sellingPrice, invoiceNumber } = req.body;
+    const order = await Order.findById(req.params.id).populate('products.product');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const pdfBuffer = await generateCustomerInvoicePdfBuffer(order, req.user, sellingPrice, invoiceNumber);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=invoice-${invoiceNumber || order.orderNumber || order._id}.pdf`,
+      'Content-Length': pdfBuffer.length
+    });
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating customer invoice:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  createOrder,
+  verifyPayment,
+  getMyOrders,
+  getOrders,
+  updateOrderStatus,
+  downloadInvoice,
+  generateDropshipInvoice,
+  getDropshipOrders,
+  generateCustomerInvoice
+};

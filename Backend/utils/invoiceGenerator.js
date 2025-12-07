@@ -786,4 +786,136 @@ function renderDropshipInvoice(doc, { retailer, customerDetails, items, invoiceN
     );
 }
 
-module.exports = { generateAndUploadInvoice, generateInvoicePdfBuffer, generateRetailerInvoice, generateOrderInvoicePdfBuffer, generateDropshipInvoicePdfBuffer, generateAndUploadDropshipInvoice };
+
+const generateCustomerInvoicePdfBuffer = async (order, retailer, sellingPrice, invoiceNumber) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers = [];
+
+    doc.on('data', (data) => buffers.push(data));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    renderCustomerInvoice(doc, order, retailer, sellingPrice, invoiceNumber);
+    doc.end();
+  });
+};
+
+function renderCustomerInvoice(doc, order, retailer, sellingPrice, invoiceNumber) {
+  // Use Telogica Header (Logo and Company Info)
+  generateHeader(doc);
+
+  doc.fontSize(10)
+    .font('Helvetica')
+    .text('Tax Invoice', 200, 130, { align: 'right' })
+    .moveDown();
+
+  generateHr(doc, 140);
+
+  const customerInformationTop = 160;
+
+  // Seller (Retailer)
+  doc
+    .fontSize(10)
+    .text('Sold By:', 50, customerInformationTop)
+    .font('Helvetica-Bold')
+    .text(retailer.name, 50, customerInformationTop + 15)
+    .font('Helvetica')
+    .text(retailer.email, 50, customerInformationTop + 30)
+    .text(retailer.phone || '', 50, customerInformationTop + 45)
+    .text(retailer.address || '', 50, customerInformationTop + 60, { width: 200 });
+
+
+
+  // Buyer (Customer)
+  doc
+    .fontSize(10)
+    .font('Helvetica')
+    .text('Sold To:', 300, customerInformationTop)
+    .font('Helvetica-Bold')
+    .text(order.customerDetails?.name || 'Customer', 300, customerInformationTop + 15)
+    .font('Helvetica')
+    .text(order.customerDetails?.email || '', 300, customerInformationTop + 30)
+    .text(order.customerDetails?.phone || '', 300, customerInformationTop + 45)
+    .text(order.customerDetails?.address || '', 300, customerInformationTop + 60, { width: 200 });
+
+  // Invoice Details
+  const invoiceDetailsTop = customerInformationTop + 120;
+  doc
+    .text('Invoice Number:', 50, invoiceDetailsTop)
+    .font('Helvetica-Bold')
+    .text(invoiceNumber || `INV-${order.orderNumber || order._id}`, 150, invoiceDetailsTop)
+    .font('Helvetica')
+    .text('Date:', 50, invoiceDetailsTop + 15)
+    .text(formatDate(new Date()), 150, invoiceDetailsTop + 15);
+
+  generateHr(doc, invoiceDetailsTop + 40);
+
+  // Table
+  const tableTop = invoiceDetailsTop + 60;
+  doc.font('Helvetica-Bold');
+
+  // Custom headers
+  doc
+    .fontSize(10)
+    .text('Product', 50, tableTop)
+    .text('Description', 200, tableTop)
+    .text('S/N', 350, tableTop)
+    .text('Qty', 450, tableTop)
+    .text('Total', 0, tableTop, { align: 'right' });
+
+  generateHr(doc, tableTop + 20);
+  doc.font('Helvetica');
+
+  let position = tableTop + 30;
+
+  order.products.forEach((item, i) => {
+    const name = item.product?.name || item.productDetails?.name || 'Product';
+    const sn = item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers.join(', ') : '';
+    const qty = item.quantity;
+
+    // Check page break
+    if (position > 700) {
+      doc.addPage();
+      position = 50;
+    }
+
+    doc
+      .fontSize(10)
+      .text(name, 50, position, { width: 140 })
+      .text(item.product?.description?.substring(0, 30) || '', 200, position, { width: 140 })
+      .text(sn, 350, position, { width: 90 })
+      .text(qty.toString(), 450, position);
+
+    position += 20;
+  });
+
+  generateHr(doc, position + 10);
+
+  // Total
+  const totalPosition = position + 20;
+  doc.font('Helvetica-Bold');
+  doc.text('Total', 350, totalPosition);
+  doc.text(formatCurrency(Number(sellingPrice)), 0, totalPosition, { align: 'right' });
+  doc.font('Helvetica');
+
+  // Footer
+  doc
+    .fontSize(10)
+    .text(
+      'Thank you for your business.',
+      50,
+      700,
+      { align: 'center', width: 500 }
+    );
+}
+
+module.exports = {
+  generateAndUploadInvoice,
+  generateInvoicePdfBuffer,
+  generateRetailerInvoice,
+  generateOrderInvoicePdfBuffer,
+  generateDropshipInvoicePdfBuffer,
+  generateAndUploadDropshipInvoice,
+  generateCustomerInvoicePdfBuffer // New Export
+};
