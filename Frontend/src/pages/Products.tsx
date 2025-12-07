@@ -83,11 +83,16 @@ const Products = () => {
     alert('Added to Quote');
   };
 
+  // Generate dynamic categories from products
   const categories = [
     { value: 'all', label: 'All Products' },
-    { value: 'telecom', label: 'Telecom' },
-    { value: 'defence', label: 'Defence' },
-    { value: 'railway', label: 'Railway' },
+    ...Array.from(new Set(products.map(p => p.category)))
+      .filter(Boolean)
+      .sort()
+      .map(category => ({
+        value: category,
+        label: category.charAt(0).toUpperCase() + category.slice(1)
+      }))
   ];
 
   return (
@@ -199,20 +204,15 @@ const Products = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                    <span className="bg-white/90 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-lg border-2 border-white">
                       {product.category}
                     </span>
                     {(!product.price || product.requiresQuote) && (
-                      <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow">
+                      <span className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-white animate-pulse">
                         Quote Only
                       </span>
                     )}
                   </div>
-                  {product.isRecommended && (
-                    <div className="absolute top-3 left-3 bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      Recommended
-                    </div>
-                  )}
                 </div>
 
                 {/* Product Info */}
@@ -252,8 +252,8 @@ const Products = () => {
                         <p className="text-lg font-semibold text-blue-600">Request Quote</p>
                       )
                     ) : (
-                      // Regular user pricing - Only show price for Telecommunication products without quote requirement
-                      (product.isTelecom || product.category?.toLowerCase() === 'telecommunication') && product.price && !product.requiresQuote ? (
+                      // Regular user pricing - Only show price for Telecom products without quote requirement
+                      product.isTelecom && product.price && !product.requiresQuote ? (
                         <div className="flex items-baseline gap-2">
                           <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
                           <span className="text-sm text-gray-500">+ GST</span>
@@ -304,7 +304,7 @@ const Products = () => {
                         )
                       ) : (
                         <>
-                          {product.category.toLowerCase() === 'telecom' && product.price && !product.requiresQuote && (
+                          {product.isTelecom && product.price && !product.requiresQuote && (
                             <button 
                               onClick={() => handleAddToCart(product)} 
                               className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
@@ -315,7 +315,7 @@ const Products = () => {
                           )}
                           <button 
                             onClick={() => handleAddToQuote(product)} 
-                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(product.category.toLowerCase() !== 'telecom' || !product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
+                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(!product.isTelecom || !product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
                           >
                             <FileText className="w-4 h-4" />
                             Quote

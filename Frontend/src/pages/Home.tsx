@@ -152,7 +152,7 @@ const Home = () => {
                         )
                       ) : (
                         // Regular user pricing - Only show price for Telecommunication products without quote requirement
-                        (product.isTelecom || product.category?.toLowerCase() === 'telecommunication') && product.price && !product.requiresQuote ? (
+                        (product.category?.toLowerCase() === 'telecommunication') && product.price && !product.requiresQuote ? (
                           <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
                             <span className="text-sm text-gray-500">+ GST</span>

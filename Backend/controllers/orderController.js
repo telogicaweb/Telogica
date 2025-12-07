@@ -45,9 +45,7 @@ const createOrder = async (req, res) => {
       const productIds = products.map(p => p.product);
       const dbProducts = await Product.find({ _id: { $in: productIds } });
 
-      const nonTelecomProducts = dbProducts.filter(p =>
-        !p.category || p.category.toLowerCase() !== 'telecom'
-      );
+      const nonTelecomProducts = dbProducts.filter(p => !p.isTelecom);
 
       if (nonTelecomProducts.length > 0) {
         return res.status(400).json({
@@ -573,13 +571,30 @@ const updateOrderStatus = async (req, res) => {
 
       // Send email notification for status change (Async)
       if (updatedOrder.user && updatedOrder.user.email) {
-        sendEmail(
-          updatedOrder.user.email,
-          `Order Status Updated - ${status.toUpperCase()}`,
-          `Your order ${order.orderNumber || order._id} status has been updated to ${status}.`,
-          'order_status_update',
-          { entityType: 'order', entityId: order._id }
-        ).catch(err => console.error('Error sending status update email:', err));
+        const statusChanged = status && previousStatus !== status;
+        const paymentStatusChanged = paymentStatus && order.paymentStatus !== paymentStatus;
+        
+        if (statusChanged || paymentStatusChanged) {
+          let subject, message;
+          
+          if (statusChanged) {
+            subject = `Order Status Updated - ${status.toUpperCase()}`;
+            message = `Your order ${order.orderNumber || order._id} status has been updated to ${status}.`;
+          } else if (paymentStatusChanged) {
+            subject = `Payment Status Updated - ${paymentStatus.toUpperCase()}`;
+            message = `Your order ${order.orderNumber || order._id} payment status has been updated to ${paymentStatus}.`;
+          }
+          
+          if (subject && message) {
+            sendEmail(
+              updatedOrder.user.email,
+              subject,
+              message,
+              'order_status_update',
+              { entityType: 'order', entityId: order._id }
+            ).catch(err => console.error('Error sending status update email:', err));
+          }
+        }
       }
 
       res.json(updatedOrder);

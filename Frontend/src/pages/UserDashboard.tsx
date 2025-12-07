@@ -1,9 +1,10 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useMemo } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X } from 'lucide-react';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, TrendingUp, ShoppingBag, Star, Award, Gift, Zap, CreditCard, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
+import DateFilter from '../components/AdminDashboard/DateFilter';
 
 const UserDashboard = () => {
   const auth = useContext(AuthContext);
@@ -20,6 +21,9 @@ const UserDashboard = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
+  const [quoteDateFrom, setQuoteDateFrom] = useState<string>('');
+  const [quoteDateTo, setQuoteDateTo] = useState<string>('');
   const [addressForm, setAddressForm] = useState({
     fullName: '',
     phone: '',
@@ -94,6 +98,36 @@ const UserDashboard = () => {
       setActionLoading(false);
     }
   };
+
+  const toggleQuoteExpand = (quoteId: string) => {
+    setExpandedQuotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quoteId)) {
+        newSet.delete(quoteId);
+      } else {
+        newSet.add(quoteId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredQuotes = useMemo(() => {
+    if (!quoteDateFrom && !quoteDateTo) return quotes;
+    const fromTime = quoteDateFrom ? new Date(quoteDateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    let toTime = Number.POSITIVE_INFINITY;
+
+    if (quoteDateTo) {
+      const toDate = new Date(quoteDateTo);
+      toDate.setHours(23, 59, 59, 999);
+      toTime = toDate.getTime();
+    }
+
+    return quotes.filter((q) => {
+      const created = q.createdAt ? new Date(q.createdAt).getTime() : undefined;
+      if (created === undefined) return true;
+      return created >= fromTime && created <= toTime;
+    });
+  }, [quotes, quoteDateFrom, quoteDateTo]);
 
 
   const proceedToCheckout = async (quote: any) => {
@@ -272,55 +306,174 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
-          <p className="text-gray-500 mt-2">Welcome back, {user?.name}</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-gray-50">
+      {/* Ultra Premium Header */}
+      <div className="relative bg-gradient-to-br from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] text-white overflow-hidden pt-32 pb-24">
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-purple-600/15 blur-[140px] animate-pulse"></div>
+          <div className="absolute top-[40%] right-[30%] w-[400px] h-[400px] rounded-full bg-blue-600/10 blur-[100px] animate-pulse"></div>
+          
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px overflow-x-auto">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between flex-wrap gap-6">
+            <div>
+              {/* Premium Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-900/50 to-purple-900/50 border border-indigo-700/50 text-indigo-200 text-sm font-bold mb-6 backdrop-blur-md shadow-2xl">
+                <Sparkles size={16} className="text-indigo-300 animate-pulse" />
+                <span>PREMIUM MEMBER</span>
+                <Award size={14} className="text-yellow-400" />
+              </div>
+
+              {/* Welcome Message */}
+              <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-purple-200 drop-shadow-2xl">
+                Welcome back!
+              </h1>
+              <p className="text-2xl md:text-3xl text-gray-300 font-light">
+                <span className="font-bold text-white">{user?.name}</span>
+              </p>
+              <p className="text-gray-400 mt-2 text-lg">{user?.email}</p>
+            </div>
+
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-blue-500/20 rounded-xl">
+                    <Package size={20} className="text-blue-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{orders.length}</p>
+                    <p className="text-xs text-gray-300">Orders</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-purple-500/20 rounded-xl">
+                    <FileText size={20} className="text-purple-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{quotes.length}</p>
+                    <p className="text-xs text-gray-300">Quotes</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-green-500/20 rounded-xl">
+                    <Shield size={20} className="text-green-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{warranties.length}</p>
+                    <p className="text-xs text-gray-300">Warranties</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-orange-500/20 rounded-xl">
+                    <Download size={20} className="text-orange-300" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white">{invoices.length}</p>
+                    <p className="text-xs text-gray-300">Invoices</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20 pb-16">
+        {/* Premium Tab Navigation */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border-2 border-gray-200 overflow-hidden mb-8">
+          <div className="border-b-2 border-gray-100">
+            <nav className="flex overflow-x-auto">
               <button
                 onClick={() => setActiveTab('orders')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'orders'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'orders'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Package size={18} />
-                Orders
+                {activeTab === 'orders' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'orders' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Package size={20} />
+                </div>
+                <div>
+                  <span className="block">My Orders</span>
+                  <span className="text-xs opacity-70">{orders.length} total</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('quotes')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'quotes'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'quotes'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <FileText size={18} />
-                Quotes
+                {activeTab === 'quotes' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'quotes' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <span className="block">Quote Requests</span>
+                  <span className="text-xs opacity-70">{quotes.length} total</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('warranties')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'warranties'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'warranties'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Shield size={18} />
-                Warranties
+                {activeTab === 'warranties' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'warranties' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <span className="block">Warranties</span>
+                  <span className="text-xs opacity-70">{warranties.length} registered</span>
+                </div>
               </button>
+
               <button
                 onClick={() => setActiveTab('invoices')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm flex items-center gap-2 whitespace-nowrap ${activeTab === 'invoices'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'invoices'
+                  ? 'text-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700'
                   }`}
               >
-                <Download size={18} />
-                Invoices
+                {activeTab === 'invoices' && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
+                )}
+                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'invoices' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                  <Download size={20} />
+                </div>
+                <div>
+                  <span className="block">Invoices</span>
+                  <span className="text-xs opacity-70">{invoices.length} available</span>
+                </div>
               </button>
             </nav>
           </div>
@@ -401,113 +554,172 @@ const UserDashboard = () => {
 
             {activeTab === 'quotes' && (
               <div>
+                {/* Date Filter */}
+                <DateFilter
+                  dateFrom={quoteDateFrom}
+                  dateTo={quoteDateTo}
+                  onDateFromChange={setQuoteDateFrom}
+                  onDateToChange={setQuoteDateTo}
+                  label="Filter Quotes by Date"
+                  className="mb-6"
+                />
+
                 {/* Active Quotes Section */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
-                  {quotes.filter(q => q.status !== 'completed').length === 0 ? (
+                  {filteredQuotes.filter(q => q.status !== 'completed').length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                       <FileText size={32} className="mx-auto text-gray-300 mb-2" />
                       <p className="text-gray-500 text-sm">No active quotes found.</p>
                     </div>
                   ) : (
                     <div className="grid gap-6 md:grid-cols-2">
-                      {quotes.filter(q => q.status !== 'completed').map(quote => (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
-                          <div className="flex justify-between items-start mb-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                              {getStatusIcon(quote.status)}
-                              {quote.status}
-                            </span>
-                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                          </div>
-
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {quote.products.map((p: any) => (
-                                <li key={p._id} className="flex justify-between">
-                                  <span>{p.product?.name || 'Product Unavailable'}</span>
-                                  <span className="text-gray-500">Qty: {p.quantity}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          {quote.message && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
-                              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                      {filteredQuotes.filter(q => q.status !== 'completed').map(quote => {
+                        const isExpanded = expandedQuotes.has(quote._id);
+                        return (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
+                          {/* Condensed Preview */}
+                          <div className="p-6">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
+                                {getStatusIcon(quote.status)}
+                                {quote.status}
+                              </span>
+                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
                             </div>
-                          )}
 
-                          {quote.adminResponse && (
-                            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                              <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Response</h4>
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-indigo-700">Offered Price:</span>
-                                <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-900">
+                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
+                                </h4>
+                                {quote.adminResponse && (
+                                  <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                                )}
                               </div>
-                              {quote.adminResponse.discountPercentage > 0 && (
-                                <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm text-indigo-700">Discount:</span>
-                                  <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
-                                </div>
+                              {!isExpanded && quote.products.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {quote.products[0].product?.name || 'Product Unavailable'}
+                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                </p>
                               )}
-                              <p className="text-sm text-indigo-800">{quote.adminResponse.message}</p>
                             </div>
-                          )}
 
-                          {quote.status === 'responded' && (
-                            <div className="flex gap-2 mt-4">
-                              <button
-                                onClick={() => acceptQuote(quote._id)}
-                                disabled={actionLoading}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                              >
-                                <ThumbsUp size={16} />
-                                Accept
-                              </button>
-                              <button
-                                onClick={() => rejectQuote(quote._id)}
-                                disabled={actionLoading}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
-                              >
-                                <ThumbsDown size={16} />
-                                Reject
-                              </button>
-                            </div>
-                          )}
-
-                          {quote.status === 'accepted' && (
-                            <>
-                              {quote.orderId ? (
-                                <button
-                                  onClick={() => setActiveTab('orders')}
-                                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                                >
-                                  <CheckCircle size={16} />
-                                  Order Created - View in Orders
-                                </button>
+                            {/* View Quote Toggle Button */}
+                            <button
+                              onClick={() => toggleQuoteExpand(quote._id)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium mb-3"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={16} />
+                                  Hide Details
+                                </>
                               ) : (
-                                <button
-                                  onClick={() => proceedToCheckout(quote)}
-                                  disabled={actionLoading}
-                                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
-                                >
-                                  {actionLoading ? (
-                                    <>
-                                      <Loader2 size={16} className="mr-2 animate-spin" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    'Proceed to Checkout'
-                                  )}
-                                </button>
+                                <>
+                                  <ChevronDown size={16} />
+                                  View Quote
+                                </>
                               )}
-                            </>
-                          )}
+                            </button>
+
+                            {/* Expanded Details */}
+                            {isExpanded && (
+                              <div className="space-y-4 pt-4 border-t border-gray-200">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                                  <ul className="text-sm text-gray-600 space-y-2">
+                                    {quote.products.map((p: any) => (
+                                      <li key={p._id} className="flex justify-between items-start bg-gray-50 p-2 rounded">
+                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
+                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {quote.message && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
+                                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                                  </div>
+                                )}
+
+                                {quote.adminResponse && (
+                                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                                    <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                                      <Sparkles size={16} />
+                                      Admin Response
+                                    </h4>
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-sm text-indigo-700">Offered Price:</span>
+                                      <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                                    </div>
+                                    {quote.adminResponse.discountPercentage > 0 && (
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-indigo-700">Discount:</span>
+                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                      </div>
+                                    )}
+                                    <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            {quote.status === 'responded' && (
+                              <div className="flex gap-2 mt-4">
+                                <button
+                                  onClick={() => acceptQuote(quote._id)}
+                                  disabled={actionLoading}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                >
+                                  <ThumbsUp size={16} />
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => rejectQuote(quote._id)}
+                                  disabled={actionLoading}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                >
+                                  <ThumbsDown size={16} />
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+
+                            {quote.status === 'accepted' && (
+                              <>
+                                {quote.orderId ? (
+                                  <button
+                                    onClick={() => setActiveTab('orders')}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                  >
+                                    <CheckCircle size={16} />
+                                    Order Created - View in Orders
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => proceedToCheckout(quote)}
+                                    disabled={actionLoading}
+                                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
+                                  >
+                                    {actionLoading ? (
+                                      <>
+                                        <Loader2 size={16} className="mr-2 animate-spin" />
+                                        Processing...
+                                      </>
+                                    ) : (
+                                      'Proceed to Checkout'
+                                    )}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>
@@ -515,45 +727,95 @@ const UserDashboard = () => {
                 {/* Quote History Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
-                  {quotes.filter(q => q.status === 'completed').length === 0 ? (
+                  {filteredQuotes.filter(q => q.status === 'completed').length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                       <Clock size={32} className="mx-auto text-gray-300 mb-2" />
                       <p className="text-gray-500 text-sm">No completed quotes found.</p>
                     </div>
                   ) : (
                     <div className="grid gap-6 md:grid-cols-2">
-                      {quotes.filter(q => q.status === 'completed').map(quote => (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg p-6 bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
-                          <div className="flex justify-between items-start mb-4">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
-                              <CheckCircle size={14} />
-                              Completed
-                            </span>
-                            <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                          </div>
-
-                          <div className="mb-4">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                              {quote.products.map((p: any) => (
-                                <li key={p._id} className="flex justify-between">
-                                  <span>{p.product?.name || 'Product Unavailable'}</span>
-                                  <span className="text-gray-500">Qty: {p.quantity}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          {quote.adminResponse && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Final Price:</span>
-                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
-                              </div>
+                      {filteredQuotes.filter(q => q.status === 'completed').map(quote => {
+                        const isExpanded = expandedQuotes.has(quote._id);
+                        return (
+                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
+                          <div className="p-6">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                                <CheckCircle size={14} />
+                                Completed
+                              </span>
+                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
                             </div>
-                          )}
+
+                            <div className="mb-3">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium text-gray-900">
+                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
+                                </h4>
+                                {quote.adminResponse && (
+                                  <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                                )}
+                              </div>
+                              {!isExpanded && quote.products.length > 0 && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {quote.products[0].product?.name || 'Product Unavailable'}
+                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* View Quote Toggle Button */}
+                            <button
+                              onClick={() => toggleQuoteExpand(quote._id)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={16} />
+                                  Hide Details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={16} />
+                                  View Quote
+                                </>
+                              )}
+                            </button>
+
+                            {/* Expanded Details */}
+                            {isExpanded && (
+                              <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
+                                  <ul className="text-sm text-gray-600 space-y-2">
+                                    {quote.products.map((p: any) => (
+                                      <li key={p._id} className="flex justify-between items-start bg-white p-2 rounded">
+                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
+                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {quote.adminResponse && (
+                                  <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm text-gray-600">Final Price:</span>
+                                      <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                                    </div>
+                                    {quote.adminResponse.discountPercentage > 0 && (
+                                      <div className="flex justify-between items-center mt-2">
+                                        <span className="text-sm text-gray-600">Discount Applied:</span>
+                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>

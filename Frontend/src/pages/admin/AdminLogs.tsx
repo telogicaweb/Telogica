@@ -5,7 +5,8 @@ import logService, {
   getLogStats, 
   clearLogs
 } from '../../services/logService';
-import { Log, LogEventType } from '../../types/logs.ts';
+import { Log, LogEventType } from '../../types/logs';
+import DateFilter from '../../components/AdminDashboard/DateFilter';
 import { 
   Plus, 
   RefreshCw, 
@@ -397,12 +398,12 @@ const AdminLogs = () => {
 
         {/* Quick Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Logs</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalLogs.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-gray-900">{(stats.totalLogs || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Database className="w-6 h-6 text-blue-600" />
@@ -413,32 +414,8 @@ const AdminLogs = () => {
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Today</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.todayCount.toLocaleString()}</p>
-                </div>
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Calendar className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active Admins</p>
-                  <p className="text-2xl font-bold text-indigo-600">{stats.activeAdmins}</p>
-                </div>
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <Users className="w-6 h-6 text-indigo-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm text-gray-600">Errors</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.errorCount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-red-600">{(stats.errorCount || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 bg-red-100 rounded-lg">
                   <AlertCircle className="w-6 h-6 text-red-600" />
@@ -450,7 +427,7 @@ const AdminLogs = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Warnings</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.warningCount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-yellow-600">{(stats.warningCount || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 bg-yellow-100 rounded-lg">
                   <AlertTriangle className="w-6 h-6 text-yellow-600" />
@@ -461,23 +438,11 @@ const AdminLogs = () => {
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Avg Response</p>
-                  <p className="text-2xl font-bold text-purple-600">{stats.avgResponseTime}ms</p>
+                  <p className="text-sm text-gray-600">Viewing</p>
+                  <p className="text-2xl font-bold text-indigo-600">{totalLogs.toLocaleString()}</p>
                 </div>
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Clock className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">API Calls</p>
-                  <p className="text-2xl font-bold text-pink-600">{stats.apiCalls.toLocaleString()}</p>
-                </div>
-                <div className="p-2 bg-pink-100 rounded-lg">
-                  <Server className="w-6 h-6 text-pink-600" />
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Eye className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
             </div>
@@ -485,11 +450,23 @@ const AdminLogs = () => {
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Data Changed</p>
-                  <p className="text-2xl font-bold text-teal-600">{stats.dataChanges.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600">Warnings</p>
+                  <p className="text-2xl font-bold text-yellow-600">{(stats.warningCount || 0).toLocaleString()}</p>
                 </div>
-                <div className="p-2 bg-teal-100 rounded-lg">
-                  <GitCommit className="w-6 h-6 text-teal-600" />
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Viewing</p>
+                  <p className="text-2xl font-bold text-indigo-600">{totalLogs.toLocaleString()}</p>
+                </div>
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Eye className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
             </div>
@@ -570,24 +547,15 @@ const AdminLogs = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  name="startDate"
-                  value={filters.startDate}
-                  onChange={handleFilterChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-                <input
-                  type="date"
-                  name="endDate"
-                  value={filters.endDate}
-                  onChange={handleFilterChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                />
-              </div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-2">
+              <DateFilter
+                dateFrom={filters.startDate}
+                dateTo={filters.endDate}
+                onDateFromChange={(val) => setFilters(prev => ({ ...prev, startDate: val }))}
+                onDateToChange={(val) => setFilters(prev => ({ ...prev, endDate: val }))}
+                label="Date Range"
+                showPresets={true}
+              />
             </div>
             
             <div>

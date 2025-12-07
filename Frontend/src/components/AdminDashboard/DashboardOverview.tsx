@@ -11,17 +11,35 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Analytics } from './types';
+import DateFilter from './DateFilter';
 
 interface DashboardOverviewProps {
   analytics: Analytics;
+  onDateRangeChange?: (dateFrom: string, dateTo: string) => void;
 }
 
 // Utility functions
 const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN')}`;
 const formatNumber = (value: number) => value.toLocaleString('en-IN');
 
-const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics }) => {
+const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics, onDateRangeChange }) => {
   const [exporting, setExporting] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value);
+    if (onDateRangeChange) {
+      onDateRangeChange(value, dateTo);
+    }
+  };
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value);
+    if (onDateRangeChange) {
+      onDateRangeChange(dateFrom, value);
+    }
+  };
 
   const conversionRate =
     typeof analytics.quotes.conversionRate === 'number'
@@ -94,6 +112,15 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics }) => {
           {exporting ? 'Exporting…' : 'Export PDF'}
         </button>
       </div>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={handleDateFromChange}
+        onDateToChange={handleDateToChange}
+        label="Dashboard Date Filter"
+      />
 
       {/* Primary Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

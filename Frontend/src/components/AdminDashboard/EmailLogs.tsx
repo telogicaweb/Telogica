@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import api from '../../api';
 import { EmailLog } from './types';
+import DateFilter from './DateFilter';
 
 interface EmailLogsProps {
   emailLogs: EmailLog[];
@@ -9,6 +10,20 @@ interface EmailLogsProps {
 }
 
 const EmailLogs: React.FC<EmailLogsProps> = ({ emailLogs, onEmailLogsUpdated }) => {
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
+  const filteredEmailLogs = useMemo(() => {
+    if (!dateFrom && !dateTo) return emailLogs;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+    const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+    return emailLogs.filter((log) => {
+      const sent = log.sentAt ? new Date(log.sentAt).getTime() : undefined;
+      if (sent === undefined) return true;
+      return sent >= fromTime && sent <= toTime;
+    });
+  }, [emailLogs, dateFrom, dateTo]);
+
   const handleResendEmail = async (logId: string) => {
     try {
       await api.post(`/api/email-logs/${logId}/resend`);
@@ -22,6 +37,15 @@ const EmailLogs: React.FC<EmailLogsProps> = ({ emailLogs, onEmailLogsUpdated }) 
   return (
     <div className="space-y-8 animate-fadeIn">
       <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Email Logs</h2>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Email Logs by Date"
+      />
 
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -40,7 +64,7 @@ const EmailLogs: React.FC<EmailLogsProps> = ({ emailLogs, onEmailLogsUpdated }) 
             </thead>
 
             <tbody className="bg-white divide-y divide-gray-100">
-              {emailLogs.map((log) => (
+              {filteredEmailLogs.map((log) => (
                 <tr
                   key={log._id}
                   className="hover:bg-gray-50 transition-all"

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Trash2, Mail } from 'lucide-react';
 import api from '../../api';
 import { ContactMessage } from './types';
+import DateFilter from './DateFilter';
 
 interface ContactMessagesProps {
   messages: ContactMessage[];
@@ -13,6 +14,8 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
   onMessagesUpdated,
 }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const handleStatusChange = async (
     messageId: string,
@@ -41,10 +44,27 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
     }
   };
 
-  const filteredMessages =
-    statusFilter === 'all'
-      ? messages
-      : messages.filter((msg) => msg.status === statusFilter);
+  const filteredMessages = useMemo(() => {
+    let filtered = messages;
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((msg) => msg.status === statusFilter);
+    }
+    
+    // Date filter
+    if (dateFrom || dateTo) {
+      const fromTime = dateFrom ? new Date(dateFrom).getTime() : Number.NEGATIVE_INFINITY;
+      const toTime = dateTo ? new Date(dateTo).getTime() : Number.POSITIVE_INFINITY;
+      filtered = filtered.filter((msg) => {
+        const created = msg.createdAt ? new Date(msg.createdAt).getTime() : undefined;
+        if (created === undefined) return true;
+        return created >= fromTime && created <= toTime;
+      });
+    }
+    
+    return filtered;
+  }, [messages, statusFilter, dateFrom, dateTo]);
 
   return (
     <div className="space-y-6">
@@ -61,6 +81,15 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
           <option value="replied">Replied</option>
         </select>
       </div>
+
+      {/* Date Filter */}
+      <DateFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        label="Filter Messages by Date"
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredMessages.map((message) => (

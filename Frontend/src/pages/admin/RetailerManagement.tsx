@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
+import DateFilter from '../../components/AdminDashboard/DateFilter';
 import {
   Users,
   DollarSign,
@@ -114,9 +115,9 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
   
-  // Export filters
-  const [exportStartDate, setExportStartDate] = useState('');
-  const [exportEndDate, setExportEndDate] = useState('');
+  // Unified date filter for both display and export
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Quoted Products State
   const [retailersWithQuotedProducts, setRetailersWithQuotedProducts] = useState<RetailerWithQuotedProducts[]>([]);
@@ -141,8 +142,8 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   const handleExport = async (format: 'pdf' | 'csv' | 'excel') => {
     try {
       let url = `/api/export/retailer-inventory?format=${format}`;
-      if (exportStartDate) url += `&startDate=${exportStartDate}`;
-      if (exportEndDate) url += `&endDate=${exportEndDate}`;
+      if (dateFrom) url += `&startDate=${dateFrom}`;
+      if (dateTo) url += `&endDate=${dateTo}`;
 
       const response = await api.get(url, {
         responseType: 'blob'
@@ -198,8 +199,8 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   const loadAllSales = async () => {
     try {
       let url = '/api/retailer/admin/sales?';
-      if (dateRange.startDate) url += `startDate=${dateRange.startDate}&`;
-      if (dateRange.endDate) url += `endDate=${dateRange.endDate}&`;
+      if (dateFrom) url += `startDate=${dateFrom}&`;
+      if (dateTo) url += `endDate=${dateTo}&`;
 
       const res = await api.get(url);
       setAllSales(res.data.sales || []);
@@ -311,30 +312,16 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       {/* Export Section */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-            <input
-              type="date"
-              value={exportStartDate}
-              onChange={(e) => setExportStartDate(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          <div className="flex-1 max-w-2xl">
+            <DateFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              label="Filter by Date"
+              showPresets={true}
+              className="border-0 shadow-none p-0"
             />
-            <span className="text-gray-400">-</span>
-            <input
-              type="date"
-              value={exportEndDate}
-              onChange={(e) => setExportEndDate(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {(exportStartDate || exportEndDate) && (
-              <button
-                onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-              >
-                Clear
-              </button>
-            )}
           </div>
           <div className="flex gap-2">
             <button
@@ -572,20 +559,15 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">All Retailer Sales</h2>
         <div className="flex gap-3 items-center">
-          <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-gray-400" />
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-            <span className="text-gray-400">to</span>
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          <div className="flex-1 max-w-2xl">
+            <DateFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onDateFromChange={setDateFrom}
+              onDateToChange={setDateTo}
+              label="Filter Sales by Date"
+              showPresets={true}
+              className="border-0 shadow-none p-0"
             />
           </div>
           <button
