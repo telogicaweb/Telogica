@@ -39,6 +39,9 @@ const Cart = () => {
 
   // Calculate price based on whether retailer price should be used
   const getItemPrice = (item: typeof cart[0]) => {
+    if (item.quotedProductId && item.quotedPrice) {
+      return item.quotedPrice;
+    }
     if (user?.role === 'retailer' && item.useRetailerPrice && item.product.retailerPrice) {
       return item.product.retailerPrice;
     }
@@ -144,6 +147,7 @@ const Cart = () => {
           quantity: item.quantity,
           price: getItemPrice(item),
           useRetailerPrice: item.useRetailerPrice,
+          quotedProductId: item.quotedProductId,
           warrantyOption: warrantyOptions[item.product._id] || 'standard',
           warrantyPrice: getWarrantyPrice(item)
         })),
@@ -286,9 +290,11 @@ const Cart = () => {
                           <p className="ml-4">₹{getItemTotal(item).toFixed(2)}</p>
                         </div>
                         <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
-                        {item.useRetailerPrice && item.product.retailerPrice && (
+                        {item.quotedProductId ? (
+                          <p className="text-xs text-green-600 mt-1 font-semibold">Special Quoted Price Applied</p>
+                        ) : item.useRetailerPrice && item.product.retailerPrice ? (
                           <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
-                        )}
+                        ) : null}
 
                         {/* Warranty Selection */}
                         <div className="mt-3 space-y-2">
@@ -334,7 +340,7 @@ const Cart = () => {
 
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.product._id)}
+                          onClick={() => removeFromCart(item.product._id, item.quotedProductId)}
                           className="font-medium text-red-600 hover:text-red-500 flex items-center gap-1"
                         >
                           <Trash2 size={16} />

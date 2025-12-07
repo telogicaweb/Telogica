@@ -20,14 +20,16 @@ interface CartItem {
   product: Product;
   quantity: number;
   useRetailerPrice?: boolean;
+  quotedProductId?: string;
+  quotedPrice?: number;
 }
 
 interface CartContextType {
   cart: CartItem[];
   quoteItems: CartItem[];
-  addToCart: (product: Product, quantity: number, useRetailerPrice?: boolean) => void;
+  addToCart: (product: Product, quantity: number, useRetailerPrice?: boolean, quotedProduct?: { id: string; price: number }) => void;
   addToQuote: (product: Product, quantity: number) => void;
-  removeFromCart: (productId: string) => void;
+  removeFromCart: (productId: string, quotedProductId?: string) => void;
   removeFromQuote: (productId: string) => void;
   clearCart: () => void;
   clearQuote: () => void;
@@ -60,7 +62,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const savedCart = localStorage.getItem(key);
     return savedCart ? JSON.parse(savedCart) : [];
   });
-  
+
   const [quoteItems, setQuoteItems] = useState<CartItem[]>(() => {
     const key = getStorageKey('quoteItems', userId);
     const savedQuote = localStorage.getItem(key);
@@ -97,10 +99,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         handleUserChange(newUserId);
       }
     };
-    
+
     // Listen for storage changes from other tabs
     window.addEventListener('storage', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -121,17 +123,31 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem(key, JSON.stringify(quoteItems));
   }, [quoteItems, userId]);
 
-  const addToCart = (product: Product, quantity: number, useRetailerPrice?: boolean) => {
+  const addToCart = (product: Product, quantity: number, useRetailerPrice?: boolean, quotedProduct?: { id: string; price: number }) => {
     setCart(prev => {
-      const existing = prev.find(item => item.product._id === product._id);
+      // Check for existing item.
+      // If adding a quoted product, it matches only if product ID AND quotedProductId match.
+      // If adding a regular product, it matches only if product ID matches AND quotedProductId is undefined.
+      const existing = prev.find(item =>
+        item.product._id === product._id &&
+        item.quotedProductId === quotedProduct?.id
+      );
+
       if (existing) {
-        return prev.map(item => 
-          item.product._id === product._id 
-            ? { ...item, quantity: item.quantity + quantity, useRetailerPrice: useRetailerPrice ?? item.useRetailerPrice } 
+        return prev.map(item =>
+          (item.product._id === product._id && item.quotedProductId === quotedProduct?.id)
+            ? { ...item, quantity: item.quantity + quantity, useRetailerPrice: useRetailerPrice ?? item.useRetailerPrice }
             : item
         );
       }
-      return [...prev, { product, quantity, useRetailerPrice }];
+
+      return [...prev, {
+        product,
+        quantity,
+        useRetailerPrice,
+        quotedProductId: quotedProduct?.id,
+        quotedPrice: quotedProduct?.price
+      }];
     });
   };
 
@@ -139,9 +155,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setQuoteItems(prev => {
       const existing = prev.find(item => item.product._id === product._id);
       if (existing) {
-        return prev.map(item => 
-          item.product._id === product._id 
-            ? { ...item, quantity: item.quantity + quantity } 
+        return prev.map(item =>
+          item.product._id === product._id
+            ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
@@ -149,8 +165,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product._id !== productId));
+  const removeFromCart = (productId: string, quotedProductId?: string) => {
+    setCart(prev => prev.filter(item =>
+      !(item.product._id === productId && item.quotedProductId === quotedProductId)
+    ));
   };
 
   const removeFromQuote = (productId: string) => {

@@ -5,6 +5,7 @@ const ProductUnit = require('../models/ProductUnit');
 const Invoice = require('../models/Invoice');
 const Warranty = require('../models/Warranty');
 const RetailerInventory = require('../models/RetailerInventory');
+const RetailerQuotedProduct = require('../models/RetailerQuotedProduct');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
@@ -79,8 +80,35 @@ const createOrder = async (req, res) => {
       let warrantyPrice = 0;
       let warrantyMonths = dbProduct.warrantyPeriodMonths || 12;
 
-      // For retailer direct purchases, validate retailer pricing
-      if (isRetailerDirectPurchase && req.user.role === 'retailer' && item.useRetailerPrice) {
+      // Check for Quote-based line item (from RetailerQuotedProduct)
+      if (item.quotedProductId) {
+        const quotedProduct = await RetailerQuotedProduct.findById(item.quotedProductId);
+
+        if (!quotedProduct) {
+          return res.status(400).json({ message: `Quoted product record not found for "${dbProduct.name}"` });
+        }
+
+        // Ensure this quoted product belongs to the user
+        if (quotedProduct.retailer.toString() !== req.user._id.toString()) {
+          return res.status(403).json({ message: `Unauthorized access to quoted product "${dbProduct.name}"` });
+        }
+
+        // Ensure product matches
+        if (quotedProduct.product.toString() !== item.product) {
+          return res.status(400).json({ message: `Product mismatch in quoted record for "${dbProduct.name}"` });
+        }
+
+        // Validate price matches quoted price
+        if (Math.abs(item.price - quotedProduct.quotedPrice) > PRICE_TOLERANCE) {
+          return res.status(400).json({
+            message: `Price mismatch for quoted product "${dbProduct.name}". Expected: ₹${quotedProduct.quotedPrice}, Received: ₹${item.price}`,
+            expected: quotedProduct.quotedPrice,
+            received: item.price
+          });
+        }
+      }
+      // For retailer direct purchases, validate retailer pricing (only if not a quoted line item)
+      else if (isRetailerDirectPurchase && req.user.role === 'retailer' && item.useRetailerPrice) {
         if (!dbProduct.retailerPrice) {
           return res.status(400).json({
             message: `Product "${dbProduct.name}" does not have a retailer price set. Please request a quote.`,
