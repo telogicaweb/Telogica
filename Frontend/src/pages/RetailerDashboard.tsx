@@ -18,7 +18,8 @@ import {
   Search,
   Store,
   Tag,
-  Loader
+  Loader,
+  Truck
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -168,6 +169,14 @@ const RetailerDashboard = () => {
     customerInvoice: '',
     invoiceNumber: '',
     soldDate: new Date().toISOString().split('T')[0]
+  });
+
+  // Customer Invoice Modal (Dropship)
+  const [showCustomerInvoiceModal, setShowCustomerInvoiceModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [customerInvoiceData, setCustomerInvoiceData] = useState({
+    sellingPrice: '',
+    invoiceNumber: ''
   });
 
   useEffect(() => {
@@ -433,6 +442,65 @@ const RetailerDashboard = () => {
 
   const formatCurrency = (value: number) => `₹${(value || 0).toLocaleString('en-IN')}`;
 
+  const handleDownloadInvoice = async (orderId: string) => {
+    try {
+      setDownloadingOrderId(orderId);
+      const response = await api.get(`/api/orders/${orderId}/invoice`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${orderId}.pdf`); // Backend might set filename, but this is fallback
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert('Failed to download invoice: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setDownloadingOrderId(null);
+    }
+  };
+
+  const openCustomerInvoiceModal = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setCustomerInvoiceData({
+      sellingPrice: '',
+      invoiceNumber: ''
+    });
+    setShowCustomerInvoiceModal(true);
+  };
+
+  const handleGenerateCustomerInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrderId || !customerInvoiceData.sellingPrice) return;
+
+    setLoading(true);
+    try {
+      const response = await api.post(`/api/orders/${selectedOrderId}/customer-invoice`, customerInvoiceData, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `customer-invoice-${customerInvoiceData.invoiceNumber || selectedOrderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setShowCustomerInvoiceModal(false);
+      alert('Invoice generated successfully!');
+    } catch (error: any) {
+      alert('Failed to generate invoice: ' + (error.response?.data?.message || 'Server error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter products
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
@@ -457,6 +525,7 @@ const RetailerDashboard = () => {
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'inventory', name: 'Inventory', icon: Store },
     { id: 'sales', name: 'Sales', icon: DollarSign },
+    { id: 'customer-shipments', name: 'Direct - Customer Shipments', icon: Truck },
   ];
 
   // Render Dashboard Tab
@@ -577,6 +646,147 @@ const RetailerDashboard = () => {
       </div>
     </div>
   );
+
+  // Render Customer Shipments Tab
+  const renderCustomerShipments = () => {
+    // Filter for dropship orders
+    const dropshipOrders = orders.filter(
+      (order: any) => order.isDropship && order.customerDetails
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments</h2>
+            <p className="text-sm text-gray-600 mt-1">Track your dropship orders and shipments to customers.</p>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Dropshipping:</strong> These orders are shipped directly to your customers. You can download the delivery note (Customer Invoice) here.
+          </p>
+        </div>
+
+        {dropshipOrders.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <Truck size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500">No customer shipments found</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {dropshipOrders.map((order: any) => (
+                    <tr key={order._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <p className="font-medium text-gray-900">{order.orderNumber || order._id}</p>
+                          <p className="text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          <p className="font-medium text-gray-900 mt-1">{formatCurrency(order.totalAmount)}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <p className="font-medium text-gray-900">{order.customerDetails?.name}</p>
+                          <p className="text-gray-500">{order.customerDetails?.email}</p>
+                          <p className="text-gray-500">{order.customerDetails?.phone}</p>
+                          <p className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.customerDetails?.address}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm space-y-3">
+                          {order.products.map((item: any, idx: number) => (
+                            <div key={idx} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                                  {item.quantity}
+                                </span>
+                                <span className="text-gray-900 font-medium">{item.product?.name || 'Unknown Product'}</span>
+                              </div>
+                              <div className="pl-7 text-xs text-gray-500 space-y-0.5">
+                                {item.product?.modelNumberPrefix && (
+                                  <p>Model: <span className="font-mono text-gray-700">{item.product.modelNumberPrefix}</span></p>
+                                )}
+                                {item.serialNumbers && item.serialNumbers.length > 0 && (
+                                  <p>S/N: <span className="font-mono text-gray-700">{item.serialNumbers.join(', ')}</span></p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${getStatusColor(order.orderStatus)}`}>
+                            {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            Payment: {order.paymentStatus}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {order.customerInvoiceUrl ? (
+                          <a
+                            href={order.customerInvoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            <FileText size={16} />
+                            Delivery Note
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">Processing...</span>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleDownloadInvoice(order._id)}
+                            disabled={downloadingOrderId === order._id}
+                            className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-medium text-sm disabled:text-gray-400"
+                          >
+                            {downloadingOrderId === order._id ? (
+                              <Loader size={16} className="animate-spin" />
+                            ) : (
+                              <Download size={16} />
+                            )}
+                            Get Tax Invoice
+                          </button>
+                          <button
+                            onClick={() => openCustomerInvoiceModal(order._id)}
+                            className="flex items-center gap-2 text-green-600 hover:text-green-800 font-medium text-sm"
+                          >
+                            <FileText size={16} />
+                            Create Customer Invoice
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render Products Tab
   const renderProducts = () => (
@@ -1454,6 +1664,7 @@ const RetailerDashboard = () => {
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'inventory' && renderInventory()}
             {activeTab === 'sales' && renderSales()}
+            {activeTab === 'customer-shipments' && renderCustomerShipments()}
           </>
         )}
       </div>
@@ -1616,6 +1827,66 @@ const RetailerDashboard = () => {
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {loading ? 'Processing...' : 'Record Sale'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Customer Invoice Modal */}
+      {showCustomerInvoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Generate Customer Invoice</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the details for the invoice you want to provide to your customer. You are listed as the seller.
+            </p>
+
+            <form onSubmit={handleGenerateCustomerInvoice} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Selling Price (to Customer) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={customerInvoiceData.sellingPrice}
+                    onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, sellingPrice: e.target.value })}
+                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number (Optional)</label>
+                <input
+                  type="text"
+                  value={customerInvoiceData.invoiceNumber}
+                  onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, invoiceNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., INV-001"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerInvoiceModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !customerInvoiceData.sellingPrice}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {loading ? 'Generating...' : 'Generate PDF'}
                 </button>
               </div>
             </form>

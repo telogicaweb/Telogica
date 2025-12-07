@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2 } from 'lucide-react';
+import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2, CheckCircle } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const Cart = () => {
@@ -14,7 +14,7 @@ const Cart = () => {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [warrantyOptions, setWarrantyOptions] = useState<{ [key: string]: 'standard' | 'extended' }>({});
-  
+
   // Address form fields
   const [addressForm, setAddressForm] = useState({
     fullName: user?.name || '',
@@ -25,6 +25,17 @@ const Cart = () => {
     pincode: '',
     landmark: ''
   });
+
+  // Dropship State
+  const [isDropship, setIsDropship] = useState(false);
+  const [customerDetails, setCustomerDetails] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
+  const [customerInvoiceUrl, setCustomerInvoiceUrl] = useState('');
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
 
   // Calculate price based on whether retailer price should be used
   const getItemPrice = (item: typeof cart[0]) => {
@@ -102,9 +113,20 @@ const Cart = () => {
       }
     }
 
-    if (!isAddressValid()) {
+    if (!isDropship && !isAddressValid()) {
       toast.error('Please fill in all required address fields');
       return;
+    }
+
+    if (isDropship) {
+      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
+        toast.error('Please fill in all customer details');
+        return;
+      }
+      if (!customerInvoiceUrl) {
+        toast.error('Please generate the customer invoice first');
+        return;
+      }
     }
 
     // Check if Razorpay is loaded
@@ -126,8 +148,11 @@ const Cart = () => {
           warrantyPrice: getWarrantyPrice(item)
         })),
         totalAmount: total,
-        shippingAddress: formatAddress(),
-        isRetailerDirectPurchase: user?.role === 'retailer'
+        shippingAddress: isDropship ? customerDetails.address : formatAddress(),
+        isRetailerDirectPurchase: user?.role === 'retailer',
+        isDropship,
+        customerDetails: isDropship ? customerDetails : undefined,
+        customerInvoiceUrl: isDropship ? customerInvoiceUrl : undefined
       });
 
       if (!data.razorpayOrder || !data.order) {
@@ -173,7 +198,7 @@ const Cart = () => {
       };
 
       const rzp1 = new window.Razorpay(options);
-      rzp1.on('payment.failed', function (response: { error: { description: string } }){
+      rzp1.on('payment.failed', function (response: { error: { description: string } }) {
         toast.error('Payment failed: ' + response.error.description);
         setIsProcessing(false);
       });
@@ -202,8 +227,8 @@ const Cart = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
           <p className="text-gray-500 mb-8">Looks like you haven't added anything to your cart yet.</p>
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
           >
             Start Shopping
@@ -217,7 +242,7 @@ const Cart = () => {
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
-        
+
         {/* Warning for users with more than 3 items */}
         {requiresQuote && (
           <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -227,7 +252,7 @@ const Cart = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-yellow-700">
-                  You have more than 3 items in your cart. As a regular user, you need to request a quote for bulk orders. 
+                  You have more than 3 items in your cart. As a regular user, you need to request a quote for bulk orders.
                   Click "Request Quote" below instead of checkout.
                 </p>
               </div>
@@ -264,7 +289,7 @@ const Cart = () => {
                         {item.useRetailerPrice && item.product.retailerPrice && (
                           <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
                         )}
-                        
+
                         {/* Warranty Selection */}
                         <div className="mt-3 space-y-2">
                           <p className="text-xs font-medium text-gray-700">Warranty Option:</p>
@@ -281,7 +306,7 @@ const Cart = () => {
                                 Standard - {item.product.warrantyPeriodMonths || 12} months (Free)
                               </span>
                             </label>
-                            
+
                             {item.product.extendedWarrantyAvailable && (
                               <label className="flex items-center space-x-2 cursor-pointer">
                                 <input
@@ -326,7 +351,7 @@ const Cart = () => {
           <div className="lg:col-span-5 mt-8 lg:mt-0">
             <div className="bg-white shadow-sm rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
-              
+
               <dl className="space-y-4">
                 <div className="flex items-center justify-between">
                   <dt className="text-sm text-gray-600">Items in cart</dt>
@@ -348,173 +373,308 @@ const Cart = () => {
                     <MapPin size={18} className="mr-2 text-indigo-600" />
                     Shipping Address
                   </h3>
-                  
-                  <div className="space-y-3">
-                    {/* Full Name and Phone */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="fullName" className="block text-xs font-medium text-gray-700 mb-1">
-                          <User size={14} className="inline mr-1" />
-                          Full Name *
-                        </label>
-                        <input
-                          type="text"
-                          id="fullName"
-                          required
-                          value={addressForm.fullName}
-                          onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="John Doe"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="phone" className="block text-xs font-medium text-gray-700 mb-1">
-                          <Phone size={14} className="inline mr-1" />
-                          Phone Number *
-                        </label>
-                        <input
-                          type="tel"
-                          id="phone"
-                          required
-                          value={addressForm.phone}
-                          onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="+91 98765 43210"
-                        />
-                      </div>
-                    </div>
 
-                    {/* Street Address */}
-                    <div>
-                      <label htmlFor="streetAddress" className="block text-xs font-medium text-gray-700 mb-1">
-                        <Building2 size={14} className="inline mr-1" />
-                        Street Address *
+                  {/* Dropship Toggle for Retailers */}
+                  {user?.role === 'retailer' && (
+                    <div className="mb-6 flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
+                      <div className="flex items-center">
+                        <User className="text-blue-600 mr-2" size={20} />
+                        <div>
+                          <p className="font-medium text-gray-900">Ship to Customer (Dropship)</p>
+                          <p className="text-xs text-gray-500">Send directly to your customer with a no-price invoice</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={isDropship}
+                          onChange={(e) => {
+                            setIsDropship(e.target.checked);
+                            // Reset form if unchecking? Maybe keep it.
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
-                      <input
-                        type="text"
-                        id="streetAddress"
-                        required
-                        value={addressForm.streetAddress}
-                        onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        placeholder="House No, Building Name, Street"
-                      />
                     </div>
+                  )}
 
-                    {/* Landmark */}
-                    <div>
-                      <label htmlFor="landmark" className="block text-xs font-medium text-gray-700 mb-1">
-                        Landmark (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        id="landmark"
-                        value={addressForm.landmark}
-                        onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        placeholder="Near Park, Behind Mall, etc."
-                      />
-                    </div>
+                  {isDropship ? (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Name *</label>
+                          <input
+                            type="text"
+                            required
+                            value={customerDetails.name}
+                            onChange={(e) => setCustomerDetails({ ...customerDetails, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            placeholder="Customer Name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Email *</label>
+                          <input
+                            type="email"
+                            required
+                            value={customerDetails.email}
+                            onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            placeholder="customer@example.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Phone *</label>
+                          <input
+                            type="tel"
+                            required
+                            value={customerDetails.phone}
+                            onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            placeholder="Phone Number"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Customer Address *</label>
+                        <textarea
+                          required
+                          rows={3}
+                          value={customerDetails.address}
+                          onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          placeholder="Full delivery address..."
+                        />
+                      </div>
 
-                    {/* City, State, Pincode */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      <div>
-                        <label htmlFor="city" className="block text-xs font-medium text-gray-700 mb-1">
-                          City *
-                        </label>
-                        <input
-                          type="text"
-                          id="city"
-                          required
-                          value={addressForm.city}
-                          onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="Mumbai"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="state" className="block text-xs font-medium text-gray-700 mb-1">
-                          State *
-                        </label>
-                        <input
-                          type="text"
-                          id="state"
-                          required
-                          value={addressForm.state}
-                          onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="Maharashtra"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="pincode" className="block text-xs font-medium text-gray-700 mb-1">
-                          Pincode *
-                        </label>
-                        <input
-                          type="text"
-                          id="pincode"
-                          required
-                          value={addressForm.pincode}
-                          onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          placeholder="400001"
-                          maxLength={6}
-                        />
+                      {/* Invoice Generation */}
+                      <div className="pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Customer Invoice</p>
+                            <p className="text-xs text-gray-500">Generate a delivery note (no prices shown)</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!customerDetails.name || !customerDetails.email || !customerDetails.address) {
+                                toast.error('Please fill customer details first');
+                                return;
+                              }
+                              setIsGeneratingInvoice(true);
+                              try {
+                                const response = await api.post('/api/orders/dropship-invoice', {
+                                  customerDetails,
+                                  items: cart.map(item => ({
+                                    product: { name: item.product.name },
+                                    quantity: item.quantity
+                                  }))
+                                }, { responseType: 'blob' });
+
+                                // Create URL for the blob
+                                const url = window.URL.createObjectURL(new Blob([response.data]));
+                                setCustomerInvoiceUrl(url); // Save URL for checkout
+
+                                // Auto-download for user to verify
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `delivery-note.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+
+                                toast.success('Invoice generated & downloaded!');
+                              } catch (err) {
+                                console.error(err);
+                                toast.error('Failed to generate invoice');
+                              } finally {
+                                setIsGeneratingInvoice(false);
+                              }
+                            }}
+                            disabled={isGeneratingInvoice}
+                            className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm font-medium hover:bg-indigo-100 disabled:opacity-50"
+                          >
+                            {isGeneratingInvoice ? 'Generating...' : 'Generate Invoice'}
+                          </button>
+                        </div>
+                        {customerInvoiceUrl && (
+                          <div className="mt-2 text-xs text-green-600 flex items-center">
+                            <CheckCircle size={14} className="mr-1" />
+                            Invoice generated successfully
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Full Name and Phone */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="fullName" className="block text-xs font-medium text-gray-700 mb-1">
+                            <User size={14} className="inline mr-1" />
+                            Full Name *
+                          </label>
+                          <input
+                            type="text"
+                            id="fullName"
+                            required
+                            value={addressForm.fullName}
+                            onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="John Doe"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="phone" className="block text-xs font-medium text-gray-700 mb-1">
+                            <Phone size={14} className="inline mr-1" />
+                            Phone Number *
+                          </label>
+                          <input
+                            type="tel"
+                            id="phone"
+                            required
+                            value={addressForm.phone}
+                            onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="+91 98765 43210"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Street Address */}
+                      <div>
+                        <label htmlFor="streetAddress" className="block text-xs font-medium text-gray-700 mb-1">
+                          <Building2 size={14} className="inline mr-1" />
+                          Street Address *
+                        </label>
+                        <input
+                          type="text"
+                          id="streetAddress"
+                          required
+                          value={addressForm.streetAddress}
+                          onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="House No, Building Name, Street"
+                        />
+                      </div>
+
+                      {/* Landmark */}
+                      <div>
+                        <label htmlFor="landmark" className="block text-xs font-medium text-gray-700 mb-1">
+                          Landmark (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          id="landmark"
+                          value={addressForm.landmark}
+                          onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          placeholder="Near Park, Behind Mall, etc."
+                        />
+                      </div>
+
+                      {/* City, State, Pincode */}
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <div>
+                          <label htmlFor="city" className="block text-xs font-medium text-gray-700 mb-1">
+                            City *
+                          </label>
+                          <input
+                            type="text"
+                            id="city"
+                            required
+                            value={addressForm.city}
+                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="Mumbai"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="state" className="block text-xs font-medium text-gray-700 mb-1">
+                            State *
+                          </label>
+                          <input
+                            type="text"
+                            id="state"
+                            required
+                            value={addressForm.state}
+                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="Maharashtra"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="pincode" className="block text-xs font-medium text-gray-700 mb-1">
+                            Pincode *
+                          </label>
+                          <input
+                            type="text"
+                            id="pincode"
+                            required
+                            value={addressForm.pincode}
+                            onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            placeholder="400001"
+                            maxLength={6}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+
+                  {requiresQuote ? (
+                    <>
+                      <button
+                        onClick={() => navigate('/quote')}
+                        className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                      >
+                        Request Quote
+                        <ArrowRight size={18} className="ml-2" />
+                      </button>
+                      <p className="text-xs text-center text-gray-500">
+                        Bulk orders require admin approval for discounted pricing
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      <button
+                        onClick={handleCheckout}
+                        disabled={isProcessing}
+                        className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 size={18} className="mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            Proceed to Checkout
+                            <ArrowRight size={18} className="ml-2" />
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => navigate('/quote')}
+                        className="w-full flex justify-center items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                      >
+                        Request a Quote
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {requiresQuote ? (
-                  <>
-                    <button
-                      onClick={() => navigate('/quote')}
-                      className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                    >
-                      Request Quote
-                      <ArrowRight size={18} className="ml-2" />
-                    </button>
-                    <p className="text-xs text-center text-gray-500">
-                      Bulk orders require admin approval for discounted pricing
-                    </p>
-                  </>
-                ) : (
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleCheckout}
-                      disabled={isProcessing}
-                      className="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-indigo-400 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 size={18} className="mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          Proceed to Checkout
-                          <ArrowRight size={18} className="ml-2" />
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={() => navigate('/quote')}
-                      className="w-full flex justify-center items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                    >
-                      Request a Quote
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-4 text-center text-sm text-gray-500">
-                <p>
-                  or{' '}
-                  <Link to="/" className="text-indigo-600 font-medium hover:text-indigo-500">
-                    Continue Shopping
-                  </Link>
-                </p>
+                <div className="mt-4 text-center text-sm text-gray-500">
+                  <p>
+                    or{' '}
+                    <Link to="/" className="text-indigo-600 font-medium hover:text-indigo-500">
+                      Continue Shopping
+                    </Link>
+                  </p>
+                </div>
               </div>
             </div>
           </div>
