@@ -2,6 +2,10 @@ import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
+import { CartContext } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
+import InputModal from '../components/ui/InputModal';
 import {
   Package,
   DollarSign,
@@ -126,11 +130,39 @@ interface QuotedProduct {
 
 const RetailerDashboard = () => {
   const authContext = useContext(AuthContext);
+  const cartContext = useContext(CartContext);
   const user = authContext?.user;
+  const addToCart = cartContext?.addToCart;
   const navigate = useNavigate();
+  const { success, error, warning, info } = useToast();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+
+  // Generic Modal States
+  const [confirmationModal, setConfirmationModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: async () => { },
+    isDestructive: false,
+    confirmText: 'Confirm',
+    cancelText: 'Cancel'
+  });
+
+  const [inputModal, setInputModal] = useState({
+    isOpen: false,
+    title: '',
+    label: '',
+    initialValue: '',
+    placeholder: '',
+    onConfirm: async (_val: string) => { },
+    inputType: 'text',
+    required: true
+  });
+
+  const closeConfirmationModal = () => setConfirmationModal(prev => ({ ...prev, isOpen: false }));
+  const closeInputModal = () => setInputModal(prev => ({ ...prev, isOpen: false }));
 
   // Dashboard stats
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -279,54 +311,98 @@ const RetailerDashboard = () => {
     }
   };
 
-  const acceptQuote = async (quoteId: string) => {
-    if (!confirm('Accept this quote?')) return;
-    setLoading(true);
-    try {
-      await api.put(`/api/quotes/${quoteId}/accept`, {});
-      alert('Quote accepted! Proceed to checkout. Products have been added to your Quoted Products.');
-      loadQuotes();
-      loadQuotedProducts();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to accept quote');
-    } finally {
-      setLoading(false);
-    }
+  const acceptQuote = (quoteId: string) => {
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Accept Quote',
+      message: 'Are you sure you want to accept this quote?',
+      confirmText: 'Accept Quote',
+      cancelText: 'Cancel',
+      isDestructive: false,
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await api.put(`/api/quotes/${quoteId}/accept`, {});
+          success('Quote accepted! Proceed to checkout. Products have been added to your Quoted Products.');
+          loadQuotes();
+          loadQuotedProducts();
+        } catch (err: any) {
+          error(err.response?.data?.message || 'Failed to accept quote');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
-  const rejectQuote = async (quoteId: string) => {
-    if (!confirm('Reject this quote?')) return;
-    setLoading(true);
-    try {
-      await api.put(`/api/quotes/${quoteId}/reject`, {});
-      alert('Quote rejected.');
-      loadQuotes();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to reject quote');
-    } finally {
-      setLoading(false);
-    }
+  const rejectQuote = (quoteId: string) => {
+    setConfirmationModal({
+      isOpen: true,
+      title: 'Reject Quote',
+      message: 'Are you sure you want to reject this quote?',
+      confirmText: 'Reject Quote',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await api.put(`/api/quotes/${quoteId}/reject`, {});
+          info('Quote rejected.');
+          loadQuotes();
+        } catch (err: any) {
+          error(err.response?.data?.message || 'Failed to reject quote');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const proceedToCheckout = async (quote: Quote) => {
+    // Filter out invalid products
+    const validItems = quote.products.filter((item: any) => (item.product && item.product._id) || (item.productId && item.productId._id));
+
+    if (validItems.length === 0) {
+      error('Cannot proceed: All products in this quote are no longer available.');
+      return;
+    }
+
+    const startCheckout = () => {
+      setInputModal({
+        isOpen: true,
+        title: 'Shipping Address',
+        label: 'Enter shipping address:',
+        initialValue: user?.address || '',
+        placeholder: '123 Main St, City, Country',
+        required: true,
+        inputType: 'text',
+        onConfirm: async (shippingAddress) => {
+          if (!shippingAddress) return;
+          processOrder(quote, validItems, shippingAddress);
+        }
+      });
+    };
+
+    if (validItems.length < quote.products.length) {
+      setConfirmationModal({
+        isOpen: true,
+        title: 'Items Unavailable',
+        message: 'Some products in this quote are no longer available. Do you want to proceed with the remaining items?',
+        confirmText: 'Proceed',
+        cancelText: 'Cancel',
+        isDestructive: false,
+        onConfirm: async () => {
+          startCheckout();
+        }
+      });
+    } else {
+      startCheckout();
+    }
+  };
+
+  const processOrder = async (quote: Quote, validItems: any[], shippingAddress: string) => {
     setLoading(true);
     try {
-      // Filter out invalid products
-      const validItems = quote.products.filter((item: any) => (item.product && item.product._id) || (item.productId && item.productId._id));
-
-      if (validItems.length === 0) {
-        alert('Cannot proceed: All products in this quote are no longer available.');
-        setLoading(false);
-        return;
-      }
-
-      if (validItems.length < quote.products.length) {
-        if (!confirm('Some products in this quote are no longer available. Do you want to proceed with the remaining items?')) {
-          setLoading(false);
-          return;
-        }
-      }
-
       const totalPrice = quote.adminResponse?.totalPrice || 0;
       const totalQty = validItems.reduce((sum: number, p: any) => sum + p.quantity, 0);
 
@@ -336,12 +412,6 @@ const RetailerDashboard = () => {
         price: item.offeredPrice || (totalQty > 0 ? totalPrice / totalQty : 0)
       }));
 
-      const shippingAddress = prompt("Enter shipping address:", user?.address || "");
-      if (!shippingAddress) {
-        setLoading(false);
-        return;
-      }
-
       const { data } = await api.post('/api/orders', {
         products,
         totalAmount: totalPrice,
@@ -350,7 +420,6 @@ const RetailerDashboard = () => {
       });
 
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
-      console.log('Using Razorpay Key:', razorpayKey);
 
       const options = {
         key: razorpayKey,
@@ -366,10 +435,10 @@ const RetailerDashboard = () => {
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
-            alert('Payment Successful! Products will be added to your inventory.');
+            success('Payment Successful! Products will be added to your inventory.');
             loadDashboardData();
           } catch {
-            alert('Payment Verification Failed');
+            error('Payment Verification Failed');
           }
         },
         prefill: {
@@ -381,11 +450,11 @@ const RetailerDashboard = () => {
 
       const rzp1 = new (window as any).Razorpay(options);
       rzp1.on('payment.failed', function (response: any) {
-        alert(response.error.description);
+        error(response.error.description);
       });
       rzp1.open();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to create order');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Failed to create order');
     } finally {
       setLoading(false);
     }
@@ -409,17 +478,17 @@ const RetailerDashboard = () => {
   const handleSellSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sellFormData.customerInvoice) {
-      alert('Please enter customer invoice URL.');
+      warning('Please enter customer invoice URL.');
       return;
     }
     setLoading(true);
     try {
       await api.post(`/api/retailer-inventory/${selectedItem?._id}/sell`, sellFormData);
-      alert('Product sold successfully! Warranty registered for customer.');
+      success('Product sold successfully! Warranty registered for customer.');
       setShowSellModal(false);
       loadDashboardData();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to record sale');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Failed to record sale');
     } finally {
       setLoading(false);
     }
@@ -457,8 +526,8 @@ const RetailerDashboard = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error: any) {
-      alert('Failed to download invoice: ' + (error.response?.data?.message || error.message));
+    } catch (err: any) {
+      error('Failed to download invoice: ' + (err.response?.data?.message || err.message));
     } finally {
       setDownloadingOrderId(null);
     }
@@ -493,9 +562,9 @@ const RetailerDashboard = () => {
       window.URL.revokeObjectURL(url);
 
       setShowCustomerInvoiceModal(false);
-      alert('Invoice generated successfully!');
-    } catch (error: any) {
-      alert('Failed to generate invoice: ' + (error.response?.data?.message || 'Server error'));
+      success('Invoice generated successfully!');
+    } catch (err: any) {
+      error('Failed to generate invoice: ' + (err.response?.data?.message || 'Server error'));
     } finally {
       setLoading(false);
     }
@@ -875,78 +944,47 @@ const RetailerDashboard = () => {
 
   // Render Quoted Products Tab
   const renderQuotedProducts = () => {
-    const orderFromQuotedProduct = async (quotedProduct: QuotedProduct) => {
-      const quantity = prompt('Enter quantity to order:', '1');
-      if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) <= 0) {
-        return;
-      }
+    const handleAddToCart = (quotedProduct: QuotedProduct) => {
+      if (!addToCart) return;
 
-      const qty = parseInt(quantity);
-      const totalAmount = quotedProduct.quotedPrice * qty;
+      setInputModal({
+        isOpen: true,
+        title: 'Add to Cart',
+        label: `Enter quantity for ${quotedProduct.product.name}`,
+        initialValue: '1',
+        placeholder: '1',
+        inputType: 'number',
+        required: true,
+        onConfirm: async (val: string) => {
+          const qty = parseInt(val);
+          if (isNaN(qty) || qty <= 0) {
+            error('Invalid quantity');
+            return;
+          }
 
-      if (!confirm(`Order ${qty} unit(s) of ${quotedProduct.product.name} for ₹${totalAmount.toLocaleString('en-IN')}?`)) {
-        return;
-      }
+          if (qty > quotedProduct.product.stock) {
+            error(`Only ${quotedProduct.product.stock} units available.`);
+            return;
+          }
 
-      setLoading(true);
-      try {
-        const shippingAddress = prompt("Enter shipping address:", user?.address || "");
-        if (!shippingAddress) {
-          setLoading(false);
-          return;
+          addToCart(
+            quotedProduct.product as any,
+            qty,
+            false,
+            { id: quotedProduct._id, price: quotedProduct.quotedPrice }
+          );
+
+          setConfirmationModal({
+            isOpen: true,
+            title: 'Added to Cart',
+            message: 'Product added to cart successfully. Do you want to go to cart now?',
+            confirmText: 'Go to Cart',
+            cancelText: 'Stay Here',
+            isDestructive: false,
+            onConfirm: async () => navigate('/cart')
+          });
         }
-
-        const { data } = await api.post('/api/orders', {
-          products: [{
-            product: quotedProduct.product._id,
-            quantity: qty,
-            price: quotedProduct.quotedPrice
-          }],
-          totalAmount,
-          shippingAddress,
-          isFromQuotedProducts: true
-        });
-
-        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Rnat5mGdrSJJX4";
-        console.log('Using Razorpay Key:', razorpayKey);
-
-        const options = {
-          key: razorpayKey,
-          amount: data.razorpayOrder.amount,
-          currency: data.razorpayOrder.currency,
-          name: "Telogica",
-          description: "Order from Quoted Products",
-          order_id: data.razorpayOrder.id,
-          handler: async function (response: any) {
-            try {
-              await api.post('/api/orders/verify', {
-                orderId: data.order._id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature
-              });
-              alert('Payment Successful! Products will be added to your inventory.');
-              loadDashboardData();
-            } catch {
-              alert('Payment Verification Failed');
-            }
-          },
-          prefill: {
-            name: user?.name,
-            email: user?.email,
-          },
-          theme: { color: "#3399cc" }
-        };
-
-        const rzp1 = new (window as any).Razorpay(options);
-        rzp1.on('payment.failed', function (response: any) {
-          alert(response.error.description);
-        });
-        rzp1.open();
-      } catch (error: any) {
-        alert(error.response?.data?.message || 'Failed to create order');
-      } finally {
-        setLoading(false);
-      }
+      });
     };
 
     return (
@@ -954,13 +992,14 @@ const RetailerDashboard = () => {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Quoted Products</h2>
-            <p className="text-sm text-gray-600 mt-1">Products with special pricing from accepted quotes. Order anytime at these prices.</p>
+            <p className="text-sm text-gray-600 mt-1">Products with special pricing from accepted quotes. Add to cart to purchase.</p>
           </div>
         </div>
 
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
           <p className="text-sm text-blue-800">
-            <strong>Your Special Prices:</strong> These products have been quoted specifically for you. You can order them anytime at the quoted price without requesting a new quote.
+            <strong>Your Special Prices:</strong> These products have been quoted specifically for you. You can order them anytime at the quoted price.
+            Simply add them to your cart and proceed to checkout (Direct or Dropship).
           </p>
         </div>
 
@@ -1031,12 +1070,12 @@ const RetailerDashboard = () => {
                   </div>
 
                   <button
-                    onClick={() => orderFromQuotedProduct(qp)}
-                    disabled={loading || qp.product.stock <= 0}
-                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    onClick={() => handleAddToCart(qp)}
+                    disabled={qp.product.stock <= 0}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <ShoppingCart size={16} />
-                    Order Now
+                    Add to Cart
                   </button>
                 </div>
               </div>
@@ -1316,9 +1355,9 @@ const RetailerDashboard = () => {
                         document.body.appendChild(link);
                         link.click();
                         link.remove();
-                      } catch (error) {
-                        console.error('Error downloading invoice:', error);
-                        alert('Failed to download invoice');
+                      } catch (err: any) {
+                        console.error('Error downloading invoice:', err);
+                        error('Failed to download invoice');
                       } finally {
                         setDownloadingOrderId(null);
                       }
@@ -1486,7 +1525,7 @@ const RetailerDashboard = () => {
               Profit: s.profit
             }));
             if (data.length === 0) {
-              alert('No sales to export');
+              warning('No sales to export');
               return;
             }
             const headers = Object.keys(data[0]);
@@ -1759,7 +1798,7 @@ const RetailerDashboard = () => {
                       type="button"
                       onClick={async () => {
                         if (!sellFormData.customerName || !sellFormData.customerEmail || !sellFormData.sellingPrice) {
-                          alert('Please fill in Customer Name, Email and Selling Price first');
+                          warning('Please fill in Customer Name, Email and Selling Price first');
                           return;
                         }
                         setLoading(true);
@@ -1773,9 +1812,9 @@ const RetailerDashboard = () => {
                             customerInvoice: response.data.invoiceUrl,
                             invoiceNumber: response.data.invoiceNumber || prev.invoiceNumber
                           }));
-                          alert('Invoice generated successfully! Please verify it before recording the sale.');
-                        } catch (error: any) {
-                          alert(error.response?.data?.message || 'Failed to generate invoice');
+                          success('Invoice generated successfully! Please verify it before recording the sale.');
+                        } catch (err: any) {
+                          error(err.response?.data?.message || 'Failed to generate invoice');
                         } finally {
                           setLoading(false);
                         }
@@ -1893,6 +1932,29 @@ const RetailerDashboard = () => {
           </div>
         </div>
       )}
+      {/* Generic Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={closeConfirmationModal}
+        title={confirmationModal.title}
+        message={confirmationModal.message}
+        onConfirm={confirmationModal.onConfirm}
+        isDestructive={confirmationModal.isDestructive}
+        confirmText={confirmationModal.confirmText}
+      />
+
+      {/* Generic Input Modal */}
+      <InputModal
+        isOpen={inputModal.isOpen}
+        onClose={closeInputModal}
+        title={inputModal.title}
+        label={inputModal.label}
+        initialValue={inputModal.initialValue}
+        placeholder={inputModal.placeholder}
+        inputType={inputModal.inputType}
+        onConfirm={inputModal.onConfirm}
+        required={inputModal.required}
+      />
     </div>
   );
 };
