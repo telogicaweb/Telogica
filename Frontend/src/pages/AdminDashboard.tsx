@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useContext } from 'react';
 import type React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import api from '../api';
@@ -36,8 +36,7 @@ import {
   Star,
   Calendar,
   ClipboardList,
-  Info,
-  Truck
+  Info
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -141,6 +140,7 @@ interface Order {
   user?: { _id: string; name: string; email: string };
   products: Array<{
     productId: { _id: string; name: string };
+    product?: { _id: string; name: string; modelNumberPrefix?: string; price?: number };
     quantity: number;
     price: number;
     serialNumbers?: string[];
@@ -308,7 +308,6 @@ const AdminDashboard: React.FC = () => {
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productViewMode, setProductViewMode] = useState<'grid' | 'table'>('table');
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
   const [productFilterStatus, setProductFilterStatus] = useState<string>('all');
 
@@ -1024,7 +1023,7 @@ const AdminDashboard: React.FC = () => {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {salesData.map((entry, index) => (
+                    {salesData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -1253,7 +1252,7 @@ const AdminDashboard: React.FC = () => {
     );
     const lowStockCount = validProducts.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
     const quoteOnlyCount = validProducts.filter((product) => product.requiresQuote).length;
-    const recommendedCount = filteredProducts.filter((product) => product.requiresQuote === false && (product.isRecommended ?? false)).length;
+
 
     return (
       <div className="space-y-6">
@@ -2279,7 +2278,7 @@ const AdminDashboard: React.FC = () => {
     const pendingQuotes = quotes.filter(q => q.status === 'pending').length;
     const respondedQuotes = quotes.filter(q => q.status === 'responded').length;
     const acceptedQuotes = quotes.filter(q => q.status === 'accepted' || q.status === 'approved').length;
-    const rejectedQuotes = quotes.filter(q => q.status === 'rejected').length;
+
 
     return (
       <div className="space-y-6">
@@ -2875,7 +2874,7 @@ const AdminDashboard: React.FC = () => {
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {order.products.slice(0, 2).map((p, i) => {
+                          {order.products.slice(0, 2).map((p) => {
                             const product = p.productId || (p as any).product;
                             return product?.name || 'Unknown Product';
                           }).join(', ')}
@@ -3995,7 +3994,7 @@ const AdminDashboard: React.FC = () => {
                   <th className="px-6 py-4">Customer</th>
                   <th className="px-6 py-4">Items</th>
                   <th className="px-6 py-4">Payment</th>
-                  <th className="px-6 py-4">Status</th>
+
                   <th className="px-6 py-4">Invoice</th>
                   <th className="px-6 py-4">Actions</th>
                 </tr>
@@ -4003,7 +4002,7 @@ const AdminDashboard: React.FC = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredDropshipOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       No shipments found
                     </td>
                   </tr>
@@ -4038,15 +4037,7 @@ const AdminDashboard: React.FC = () => {
                           {order.paymentStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.orderStatus === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                            order.orderStatus === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-gray-100 text-gray-700'
-                          }`}>
-                          {order.orderStatus}
-                        </span>
-                      </td>
+
                       <td className="px-6 py-4">
                         {order.customerInvoiceUrl ? (
                           <a
@@ -4141,12 +4132,12 @@ const AdminDashboard: React.FC = () => {
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Status</p>
-                  <span className={`inline-flex mt-1 px-2 py-1 rounded-full text-xs font-bold ${selectedDropshipOrder.orderStatus === 'delivered' ? 'bg-green-100 text-green-800' :
-                    selectedDropshipOrder.orderStatus === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Payment Status</p>
+                  <span className={`inline-flex mt-1 px-2 py-1 rounded-full text-xs font-bold ${selectedDropshipOrder.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                    selectedDropshipOrder.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
                     }`}>
-                    {selectedDropshipOrder.orderStatus.toUpperCase()}
+                    {selectedDropshipOrder.paymentStatus.toUpperCase()}
                   </span>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -4229,7 +4220,14 @@ const AdminDashboard: React.FC = () => {
                       {selectedDropshipOrder.products.map((item, idx) => (
                         <div key={idx} className="p-4">
                           <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium text-gray-900">{item.productId?.name}</span>
+                            <div>
+                              <p className="font-medium text-gray-900">{item.product?.name || item.productId?.name || 'Unknown Product'}</p>
+                              {item.product?.modelNumberPrefix && (
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  Model: <span className="font-mono text-gray-700">{item.product.modelNumberPrefix}</span>
+                                </p>
+                              )}
+                            </div>
                             <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-1 rounded-full">
                               x{item.quantity}
                             </span>
@@ -4256,50 +4254,40 @@ const AdminDashboard: React.FC = () => {
 
                   {/* Management Actions */}
                   <div className="bg-white border rounded-xl p-4 shadow-sm">
-                    <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Shipment Actions</h4>
+                    <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Update Payment Status</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={async () => {
-                          if (window.confirm('Mark this shipment as SHIPPED?')) {
-                            try {
-                              await api.put(`/api/orders/${selectedDropshipOrder._id}`, { status: 'shipped' });
-                              alert('Order marked as shipped');
-                              loadDropshipOrders();
-                              setShowDropshipModal(false);
-                            } catch (err) {
-                              alert('Failed to update status');
-                            }
+                          if (window.confirm('Mark this order as PAID (Completed)?')) {
+                            await handleUpdatePaymentStatus(selectedDropshipOrder._id, 'completed');
+                            setShowDropshipModal(false);
+                            loadDropshipOrders();
                           }
                         }}
-                        disabled={selectedDropshipOrder.orderStatus === 'shipped' || selectedDropshipOrder.orderStatus === 'delivered'}
-                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.orderStatus === 'shipped' || selectedDropshipOrder.orderStatus === 'delivered'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
-                      >
-                        <Truck className="w-4 h-4" /> Mark Shipped
-                      </button>
-
-                      <button
-                        onClick={async () => {
-                          if (window.confirm('Mark this shipment as DELIVERED?')) {
-                            try {
-                              await api.put(`/api/orders/${selectedDropshipOrder._id}`, { status: 'delivered' });
-                              alert('Order marked as delivered');
-                              loadDropshipOrders();
-                              setShowDropshipModal(false);
-                            } catch (err) {
-                              alert('Failed to update status');
-                            }
-                          }
-                        }}
-                        disabled={selectedDropshipOrder.orderStatus === 'delivered'}
-                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.orderStatus === 'delivered'
+                        disabled={selectedDropshipOrder.paymentStatus === 'completed'}
+                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.paymentStatus === 'completed'
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : 'bg-green-600 text-white hover:bg-green-700'
                           }`}
                       >
-                        <CheckCircle className="w-4 h-4" /> Mark Delivered
+                        <CheckCircle className="w-4 h-4" /> Mark Paid
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Mark this order as PENDING?')) {
+                            await handleUpdatePaymentStatus(selectedDropshipOrder._id, 'pending');
+                            setShowDropshipModal(false);
+                            loadDropshipOrders();
+                          }
+                        }}
+                        disabled={selectedDropshipOrder.paymentStatus === 'pending'}
+                        className={`w-full py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors ${selectedDropshipOrder.paymentStatus === 'pending'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                          }`}
+                      >
+                        <Clock className="w-4 h-4" /> Mark Pending
                       </button>
                     </div>
                   </div>
