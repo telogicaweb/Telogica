@@ -1,10 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Trash2, 
   Copy, 
   Save, 
-  Upload, 
   Download, 
   Check, 
   X, 
@@ -13,7 +12,6 @@ import {
   Calendar,
   BarChart3,
   Filter,
-  FileSpreadsheet,
   Eye,
   EyeOff,
   ChevronDown,
@@ -22,7 +20,8 @@ import {
   QrCode,
   Clipboard,
   ClipboardCheck,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 
 interface UnitBatchEntryProps {
@@ -49,12 +48,9 @@ const UnitBatchEntry: React.FC<UnitBatchEntryProps> = ({ onSave, defaultWarranty
     }
   ]);
   
-  const [bulkSerialInput, setBulkSerialInput] = useState<string>('');
-  const [selectedGroupForBulk, setSelectedGroupForBulk] = useState<string>('');
   const [clipboardCopied, setClipboardCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [showSummary, setShowSummary] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Statistics
   const totalUnits = modelGroups.reduce((total, group) => 
@@ -75,7 +71,6 @@ const UnitBatchEntry: React.FC<UnitBatchEntryProps> = ({ onSave, defaultWarranty
         isExpanded: true
       }
     ]);
-    setSelectedGroupForBulk(newId);
   };
 
   const removeModelGroup = (id: string) => {
@@ -127,32 +122,6 @@ const UnitBatchEntry: React.FC<UnitBatchEntryProps> = ({ onSave, defaultWarranty
     ));
   };
 
-  const handleBulkSerialImport = () => {
-    if (!selectedGroupForBulk || !bulkSerialInput.trim()) return;
-    
-    const serials = bulkSerialInput
-      .split(/[\n,;]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    
-    if (serials.length > 0) {
-      const group = modelGroups.find(g => g.id === selectedGroupForBulk);
-      if (group) {
-        const existingSerials = new Set(group.serialNumbers.filter(s => s.trim()));
-        const newSerials = serials.filter(s => !existingSerials.has(s));
-        
-        setModelGroups(modelGroups.map(g => 
-          g.id === selectedGroupForBulk 
-            ? { ...g, serialNumbers: [...g.serialNumbers, ...newSerials] }
-            : g
-        ));
-        
-        setBulkSerialInput('');
-        alert(`Added ${newSerials.length} new serial numbers to ${group.modelNumber || 'selected model'}`);
-      }
-    }
-  };
-
   const exportToCSV = () => {
     const units = modelGroups.flatMap(group => 
       group.serialNumbers
@@ -186,81 +155,6 @@ const UnitBatchEntry: React.FC<UnitBatchEntryProps> = ({ onSave, defaultWarranty
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const lines = content.split('\n').map(line => line.trim()).filter(line => line);
-        
-        if (lines.length === 0) {
-          alert('File is empty');
-          return;
-        }
-
-        // Try to parse CSV format (model,serial,warranty)
-        const firstLine = lines[0];
-        const parts = firstLine.split(',');
-        
-        if (parts.length >= 2) {
-          const newGroups: ModelGroup[] = [];
-          
-          lines.forEach(line => {
-            const [model = '', serial = '', warranty = ''] = line.split(',');
-            const warrantyMonths = parseInt(warranty) || defaultWarrantyMonths;
-            
-            let group = newGroups.find(g => g.modelNumber === model);
-            if (!group && model) {
-              group = {
-                id: Date.now().toString() + Math.random(),
-                modelNumber: model,
-                warrantyPeriod: warrantyMonths,
-                serialNumbers: [],
-                isExpanded: false
-              };
-              newGroups.push(group);
-            }
-            
-            if (group && serial) {
-              group.serialNumbers.push(serial);
-            }
-          });
-          
-          setModelGroups([...modelGroups, ...newGroups]);
-          alert(`Imported ${lines.length} units from CSV`);
-        } else {
-          // Assume it's just serial numbers
-          if (modelGroups.length > 0) {
-            const lastGroup = modelGroups[modelGroups.length - 1];
-            addSerialNumbersToGroup(lastGroup.id, lines);
-          }
-        }
-      } catch (error) {
-        alert('Error reading file. Please check the format.');
-      }
-    };
-    reader.readAsText(file);
-    
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const addSerialNumbersToGroup = (groupId: string, serials: string[]) => {
-    setModelGroups(modelGroups.map(g => {
-      if (g.id === groupId) {
-        const existing = new Set(g.serialNumbers);
-        const newSerials = serials.filter(s => s && !existing.has(s));
-        return { ...g, serialNumbers: [...g.serialNumbers, ...newSerials] };
-      }
-      return g;
-    }));
   };
 
   const copyToClipboard = () => {
@@ -317,398 +211,414 @@ const UnitBatchEntry: React.FC<UnitBatchEntryProps> = ({ onSave, defaultWarranty
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-gray-200">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Batch Unit Entry</h2>
-            <p className="text-gray-600 mt-1">Add multiple units efficiently with model grouping</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200">
-              <Package className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">{uniqueModels} Models</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200">
-              <Hash className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">{totalUnits} Units</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bulk Actions */}
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
-                Bulk Add to Model
-              </label>
-              <select
-                value={selectedGroupForBulk}
-                onChange={(e) => setSelectedGroupForBulk(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-              >
-                <option value="">Select Model</option>
-                {modelGroups.map(g => (
-                  <option key={g.id} value={g.id}>
-                    {g.modelNumber || 'New Model'} ({g.serialNumbers.length} units)
-                  </option>
-                ))}
-              </select>
+    <div className="fixed inset-0 bg-gray-50 overflow-auto z-50">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-white shadow-md border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                <Package className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Batch Unit Entry</h1>
+                <p className="text-sm text-gray-600">Add multiple product units with model grouping</p>
+              </div>
             </div>
             
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">
-                Serial Numbers (comma/line separated)
-              </label>
-              <input
-                type="text"
-                value={bulkSerialInput}
-                onChange={(e) => setBulkSerialInput(e.target.value)}
-                placeholder="SN001, SN002, SN003"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                disabled={!selectedGroupForBulk}
-              />
-            </div>
-            
-            <div className="flex items-end">
-              <button
-                onClick={handleBulkSerialImport}
-                disabled={!selectedGroupForBulk || !bulkSerialInput.trim()}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Import
-              </button>
-            </div>
-            
-            <div className="flex items-end gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".csv,.txt"
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Upload CSV
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                <Package className="w-5 h-5 text-blue-600" />
+                <div className="text-left">
+                  <div className="text-xs text-blue-600 font-medium">Models</div>
+                  <div className="text-lg font-bold text-blue-700">{uniqueModels}</div>
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-green-50 rounded-lg border border-green-200">
+                <Hash className="w-5 h-5 text-green-600" />
+                <div className="text-left">
+                  <div className="text-xs text-green-600 font-medium">Units</div>
+                  <div className="text-lg font-bold text-green-700">{totalUnits}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Model Groups */}
-      <div className="space-y-4">
-        {modelGroups.map((group, groupIndex) => (
-          <div 
-            key={group.id} 
-            className={`bg-white rounded-xl border transition-all hover:shadow-md ${
-              group.isExpanded ? 'border-blue-200 shadow-sm' : 'border-gray-200'
-            }`}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 space-y-6">
+        {/* Quick Help */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="font-semibold text-blue-900 mb-2">Quick Guide</h4>
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-blue-800">
+                <div>• Create groups for different models</div>
+                <div>• Add serial numbers one by one</div>
+                <div>• Set warranty per model group</div>
+                <div>• Duplicate groups to save time</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Add Model Button */}
+        <div className="text-center">
+          <button
+            onClick={addModelGroup}
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 font-bold text-lg transition-all shadow-lg hover:shadow-xl"
           >
-            {/* Group Header */}
-            <div className="p-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <button
-                    onClick={() => toggleGroupExpansion(group.id)}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    {group.isExpanded ? (
-                      <ChevronUp className="w-5 h-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-500" />
-                    )}
-                  </button>
+            <Plus className="w-6 h-6" />
+            Add New Model Group
+          </button>
+        </div>
+
+        {/* Model Groups List */}
+        <div className="space-y-5">
+          {modelGroups.map((group, groupIndex) => (
+            <div 
+              key={group.id} 
+              className={`bg-white rounded-2xl shadow-md border-2 transition-all ${
+                group.isExpanded 
+                  ? 'border-indigo-400 shadow-xl' 
+                  : 'border-gray-200 hover:border-gray-300 shadow-sm'
+              }`}
+            >
+              {/* Group Header */}
+              <div 
+                className={`px-6 py-5 cursor-pointer ${
+                  group.isExpanded 
+                    ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-b-2 border-indigo-100' 
+                    : 'bg-gray-50 hover:bg-gray-100'
+                }`}
+                onClick={() => toggleGroupExpansion(group.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-xl transition-all ${
+                    group.isExpanded 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-white text-indigo-600 border-2 border-indigo-200'
+                  }`}>
+                    {group.isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                  </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                        <Package className="w-5 h-5 text-blue-600" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-sm ${
+                        group.isExpanded 
+                          ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white' 
+                          : 'bg-white text-indigo-600 border-2 border-indigo-200'
+                      }`}>
+                        <Package className="w-7 h-7" />
                       </div>
                       <div className="flex-1">
                         <input
                           type="text"
                           value={group.modelNumber}
-                          onChange={(e) => updateModelGroup(group.id, 'modelNumber', e.target.value)}
-                          placeholder="Enter Model Number (e.g., TEL-101)"
-                          className="text-lg font-semibold bg-transparent border-none focus:outline-none focus:ring-0 w-full placeholder:text-gray-400"
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            updateModelGroup(group.id, 'modelNumber', e.target.value);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          placeholder="Enter Model Number (e.g., ROUTER-5000)"
+                          className={`text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 w-full placeholder:text-gray-400 ${
+                            group.isExpanded ? 'text-indigo-900' : 'text-gray-900'
+                          }`}
                         />
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Hash className="w-3.5 h-3.5" />
+                        <div className="flex flex-wrap items-center gap-4 mt-1 text-sm">
+                          <span className={`flex items-center gap-1.5 font-semibold ${
+                            group.isExpanded ? 'text-indigo-700' : 'text-gray-600'
+                          }`}>
+                            <Hash className="w-4 h-4" />
                             {group.serialNumbers.filter(s => s.trim()).length} units
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
+                          <span className={`flex items-center gap-1.5 font-semibold ${
+                            group.isExpanded ? 'text-indigo-700' : 'text-gray-600'
+                          }`}>
+                            <Calendar className="w-4 h-4" />
                             {group.warrantyPeriod} months warranty
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => duplicateGroup(group.id)}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Duplicate Model"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
                   
-                  <button
-                    onClick={() => removeModelGroup(group.id)}
-                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Remove Model"
-                    disabled={modelGroups.length <= 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => duplicateGroup(group.id)}
+                      className="p-3 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                      title="Duplicate model"
+                    >
+                      <Copy className="w-5 h-5" />
+                    </button>
+                    
+                    <button
+                      onClick={() => removeModelGroup(group.id)}
+                      className="p-3 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Remove model"
+                      disabled={modelGroups.length <= 1}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Expanded Content */}
-            {group.isExpanded && (
-              <div className="p-6 space-y-4">
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Model Details
-                    </label>
-                    <input
-                      type="text"
-                      value={group.modelNumber}
-                      onChange={(e) => updateModelGroup(group.id, 'modelNumber', e.target.value)}
-                      placeholder="Model Number"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Warranty Period
-                    </label>
-                    <div className="flex items-center gap-2">
+              {/* Expanded Content */}
+              {group.isExpanded && (
+                <div className="p-6 space-y-6 bg-white">
+                  {/* Model Configuration */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Model Number <span className="text-red-500">*</span>
+                      </label>
                       <input
-                        type="number"
-                        value={group.warrantyPeriod}
-                        onChange={(e) => updateModelGroup(group.id, 'warrantyPeriod', parseInt(e.target.value) || 0)}
-                        min="0"
-                        max="120"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        type="text"
+                        value={group.modelNumber}
+                        onChange={(e) => updateModelGroup(group.id, 'modelNumber', e.target.value)}
+                        placeholder="e.g., ROUTER-5000, SWITCH-X200"
+                        className="w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-lg"
                       />
-                      <span className="text-gray-500 whitespace-nowrap">months</span>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Warranty Period <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={group.warrantyPeriod}
+                          onChange={(e) => updateModelGroup(group.id, 'warrantyPeriod', parseInt(e.target.value) || 0)}
+                          min="0"
+                          max="120"
+                          className="flex-1 px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold text-lg"
+                        />
+                        <span className="text-gray-700 font-semibold whitespace-nowrap">months</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quick Actions
-                    </label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => addSerialNumber(group.id)}
-                        className="flex-1 px-4 py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Serial
-                      </button>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Serial Numbers Grid */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                      <Hash className="w-4 h-4" />
-                      Serial Numbers ({group.serialNumbers.filter(s => s.trim()).length})
-                    </h4>
-                    <div className="flex items-center gap-2">
-                      {group.serialNumbers.filter(s => s.trim()).length > 5 && (
+                  {/* Quick Add Button */}
+                  <div>
+                    <button
+                      onClick={() => addSerialNumber(group.id)}
+                      className="w-full px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 rounded-xl flex items-center justify-center gap-3 font-bold text-lg transition-all shadow-md hover:shadow-lg"
+                    >
+                      <Plus className="w-6 h-6" />
+                      Add New Serial Number
+                    </button>
+                  </div>
+
+                  {/* Serial Numbers Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <Hash className="w-6 h-6 text-indigo-600" />
+                        Serial Numbers
+                        <span className="text-base font-normal text-gray-500">
+                          ({group.serialNumbers.filter(s => s.trim()).length} entered)
+                        </span>
+                      </h4>
+                      {group.serialNumbers.filter(s => s.trim()).length > 6 && (
                         <button
                           onClick={() => setViewMode(viewMode === 'detailed' ? 'compact' : 'detailed')}
-                          className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-1"
+                          className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2 font-semibold transition-colors"
                         >
                           {viewMode === 'detailed' ? (
                             <>
-                              <EyeOff className="w-3.5 h-3.5" />
+                              <EyeOff className="w-4 h-4" />
                               Compact
                             </>
                           ) : (
                             <>
-                              <Eye className="w-3.5 h-3.5" />
+                              <Eye className="w-4 h-4" />
                               Detailed
                             </>
                           )}
                         </button>
                       )}
                     </div>
-                  </div>
-                  
-                  <div className={`grid gap-3 ${
-                    viewMode === 'detailed' 
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
-                      : 'grid-cols-1'
-                  }`}>
-                    {group.serialNumbers.map((sn, snIndex) => (
-                      <div 
-                        key={snIndex} 
-                        className="group flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
-                      >
-                        <div className="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-medium text-gray-600">{snIndex + 1}</span>
-                        </div>
-                        
-                        <input
-                          type="text"
-                          value={sn}
-                          onChange={(e) => updateSerialNumber(group.id, snIndex, e.target.value)}
-                          placeholder={`Serial Number ${snIndex + 1}`}
-                          className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-gray-400"
-                        />
-                        
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => navigator.clipboard.writeText(sn)}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                            title="Copy to clipboard"
-                          >
-                            <Clipboard className="w-4 h-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => removeSerialNumber(group.id, snIndex)}
-                            disabled={group.serialNumbers.length <= 1}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
-                            title="Remove serial"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
                     
-                    <button
-                      onClick={() => addSerialNumber(group.id)}
-                      className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Add New Serial Number</span>
-                    </button>
+                    <div className={`grid gap-4 ${
+                      viewMode === 'detailed' 
+                        ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3' 
+                        : 'grid-cols-1'
+                    }`}>
+                      {group.serialNumbers.map((sn, snIndex) => (
+                        <div 
+                          key={snIndex} 
+                          className="group flex items-center gap-3 p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all"
+                        >
+                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg shadow-sm">
+                            {snIndex + 1}
+                          </div>
+                          
+                          <input
+                            type="text"
+                            value={sn}
+                            onChange={(e) => updateSerialNumber(group.id, snIndex, e.target.value)}
+                            placeholder={`Serial #${snIndex + 1}`}
+                            className="flex-1 bg-transparent border-none focus:outline-none font-semibold text-gray-900 placeholder:text-gray-400 text-base"
+                          />
+                          
+                          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(sn)}
+                              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Copy"
+                            >
+                              <Clipboard className="w-5 h-5" />
+                            </button>
+                            
+                            <button
+                              onClick={() => removeSerialNumber(group.id, snIndex)}
+                              disabled={group.serialNumbers.length <= 1}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <button
+                        onClick={() => addSerialNumber(group.id)}
+                        className="flex items-center justify-center gap-3 p-6 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all font-semibold"
+                      >
+                        <Plus className="w-6 h-6" />
+                        <span>Add Another</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         ))}
-      </div>
-
-      {/* Summary Panel */}
-      {showSummary && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-emerald-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-emerald-600" />
-              Batch Summary
-            </h3>
-            <button
-              onClick={() => setShowSummary(false)}
-              className="p-1 text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Total Models</p>
-              <p className="text-2xl font-bold text-gray-900">{uniqueModels}</p>
-            </div>
-            
-            <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Total Units</p>
-              <p className="text-2xl font-bold text-blue-600">{totalUnits}</p>
-            </div>
-            
-            <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Avg Warranty</p>
-              <p className="text-2xl font-bold text-green-600">
-                {modelGroups.length > 0 
-                  ? Math.round(modelGroups.reduce((sum, g) => sum + g.warrantyPeriod, 0) / modelGroups.length)
-                  : 0} months
-              </p>
-            </div>
-            
-            <div className="bg-white p-3 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Complete Models</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {modelGroups.filter(g => g.modelNumber.trim() && g.serialNumbers.filter(s => s.trim()).length > 0).length}
-              </p>
-            </div>
-          </div>
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="sticky bottom-6 bg-white border border-gray-200 rounded-xl p-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex gap-3">
-            <button
-              onClick={addModelGroup}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 flex items-center gap-2 transition-all shadow-sm hover:shadow"
-            >
-              <Plus className="w-5 h-5" />
-              Add New Model
-            </button>
+        {/* Summary Panel */}
+        {showSummary && (
+          <div className="bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50 rounded-2xl border-2 border-emerald-300 p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-600 to-green-600 text-white rounded-xl flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                Batch Summary
+              </h3>
+              <button
+                onClick={() => setShowSummary(false)}
+                className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-all"
+                title="Hide summary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
             
-            <button
-              onClick={exportToCSV}
-              className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
-              disabled={totalUnits === 0}
-            >
-              <Download className="w-5 h-5" />
-              Export CSV
-            </button>
-            
-            <button
-              onClick={copyToClipboard}
-              className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
-              disabled={totalUnits === 0}
-            >
-              {clipboardCopied ? (
-                <>
-                  <ClipboardCheck className="w-5 h-5 text-green-600" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Clipboard className="w-5 h-5" />
-                  Copy All
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-2xl border-2 border-gray-200 shadow-md hover:shadow-lg transition-shadow">
+                <p className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+                  <Package className="w-4 h-4 text-gray-500" />
+                  Total Models
+                </p>
+                <p className="text-4xl font-black text-gray-900">{uniqueModels}</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border-2 border-indigo-200 shadow-md hover:shadow-lg transition-shadow">
+                <p className="text-sm font-bold text-indigo-700 mb-2 flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-indigo-600" />
+                  Total Units
+                </p>
+                <p className="text-4xl font-black text-indigo-600">{totalUnits}</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-2xl border-2 border-green-200 shadow-md hover:shadow-lg transition-shadow">
+                <p className="text-sm font-bold text-green-700 mb-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-green-600" />
+                  Avg Warranty
+                </p>
+                <p className="text-4xl font-black text-green-600">
+                  {modelGroups.length > 0 
+                    ? Math.round(modelGroups.reduce((sum, g) => sum + g.warrantyPeriod, 0) / modelGroups.length)
+                    : 0}
+                </p>
+                <p className="text-sm font-bold text-green-600 mt-1">months</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-5 rounded-2xl border-2 border-purple-200 shadow-md hover:shadow-lg transition-shadow">
+                <p className="text-sm font-bold text-purple-700 mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                  Complete
+                </p>
+                <p className="text-4xl font-black text-purple-600">
+                  {modelGroups.filter(g => g.modelNumber.trim() && g.serialNumbers.filter(s => s.trim()).length > 0).length}
+                </p>
+                <p className="text-sm font-bold text-purple-600 mt-1">ready</p>
+              </div>
+            </div>
           </div>
-          
-          <div className="flex-1" />
-          
-          <button
-            onClick={handleSave}
-            className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center justify-center gap-2 font-semibold transition-all shadow-lg hover:shadow-xl"
-          >
-            <Save className="w-5 h-5" />
-            Save All Units ({totalUnits})
-          </button>
+        )}
+
+        {/* Sticky Action Bar */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t-2 border-gray-300 shadow-2xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <div className="flex flex-wrap gap-3 flex-1">
+                <button
+                  onClick={exportToCSV}
+                  className="px-6 py-3.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 flex items-center gap-2 font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={totalUnits === 0}
+                  title="Export all data to CSV"
+                >
+                  <Download className="w-5 h-5" />
+                  Export CSV
+                </button>
+                
+                <button
+                  onClick={copyToClipboard}
+                  className="px-6 py-3.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 flex items-center gap-2 font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={totalUnits === 0}
+                  title="Copy all serial numbers to clipboard"
+                >
+                  {clipboardCopied ? (
+                    <>
+                      <ClipboardCheck className="w-5 h-5 text-green-600" />
+                      <span className="text-green-600">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clipboard className="w-5 h-5" />
+                      Copy All
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setShowSummary(!showSummary)}
+                  className="px-6 py-3.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 text-indigo-700 rounded-xl hover:from-indigo-100 hover:to-purple-100 hover:border-indigo-300 flex items-center gap-2 font-bold transition-all shadow-md hover:shadow-lg"
+                  title="Toggle summary panel"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  {showSummary ? 'Hide' : 'Show'} Summary
+                </button>
+              </div>
+              
+              <button
+                onClick={handleSave}
+                className="w-full sm:w-auto px-12 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 flex items-center justify-center gap-3 font-black text-lg transition-all shadow-xl hover:shadow-2xl disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
+                disabled={totalUnits === 0}
+                title={`Save ${totalUnits} product units`}
+              >
+                <Save className="w-6 h-6" />
+                Save All Units ({totalUnits})
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
