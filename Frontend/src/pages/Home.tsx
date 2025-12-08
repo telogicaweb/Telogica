@@ -21,6 +21,7 @@ interface Product {
 const Home = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [categories, setCategories] = useState([{ value: 'all', label: 'ALL' }]);
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
 
@@ -29,6 +30,18 @@ const Home = () => {
       try {
         const { data } = await api.get('/api/products');
         setProducts(data);
+        
+        // Extract unique categories from products
+        const allCategories = data.map((p: Product) => p.category).filter(Boolean);
+        const uniqueCategories = Array.from(new Set(allCategories)) as string[];
+        const categoryOptions = [
+          { value: 'all', label: 'ALL' },
+          ...uniqueCategories.map((cat: string) => ({
+            value: cat.toLowerCase(),
+            label: cat.toUpperCase()
+          }))
+        ];
+        setCategories(categoryOptions);
       } catch (error) {
         console.error("Error fetching products", error);
       }
@@ -48,14 +61,7 @@ const Home = () => {
 
   const filteredProducts = activeCategory === 'all'
     ? products.filter(p => p.isRecommended)
-    : products.filter(p => p.category === activeCategory && p.isRecommended);
-
-  const categories = [
-    { value: 'all', label: 'ALL' },
-    { value: 'telecom', label: 'TELECOM' },
-    { value: 'defence', label: 'DEFENCE' },
-    { value: 'railway', label: 'RAILWAY' },
-  ];
+    : products.filter(p => p.category.toLowerCase() === activeCategory && p.isRecommended);
 
   return (
     <div className="bg-gray-50 min-h-screen">

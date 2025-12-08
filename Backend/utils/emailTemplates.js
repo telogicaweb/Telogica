@@ -368,7 +368,15 @@ const getWarrantyRegistrationEmail = (userName, productName, serialNumber, warra
 };
 
 // Delivery Tracking Email
-const getDeliveryTrackingEmail = (userName, orderNumber, trackingLink) => {
+const getDeliveryTrackingEmail = (userName, orderNumber, trackingLink, trackingId = null) => {
+  const trackingIdSection = trackingId ? `
+    <div class="info-box" style="margin-top: 20px;">
+      <p><strong>📦 Tracking ID / Reference Number:</strong></p>
+      <p style="font-size: 18px; font-weight: 700; color: #059669;">${trackingId}</p>
+      <p style="font-size: 13px; color: #6b7280; margin-top: 5px;">Use this ID to track your shipment with the courier</p>
+    </div>
+  ` : '';
+
   const content = `
     <h2>Your Order is On Its Way! 🚚</h2>
     <p>Dear ${userName},</p>
@@ -378,6 +386,8 @@ const getDeliveryTrackingEmail = (userName, orderNumber, trackingLink) => {
       <p><strong>Track Your Delivery:</strong></p>
       <p><a href="${trackingLink}" style="color: #059669; font-weight: 600;">${trackingLink}</a></p>
     </div>
+
+    ${trackingIdSection}
 
     <a href="${trackingLink}" class="button">Track Your Package</a>
 

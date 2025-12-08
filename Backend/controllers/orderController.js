@@ -9,6 +9,7 @@ const RetailerQuotedProduct = require('../models/RetailerQuotedProduct');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { sendEmail } = require('../utils/mailer');
+const { logAdminAction } = require('../utils/logger');
 const { generateAndUploadInvoice, generateAndUploadDropshipInvoice, generateCustomerInvoicePdfBuffer } = require('../utils/invoiceGenerator');
 const { getOrderConfirmationEmail, getDeliveryTrackingEmail, getInvoiceEmail } = require('../utils/emailTemplates');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
@@ -27,7 +28,7 @@ const PRICE_TOLERANCE = 0.01; // Tolerance for floating point price comparisons
 // @access  Private/Admin
 const updateOrderTrackingLink = async (req, res) => {
   try {
-    const { deliveryTrackingLink } = req.body;
+    const { deliveryTrackingLink, trackingId } = req.body;
     const order = await Order.findById(req.params.id).populate('user', 'name email');
 
     if (!order) {
@@ -35,6 +36,9 @@ const updateOrderTrackingLink = async (req, res) => {
     }
 
     order.deliveryTrackingLink = deliveryTrackingLink;
+    if (trackingId) {
+      order.trackingId = trackingId;
+    }
     const updatedOrder = await order.save();
 
     // Determine email recipient
@@ -53,13 +57,14 @@ const updateOrderTrackingLink = async (req, res) => {
       const trackingEmailHtml = getDeliveryTrackingEmail(
         nameRecipient,
         order.orderNumber || order._id.toString().slice(-8),
-        deliveryTrackingLink
+        deliveryTrackingLink,
+        trackingId
       );
 
       sendEmail(
         emailRecipient,
         'Your Order is On Its Way! - Telogica',
-        `Your order ${order.orderNumber || order._id} has been shipped. Track it here: ${deliveryTrackingLink}`,
+        `Your order ${order.orderNumber || order._id} has been shipped. Track it here: ${deliveryTrackingLink}${trackingId ? ` (Tracking ID: ${trackingId})` : ''}`,
         'order_tracking',
         { entityType: 'order', entityId: order._id },
         trackingEmailHtml
@@ -649,8 +654,28 @@ const getOrders = async (req, res) => {
       .populate('products.product')
       .sort({ createdAt: -1 })
       .lean();
-    res.json(orders);
+
+    // Fetch invoices for all orders
+    const orderIds = orders.map(order => order._id);
+    const invoices = await Invoice.find({ order: { $in: orderIds } }).select('order invoiceUrl').lean();
+    
+    // Create a map of order ID to invoice URL
+    const invoiceMap = {};
+    invoices.forEach(invoice => {
+      if (invoice.invoiceUrl) {
+        invoiceMap[invoice.order.toString()] = invoice.invoiceUrl;
+      }
+    });
+
+    // Add invoice URL to each order
+    const ordersWithInvoices = orders.map(order => ({
+      ...order,
+      invoiceUrl: invoiceMap[order._id.toString()] || order.customerInvoiceUrl || null
+    }));
+
+    res.json(ordersWithInvoices);
   } catch (error) {
+    console.error('Error in getOrders:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -675,6 +700,13 @@ const updateOrderStatus = async (req, res) => {
       }
 
       const updatedOrder = await order.save();
+
+      // Log admin action for order status update
+      await logAdminAction(req, 'UPDATE', 'Order', updatedOrder._id, {
+        previousStatus,
+        newStatus: status,
+        paymentStatus: paymentStatus
+      });
 
       // Populate user and products for further processing
       await updatedOrder.populate('user products.product');

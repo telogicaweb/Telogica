@@ -1,174 +1,159 @@
+import { useEffect, useState } from 'react';
+import { FileText, Calendar, Download, Building2 } from 'lucide-react';
+import api from '../api';
 
-import { TrendingUp, DollarSign, FileText, Calendar, Award, Users } from 'lucide-react';
+interface InvestorDocument {
+  _id: string;
+  title: string;
+  category: string;
+  description?: string;
+  documentUrl: string;
+  fileSize?: string;
+  fileType: string;
+  publishDate: string;
+  isActive: boolean;
+  displayOrder: number;
+}
 
 export default function Investors() {
+  const [documents, setDocuments] = useState<Record<string, InvestorDocument[]>>({});
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInvestorDocuments();
+  }, []);
+
+  const fetchInvestorDocuments = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/api/investor-documents');
+      setDocuments(data);
+      setCategories(Object.keys(data).sort());
+    } catch (error) {
+      console.error('Error fetching investor documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = (url: string, title: string) => {
+    window.open(url, '_blank');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-16">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-900 to-green-700 text-white py-20">
+      <section className="bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-800 text-white py-20 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
+            <div className="flex justify-center mb-6">
+              <div className="bg-white/10 backdrop-blur-sm rounded-full p-4">
+                <Building2 className="w-12 h-12 text-white" />
+              </div>
+            </div>
             <h1 className="text-4xl md:text-5xl font-bold mb-6">Investor Relations</h1>
-            <p className="text-xl md:text-2xl text-green-100 max-w-3xl mx-auto">
-              Building sustainable value for our shareholders and stakeholders
+            <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto">
+              Access comprehensive financial reports, presentations, and shareholder information
             </p>
           </div>
         </div>
       </section>
 
-      {/* Financial Highlights */}
+      {/* Documents Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Financial Highlights (FY 2024)</h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <DollarSign className="text-green-600 mb-4" size={40} />
-            <h3 className="text-gray-600 text-sm font-medium mb-2">Revenue</h3>
-            <p className="text-3xl font-bold text-gray-900">₹450 Cr</p>
-            <p className="text-green-600 text-sm mt-2">↑ 28% YoY</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <TrendingUp className="text-blue-600 mb-4" size={40} />
-            <h3 className="text-gray-600 text-sm font-medium mb-2">EBITDA</h3>
-            <p className="text-3xl font-bold text-gray-900">₹135 Cr</p>
-            <p className="text-green-600 text-sm mt-2">↑ 32% YoY</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
-            <Award className="text-purple-600 mb-4" size={40} />
-            <h3 className="text-gray-600 text-sm font-medium mb-2">Net Profit</h3>
-            <p className="text-3xl font-bold text-gray-900">₹90 Cr</p>
-            <p className="text-green-600 text-sm mt-2">↑ 35% YoY</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-            <Users className="text-orange-600 mb-4" size={40} />
-            <h3 className="text-gray-600 text-sm font-medium mb-2">Market Cap</h3>
-            <p className="text-3xl font-bold text-gray-900">₹2,800 Cr</p>
-            <p className="text-green-600 text-sm mt-2">↑ 42% YoY</p>
-          </div>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Investor Documents</h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Download our latest financial reports, regulatory filings, and investor presentations
+          </p>
         </div>
-      </section>
-
-      {/* Stock Information */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Stock Information</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gray-50 p-8 rounded-lg">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Company Details</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Stock Symbol</span>
-                  <span className="font-semibold text-gray-900">TELOGICA</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Exchange</span>
-                  <span className="font-semibold text-gray-900">NSE, BSE</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">ISIN</span>
-                  <span className="font-semibold text-gray-900">INE123A01012</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Industry</span>
-                  <span className="font-semibold text-gray-900">Technology</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Listed Since</span>
-                  <span className="font-semibold text-gray-900">2018</span>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-50 p-8 rounded-lg">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Current Trading Data</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">Current Price</span>
-                  <span className="font-semibold text-green-600">₹1,245.50</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">52-Week High</span>
-                  <span className="font-semibold text-gray-900">₹1,389.00</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">52-Week Low</span>
-                  <span className="font-semibold text-gray-900">₹845.00</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-600">P/E Ratio</span>
-                  <span className="font-semibold text-gray-900">28.5</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Dividend Yield</span>
-                  <span className="font-semibold text-gray-900">1.8%</span>
-                </div>
-              </div>
-            </div>
+        
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600">Loading documents...</p>
           </div>
-        </div>
-      </section>
-
-      {/* Reports & Downloads */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Reports & Presentations</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { title: 'Annual Report 2024', date: 'March 31, 2024', type: 'PDF', size: '4.2 MB' },
-            { title: 'Q4 2024 Results', date: 'December 1, 2024', type: 'PDF', size: '1.8 MB' },
-            { title: 'Investor Presentation Q4 2024', date: 'December 1, 2024', type: 'PDF', size: '3.5 MB' },
-            { title: 'Annual Report 2023', date: 'March 31, 2023', type: 'PDF', size: '3.9 MB' },
-            { title: 'Q3 2024 Results', date: 'September 30, 2024', type: 'PDF', size: '1.6 MB' },
-            { title: 'Corporate Governance Report', date: 'June 30, 2024', type: 'PDF', size: '2.1 MB' },
-          ].map((report, index) => (
-            <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer">
-              <FileText className="text-blue-600 mb-4" size={40} />
-              <h3 className="text-lg font-bold text-gray-900 mb-2">{report.title}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                <Calendar size={16} />
-                <span>{report.date}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">{report.type} • {report.size}</span>
-                <button className="text-blue-600 font-medium hover:text-blue-800">Download</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Upcoming Events */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Upcoming Events</h2>
-          <div className="space-y-4">
-            {[
-              { event: 'Annual General Meeting 2025', date: 'January 15, 2025', time: '10:00 AM IST' },
-              { event: 'Q1 2025 Earnings Call', date: 'March 15, 2025', time: '3:00 PM IST' },
-              { event: 'Investor Conference - Mumbai', date: 'February 20, 2025', time: '9:00 AM IST' },
-            ].map((event, index) => (
-              <div key={index} className="bg-gray-50 p-6 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{event.event}</h3>
-                  <p className="text-gray-600">{event.time}</p>
+        ) : categories.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-xl shadow-sm">
+            <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500 text-lg">No investor documents available at the moment.</p>
+            <p className="text-gray-400 text-sm mt-2">Please check back later for updates.</p>
+          </div>
+        ) : (
+          <div className="space-y-16">
+            {categories.map((category) => (
+              <div key={category}>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                    <span className="h-1 w-12 bg-indigo-600 rounded"></span>
+                    {category}
+                  </h3>
+                  <p className="text-gray-600 ml-15">Browse {category.toLowerCase()} and related materials</p>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Calendar size={20} />
-                  <span className="font-medium">{event.date}</span>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {documents[category]?.map((doc) => (
+                    <div 
+                      key={doc._id} 
+                      className="bg-white p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-100 hover:border-indigo-200"
+                      onClick={() => handleDownload(doc.documentUrl, doc.title)}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="bg-indigo-100 p-3 rounded-lg group-hover:bg-indigo-600 transition-colors">
+                          <FileText className="text-indigo-600 group-hover:text-white transition-colors" size={24} />
+                        </div>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                          {doc.fileType}
+                        </span>
+                      </div>
+                      
+                      <h4 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                        {doc.title}
+                      </h4>
+                      
+                      {doc.description && (
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{doc.description}</p>
+                      )}
+                      
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Calendar size={16} />
+                          <span>{new Date(doc.publishDate).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}</span>
+                        </div>
+                        {doc.fileSize && (
+                          <span className="text-xs text-gray-500">{doc.fileSize}</span>
+                        )}
+                      </div>
+                      
+                      <div className="mt-4">
+                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors font-medium text-sm group-hover:bg-indigo-600 group-hover:text-white">
+                          <Download size={16} />
+                          Download Document
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
       </section>
 
-      {/* Contact IR */}
+      {/* Contact IR Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 md:p-12 text-white text-center">
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-8 md:p-12 text-white text-center shadow-xl">
           <h2 className="text-3xl font-bold mb-4">Investor Relations Contact</h2>
           <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            For any investor-related queries, please reach out to our dedicated IR team
+            For any investor-related queries, financial information, or shareholder services
           </p>
           <div className="space-y-2">
-            <p className="text-lg">Email: investors@telogica.com</p>
-            <p className="text-lg">Phone: +91-22-1234-5678</p>
+            <p className="text-lg font-medium">Email: investors@telogica.com</p>
+            <p className="text-lg font-medium">Phone: +91-22-1234-5678</p>
           </div>
         </div>
       </section>

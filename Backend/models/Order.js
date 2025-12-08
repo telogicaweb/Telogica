@@ -46,7 +46,8 @@ const orderSchema = new mongoose.Schema({
   customerInvoiceUrl: { type: String }, // URL to the generated "No Price" invoice
   
   // Delivery Tracking
-  deliveryTrackingLink: { type: String } // Tracking link provided by admin for delivery status
+  deliveryTrackingLink: { type: String }, // Tracking link provided by admin for delivery status
+  trackingId: { type: String } // Tracking ID/Reference number for the shipment
 }, { timestamps: true });
 
 // Add indexes for performance

@@ -83,10 +83,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Apply comprehensive security middleware - Must be after body parsers
 applySecurityMiddleware(app);
 
-// Logger middleware 
-const adminActivityLogger = require('./middleware/adminActivityLogger');
-app.use(adminActivityLogger);
-
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const quoteRoutes = require('./routes/quoteRoutes');
@@ -108,7 +104,7 @@ const exportRoutes = require('./routes/exportRoutes');
 const logRoutes = require('./routes/logRoutes');
 const retailerQuotedProductRoutes = require('./routes/retailerQuotedProductRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const activityLogRoutes = require('./routes/activityLogRoutes');
+const investorDocumentRoutes = require('./routes/investorDocumentRoutes');
 
 // Apply rate limiting to routes
 // app.use('/api/auth/login', authLimiter);
@@ -137,7 +133,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/quoted-products', retailerQuotedProductRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/investor-documents', investorDocumentRoutes);
 
 app.get('/', (req, res) => {
   res.json({

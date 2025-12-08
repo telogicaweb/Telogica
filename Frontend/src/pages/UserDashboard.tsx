@@ -544,6 +544,62 @@ const UserDashboard = () => {
                               </li>
                             ))}
                           </ul>
+
+                          {/* Tracking Information Section */}
+                          {(order.deliveryTrackingLink || order.trackingId) && (
+                            <div className="mt-6 pt-6 border-t border-gray-200">
+                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2 bg-blue-100 rounded-lg">
+                                    <Package className="w-5 h-5 text-blue-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                      <span>📦 Tracking Information</span>
+                                    </h4>
+                                    
+                                    {order.trackingId && (
+                                      <div className="mb-3">
+                                        <p className="text-xs text-gray-600 mb-1">Tracking ID / Reference Number:</p>
+                                        <div className="flex items-center gap-2">
+                                          <code className="text-sm font-bold text-blue-700 bg-white px-3 py-1.5 rounded border border-blue-200">
+                                            {order.trackingId}
+                                          </code>
+                                          <button
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(order.trackingId);
+                                              alert('Tracking ID copied to clipboard!');
+                                            }}
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                          >
+                                            Copy
+                                          </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Use this ID to track with the courier service</p>
+                                      </div>
+                                    )}
+                                    
+                                    {order.deliveryTrackingLink && (
+                                      <div>
+                                        <p className="text-xs text-gray-600 mb-2">Track Your Shipment:</p>
+                                        <a
+                                          href={order.deliveryTrackingLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                          </svg>
+                                          Track Package
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

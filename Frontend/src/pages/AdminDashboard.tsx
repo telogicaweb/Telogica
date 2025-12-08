@@ -39,7 +39,8 @@ import {
   Info,
   Truck,
   Link as LinkIcon,
-  Send
+  Send,
+  Upload
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -161,7 +162,9 @@ interface Order {
     address: string;
   };
   customerInvoiceUrl?: string;
+  invoiceUrl?: string;
   deliveryTrackingLink?: string;
+  trackingId?: string;
 }
 
 interface DropshipOrder extends Order {
@@ -183,7 +186,22 @@ interface Warranty {
   purchaseDate: string;
   purchaseType: string;
   invoiceUrl?: string;
+  warrantyCertificateUrl?: string;
   status: string;
+  createdAt: string;
+}
+
+interface InvestorDocument {
+  _id: string;
+  title: string;
+  category: string;
+  description?: string;
+  documentUrl: string;
+  fileSize?: string;
+  fileType: string;
+  publishDate: string;
+  isActive: boolean;
+  displayOrder: number;
   createdAt: string;
 }
 
@@ -312,6 +330,7 @@ const AdminDashboard: React.FC = () => {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<ContactMessage[]>([]);
+  const [investorDocuments, setInvestorDocuments] = useState<InvestorDocument[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productViewMode, setProductViewMode] = useState<'grid' | 'table'>('table');
   const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
@@ -343,6 +362,25 @@ const AdminDashboard: React.FC = () => {
   const [emailFilterStatus, setEmailFilterStatus] = useState<string>('all');
   const [emailFilterType, setEmailFilterType] = useState<string>('all');
 
+  // Investor documents state
+  const [investorDocSearch, setInvestorDocSearch] = useState('');
+  const [investorDocFilterCategory, setInvestorDocFilterCategory] = useState<string>('all');
+  const [showInvestorDocModal, setShowInvestorDocModal] = useState(false);
+  const [editingInvestorDoc, setEditingInvestorDoc] = useState<InvestorDocument | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [investorDocForm, setInvestorDocForm] = useState({
+    title: '',
+    category: '',
+    description: '',
+    documentUrl: '',
+    fileSize: '',
+    fileType: 'PDF',
+    publishDate: new Date().toISOString().split('T')[0],
+    isActive: true,
+    displayOrder: 0,
+  });
+
   // Export filters
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
@@ -370,6 +408,7 @@ const AdminDashboard: React.FC = () => {
   // Tracking Link Modal states
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [trackingLinkInput, setTrackingLinkInput] = useState('');
+  const [trackingIdInput, setTrackingIdInput] = useState('');
   const [trackingType, setTrackingType] = useState<'order' | 'quote'>('order');
   const [selectedTrackingId, setSelectedTrackingId] = useState<string>('');
   const [trackingEmail, setTrackingEmail] = useState<string>('');
@@ -442,6 +481,7 @@ const AdminDashboard: React.FC = () => {
         loadQuotes(),
         loadOrders(),
         loadWarranties(),
+        loadInvestorDocuments(),
         loadEmailLogs(),
         loadEmailLogs(),
         loadContacts(),
@@ -533,6 +573,16 @@ const AdminDashboard: React.FC = () => {
       setWarranties(response.data);
     } catch (error) {
       console.error('Error loading warranties:', error);
+      // Keep existing data on error
+    }
+  };
+
+  const loadInvestorDocuments = async () => {
+    try {
+      const response = await api.get('/api/investor-documents/admin');
+      setInvestorDocuments(response.data);
+    } catch (error) {
+      console.error('Error loading investor documents:', error);
       // Keep existing data on error
     }
   };
@@ -946,10 +996,11 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Tracking Link Management
-  const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string, email?: string) => {
+  const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string, email?: string, currentTrackingId?: string) => {
     setSelectedTrackingId(id);
     setTrackingType(type);
     setTrackingLinkInput(currentLink || '');
+    setTrackingIdInput(currentTrackingId || '');
     setTrackingEmail(email || '');
     setShowTrackingModal(true);
   };
@@ -965,11 +1016,15 @@ const AdminDashboard: React.FC = () => {
         ? `/api/orders/${selectedTrackingId}/tracking`
         : `/api/quotes/${selectedTrackingId}/tracking`;
 
-      await api.put(endpoint, { deliveryTrackingLink: trackingLinkInput });
+      await api.put(endpoint, { 
+        deliveryTrackingLink: trackingLinkInput,
+        trackingId: trackingIdInput.trim() || undefined
+      });
       alert(`Tracking link updated successfully and email sent to ${trackingEmail || 'customer'}`);
 
       setShowTrackingModal(false);
       setTrackingLinkInput('');
+      setTrackingIdInput('');
       setTrackingEmail('');
 
       if (trackingType === 'order') {
@@ -2786,7 +2841,7 @@ const AdminDashboard: React.FC = () => {
                 {quote.status && quote.status !== 'pending' && quote.status !== 'rejected' && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
-                      onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink)}
+                      onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink, undefined, undefined)}
                       className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${quote.deliveryTrackingLink
                         ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
                         : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-md hover:shadow-lg'
@@ -3125,8 +3180,19 @@ const AdminDashboard: React.FC = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+                          {(order.invoiceUrl || order.customerInvoiceUrl) && (
+                            <a
+                              href={order.invoiceUrl || order.customerInvoiceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="View Invoice PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          )}
                           <button
-                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink)}
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, undefined, order.trackingId)}
                             className={`p-2 rounded-lg transition-colors ${order.deliveryTrackingLink
                               ? 'text-green-600 hover:bg-green-50'
                               : 'text-orange-600 hover:bg-orange-50'
@@ -3423,17 +3489,30 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  {warranty.invoiceUrl && (
-                    <a
-                      href={warranty.invoiceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      View Invoice
-                    </a>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {warranty.invoiceUrl && (
+                      <a
+                        href={warranty.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors border border-blue-200 hover:border-blue-300"
+                      >
+                        <Download className="w-4 h-4" />
+                        Invoice PDF
+                      </a>
+                    )}
+                    {warranty.warrantyCertificateUrl && (
+                      <a
+                        href={warranty.warrantyCertificateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1.5 hover:bg-purple-50 px-3 py-2 rounded-lg transition-colors border border-purple-200 hover:border-purple-300"
+                      >
+                        <Shield className="w-4 h-4" />
+                        Warranty Certificate PDF
+                      </a>
+                    )}
+                  </div>
                   {warranty.status === 'pending' && (
                     <div className="flex gap-3 ml-auto">
                       <button
@@ -3455,6 +3534,468 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Investor Documents CRUD Handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleUploadFile = async () => {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    try {
+      setUploadingFile(true);
+      const formData = new FormData();
+      formData.append('document', selectedFile);
+
+      const response = await api.post('/api/investor-documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Update form with uploaded file details
+      setInvestorDocForm({
+        ...investorDocForm,
+        documentUrl: response.data.url,
+        fileSize: response.data.fileSize,
+        fileType: response.data.fileType,
+        title: investorDocForm.title || response.data.originalName.replace(/\.[^/.]+$/, ''), // Use filename as title if empty
+      });
+
+      alert('File uploaded successfully!');
+      setSelectedFile(null);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleSaveInvestorDocument = async () => {
+    try {
+      if (!investorDocForm.documentUrl) {
+        alert('Please upload a document first');
+        return;
+      }
+
+      if (editingInvestorDoc) {
+        await api.put(`/api/investor-documents/${editingInvestorDoc._id}`, investorDocForm);
+        alert('Investor document updated successfully');
+      } else {
+        await api.post('/api/investor-documents', investorDocForm);
+        alert('Investor document created successfully');
+      }
+      setShowInvestorDocModal(false);
+      setEditingInvestorDoc(null);
+      setSelectedFile(null);
+      setInvestorDocForm({
+        title: '',
+        category: '',
+        description: '',
+        documentUrl: '',
+        fileSize: '',
+        fileType: 'PDF',
+        publishDate: new Date().toISOString().split('T')[0],
+        isActive: true,
+        displayOrder: 0,
+      });
+      loadInvestorDocuments();
+    } catch (error) {
+      console.error('Error saving investor document:', error);
+      alert('Failed to save investor document');
+    }
+  };
+
+  const handleEditInvestorDocument = (doc: InvestorDocument) => {
+    setEditingInvestorDoc(doc);
+    setSelectedFile(null);
+    setInvestorDocForm({
+      title: doc.title,
+      category: doc.category,
+      description: doc.description || '',
+      documentUrl: doc.documentUrl,
+      fileSize: doc.fileSize || '',
+      fileType: doc.fileType,
+      publishDate: new Date(doc.publishDate).toISOString().split('T')[0],
+      isActive: doc.isActive,
+      displayOrder: doc.displayOrder,
+    });
+    setShowInvestorDocModal(true);
+  };
+
+  const handleDeleteInvestorDocument = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await api.delete(`/api/investor-documents/${id}`);
+      alert('Document deleted successfully');
+      loadInvestorDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Failed to delete document');
+    }
+  };
+
+  // Render Investor Documents Tab
+  const renderInvestorDocuments = () => {
+    const filteredDocs = investorDocuments.filter((doc) => {
+      if (investorDocSearch) {
+        const searchLower = investorDocSearch.toLowerCase();
+        if (!doc.title.toLowerCase().includes(searchLower) && 
+            !doc.category.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+      if (investorDocFilterCategory !== 'all' && doc.category !== investorDocFilterCategory) {
+        return false;
+      }
+      return true;
+    });
+
+    const uniqueCategories = [...new Set(investorDocuments.map(d => d.category))].sort();
+    const hasActiveFilters = investorDocSearch || investorDocFilterCategory !== 'all';
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Investor Documents</h2>
+              <p className="text-green-100">Manage reports, presentations, and investor materials</p>
+            </div>
+            <FileText className="w-16 h-16 text-green-200 opacity-50" />
+          </div>
+        </div>
+
+        {/* Filters and Actions */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by title or category..."
+                value={investorDocSearch}
+                onChange={(e) => setInvestorDocSearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 w-80"
+              />
+            </div>
+
+            <select
+              value={investorDocFilterCategory}
+              onChange={(e) => setInvestorDocFilterCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">All Categories</option>
+              {uniqueCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setInvestorDocSearch('');
+                  setInvestorDocFilterCategory('all');
+                }}
+                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setEditingInvestorDoc(null);
+                setInvestorDocForm({
+                  title: '',
+                  category: '',
+                  description: '',
+                  documentUrl: '',
+                  fileSize: '',
+                  fileType: 'PDF',
+                  publishDate: new Date().toISOString().split('T')[0],
+                  isActive: true,
+                  displayOrder: 0,
+                });
+                setShowInvestorDocModal(true);
+              }}
+              className="ml-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Document
+            </button>
+          </div>
+        </div>
+
+        {/* Documents List */}
+        {filteredDocs.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {hasActiveFilters ? 'No documents match your filters' : 'No investor documents found'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {hasActiveFilters ? 'Try adjusting your search criteria' : 'Start by adding your first investor document'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-green-50 to-teal-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Type/Size</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Publish Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredDocs.map((doc) => (
+                    <tr key={doc._id} className="hover:bg-green-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{doc.title}</div>
+                        {doc.description && (
+                          <div className="text-sm text-gray-600 line-clamp-1">{doc.description}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                          {doc.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {doc.fileType}{doc.fileSize && ` • ${doc.fileSize}`}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {new Date(doc.publishDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          doc.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {doc.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={doc.documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Document"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </a>
+                          <button
+                            onClick={() => handleEditInvestorDocument(doc)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteInvestorDocument(doc._id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Add/Edit Modal */}
+        {showInvestorDocModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowInvestorDocModal(false)}></div>
+              <div className="relative bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {editingInvestorDoc ? 'Edit Document' : 'Add New Document'}
+                  </h3>
+                  <button onClick={() => setShowInvestorDocModal(false)} className="text-gray-400 hover:text-gray-600">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      value={investorDocForm.title}
+                      onChange={(e) => setInvestorDocForm({...investorDocForm, title: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                    <input
+                      type="text"
+                      value={investorDocForm.category}
+                      onChange={(e) => setInvestorDocForm({...investorDocForm, category: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g., Annual Reports, Quarterly Results"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={investorDocForm.description}
+                      onChange={(e) => setInvestorDocForm({...investorDocForm, description: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* File Upload Section */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Document *</label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept=".pdf,.xls,.xlsx,.doc,.docx,.ppt,.pptx"
+                          onChange={handleFileSelect}
+                          className="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-green-50 file:text-green-700
+                            hover:file:bg-green-100 cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleUploadFile}
+                          disabled={!selectedFile || uploadingFile}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap flex items-center gap-2"
+                        >
+                          {uploadingFile ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              Upload
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {selectedFile && (
+                        <p className="text-sm text-gray-600">
+                          Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                      )}
+                      {investorDocForm.documentUrl && (
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Document uploaded successfully</span>
+                          <a href={investorDocForm.documentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            View
+                          </a>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Accepted formats: PDF, Excel (.xls, .xlsx), Word (.doc, .docx), PowerPoint (.ppt, .pptx). Max size: 50MB
+                      </p>
+                    </div>
+                  </div>
+
+                  {investorDocForm.documentUrl && (
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">File Type</label>
+                        <p className="text-sm font-semibold text-gray-900">{investorDocForm.fileType}</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">File Size</label>
+                        <p className="text-sm font-semibold text-gray-900">{investorDocForm.fileSize || 'N/A'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Publish Date *</label>
+                      <input
+                        type="date"
+                        value={investorDocForm.publishDate}
+                        onChange={(e) => setInvestorDocForm({...investorDocForm, publishDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                      <input
+                        type="number"
+                        value={investorDocForm.displayOrder}
+                        onChange={(e) => setInvestorDocForm({...investorDocForm, displayOrder: parseInt(e.target.value)})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={investorDocForm.isActive}
+                      onChange={(e) => setInvestorDocForm({...investorDocForm, isActive: e.target.checked})}
+                      className="mr-2"
+                    />
+                    <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active (visible to public)</label>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setShowInvestorDocModal(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveInvestorDocument}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      {editingInvestorDoc ? 'Update' : 'Create'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -4258,7 +4799,7 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4">
                         {order.deliveryTrackingLink ? (
                           <button
-                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, order.customerDetails?.email)}
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, order.customerDetails?.email, order.trackingId)}
                             className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                             title={order.deliveryTrackingLink}
                           >
@@ -4267,7 +4808,7 @@ const AdminDashboard: React.FC = () => {
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleOpenTrackingModal(order._id, 'order', undefined, order.customerDetails?.email)}
+                            onClick={() => handleOpenTrackingModal(order._id, 'order', undefined, order.customerDetails?.email, order.trackingId)}
                             className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs transition-colors"
                           >
                             <Plus className="w-3 h-3" />
@@ -4323,6 +4864,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'orders', name: 'Orders', icon: ShoppingCart },
     { id: 'shipments', name: 'Retailer-Customer Shipments', icon: Package },
     { id: 'warranties', name: 'Warranties', icon: Shield },
+    { id: 'investors', name: 'Investor Documents', icon: FileText },
     { id: 'messages', name: 'Messages', icon: MessageSquare },
     { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
@@ -4517,7 +5059,8 @@ const AdminDashboard: React.FC = () => {
                                   selectedDropshipOrder._id,
                                   'order',
                                   selectedDropshipOrder.deliveryTrackingLink,
-                                  selectedDropshipOrder.customerDetails?.email
+                                  selectedDropshipOrder.customerDetails?.email,
+                                  selectedDropshipOrder.trackingId
                                 );
                               }}
                               className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 text-sm font-medium"
@@ -4537,7 +5080,8 @@ const AdminDashboard: React.FC = () => {
                               selectedDropshipOrder._id,
                               'order',
                               undefined,
-                              selectedDropshipOrder.customerDetails?.email
+                              selectedDropshipOrder.customerDetails?.email,
+                              selectedDropshipOrder.trackingId
                             );
                           }}
                           className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition-colors font-medium border border-gray-200"
@@ -4758,6 +5302,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'orders' && renderOrders()}
             {activeTab === 'shipments' && renderDropshipOrders()}
             {activeTab === 'warranties' && renderWarranties()}
+            {activeTab === 'investors' && renderInvestorDocuments()}
             {activeTab === 'messages' && renderContacts()}
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
@@ -4955,7 +5500,7 @@ const AdminDashboard: React.FC = () => {
                       {selectedOrder.deliveryTrackingLink}
                     </a>
                     <button
-                      onClick={() => handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink)}
+                      onClick={() => handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink, undefined, selectedOrder.trackingId)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold flex items-center gap-2"
                     >
                       <Edit className="w-4 h-4" />
@@ -4971,7 +5516,7 @@ const AdminDashboard: React.FC = () => {
                   <button
                     onClick={() => {
                       setShowOrderDetailsModal(false);
-                      handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink);
+                      handleOpenTrackingModal(selectedOrder._id, 'order', selectedOrder.deliveryTrackingLink, undefined, selectedOrder.trackingId);
                     }}
                     className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
                   >
@@ -5333,6 +5878,25 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Enter the complete URL where customers can track their delivery
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tracking ID / Reference Number 
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={trackingIdInput}
+                    onChange={(e) => setTrackingIdInput(e.target.value)}
+                    placeholder="TRK123456789 or REF-ABC-123"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+                  />
+                  <Package className="absolute right-3 top-3.5 w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Provide a tracking ID or reference number for the customer to use with the courier
                 </p>
               </div>
 

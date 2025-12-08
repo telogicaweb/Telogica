@@ -7,6 +7,7 @@ const { getWarrantyRegistrationEmail } = require('../utils/emailTemplates');
 const cloudinary = require('../utils/cloudinary');
 const streamifier = require('streamifier');
 const { generateAndUploadWarranty } = require('../utils/warrantyGenerator');
+const { logAdminAction } = require('../utils/logger');
 
 // Upload invoice
 exports.uploadInvoice = async (req, res) => {
@@ -219,6 +220,14 @@ exports.approveWarranty = async (req, res) => {
 
     await warranty.save();
 
+    // Log admin action for warranty approval
+    await logAdminAction(req, 'UPDATE', 'Warranty', warranty._id, {
+      action: 'approved',
+      warrantyStartDate: startDate,
+      warrantyEndDate: endDate,
+      warrantyMonths
+    });
+
     // Send approval email to user
     const certificateLink = warranty.warrantyCertificateUrl 
       ? `\n\nYou can download your warranty certificate here: ${warranty.warrantyCertificateUrl}` 
@@ -259,6 +268,12 @@ exports.rejectWarranty = async (req, res) => {
 
     await warranty.save();
 
+    // Log admin action for warranty rejection
+    await logAdminAction(req, 'UPDATE', 'Warranty', warranty._id, {
+      action: 'rejected',
+      rejectionReason
+    });
+
     // Send rejection email to user
     await sendEmail(
       warranty.user.email,
@@ -293,6 +308,11 @@ exports.updateWarranty = async (req, res) => {
     if (!warranty) {
       return res.status(404).json({ message: 'Warranty not found' });
     }
+
+    // Log admin action for warranty update
+    await logAdminAction(req, 'UPDATE', 'Warranty', warranty._id, {
+      updates: Object.keys(updates)
+    });
 
     res.json({
       message: 'Warranty updated successfully',
