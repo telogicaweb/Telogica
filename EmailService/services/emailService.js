@@ -24,18 +24,56 @@ const getTransporter = () => {
 
   try {
     console.log('✅ Email credentials found, creating transporter...');
-    transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    const useHost = !!process.env.EMAIL_HOST;
+
+    const port = Number(process.env.EMAIL_PORT) || 587;
+    const secure = process.env.EMAIL_SECURE === 'true' || port === 465;
+
+    const transportOptions = useHost
+      ? {
+          host: process.env.EMAIL_HOST,
+          port,
+          secure, // true for 465, false for 587
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+          pool: true,
+          maxConnections: 3,
+          maxMessages: 100,
+          connectionTimeout: 10000,
+          socketTimeout: 10000,
+          greetingTimeout: 10000,
+        }
+      : {
+          service: process.env.EMAIL_SERVICE || 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+          pool: true,
+          maxConnections: 3,
+          maxMessages: 100,
+          connectionTimeout: 10000,
+          socketTimeout: 10000,
+          greetingTimeout: 10000,
+        };
+
+    console.log(
+      `📧 Creating transporter via ${useHost ? 'host' : 'service'}:`,
+      useHost
+        ? { host: process.env.EMAIL_HOST, port, secure }
+        : { service: process.env.EMAIL_SERVICE || 'gmail' }
+    );
+
+    transporter = nodemailer.createTransport(transportOptions);
 
     // Verify transporter configuration
     transporter.verify((error, success) => {
       if (error) {
         console.error('❌ Email transporter configuration error:', error);
+        console.error('   → Tried configuration:', useHost ? { host: process.env.EMAIL_HOST, port, secure } : { service: process.env.EMAIL_SERVICE || 'gmail' });
+        console.error('   → Tips: On Render, prefer port 587 (TLS) with secure=false');
         transporter = null; // Reset on error
       } else {
         console.log('✅ Email server is ready to send emails');
