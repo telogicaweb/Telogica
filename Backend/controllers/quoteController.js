@@ -69,13 +69,27 @@ const getQuotes = async (req, res) => {
       return res.status(401).json({ message: 'User not authenticated' });
     }
 
-    const { userId } = req.query;
+    const { userId, startDate, endDate } = req.query;
     let quotes;
     
     if (req.user.role === 'admin') {
       const filter = {};
       if (userId) {
         filter.user = userId;
+      }
+      
+      // Date filtering
+      if (startDate || endDate) {
+        filter.createdAt = {};
+        if (startDate) {
+          filter.createdAt.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          // Set end date to end of day
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          filter.createdAt.$lte = end;
+        }
       }
       
       quotes = await Quote.find(filter)

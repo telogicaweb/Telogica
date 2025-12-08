@@ -649,11 +649,25 @@ const getMyOrders = async (req, res) => {
 // @access  Private/Admin
 const getOrders = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, startDate, endDate } = req.query;
     const filter = {};
 
     if (userId) {
       filter.user = userId;
+    }
+
+    // Date filtering
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Set end date to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
     }
 
     const orders = await Order.find(filter)

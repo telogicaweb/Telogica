@@ -40,7 +40,10 @@ import {
   Truck,
   Link as LinkIcon,
   Send,
-  Upload
+  Upload,
+  Printer,
+  Copy,
+  MapPin
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -154,12 +157,14 @@ interface Order {
   orderStatus: string;
   paymentStatus: string;
   createdAt: string;
+  shippingAddress?: string;
   isDropship?: boolean;
   customerDetails?: {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    role?: string;
   };
   customerInvoiceUrl?: string;
   invoiceUrl?: string;
@@ -344,10 +349,14 @@ const AdminDashboard: React.FC = () => {
   // Quote management filters
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteFilterStatus, setQuoteFilterStatus] = useState<string>('all');
+  const [quoteStartDate, setQuoteStartDate] = useState('');
+  const [quoteEndDate, setQuoteEndDate] = useState('');
 
   // Order management filters
   const [orderSearch, setOrderSearch] = useState('');
   const [orderFilterPayment, setOrderFilterPayment] = useState<string>('all');
+  const [orderStartDate, setOrderStartDate] = useState('');
+  const [orderEndDate, setOrderEndDate] = useState('');
 
   // Warranty management filters
   const [warrantySearch, setWarrantySearch] = useState('');
@@ -516,7 +525,8 @@ const AdminDashboard: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const response = await api.get('/api/products');
+      // Admin gets all products including out of stock
+      const response = await api.get('/api/products', { params: { includeOutOfStock: 'true' } });
       setProducts(response.data);
     } catch (error) {
       console.error('Error loading products:', error);
@@ -540,7 +550,10 @@ const AdminDashboard: React.FC = () => {
 
   const loadQuotes = async () => {
     try {
-      const response = await api.get('/api/quotes');
+      const params: any = {};
+      if (quoteStartDate) params.startDate = quoteStartDate;
+      if (quoteEndDate) params.endDate = quoteEndDate;
+      const response = await api.get('/api/quotes', { params });
       setQuotes(response.data);
     } catch (error) {
       console.error('Error loading quotes:', error);
@@ -550,7 +563,10 @@ const AdminDashboard: React.FC = () => {
 
   const loadOrders = async () => {
     try {
-      const response = await api.get('/api/orders');
+      const params: any = {};
+      if (orderStartDate) params.startDate = orderStartDate;
+      if (orderEndDate) params.endDate = orderEndDate;
+      const response = await api.get('/api/orders', { params });
       setOrders(response.data);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -722,6 +738,182 @@ const AdminDashboard: React.FC = () => {
       console.error('Error fetching user 360 data:', error);
       alert(error.response?.data?.message || 'Failed to fetch user data');
     }
+  };
+
+  const handlePrintDeliveryLabel = (order: Order) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Please allow popups to print labels');
+      return;
+    }
+
+    const user = order.user || order.userId;
+    const orderNumber = order.orderNumber || order._id.slice(-8);
+    const orderDate = new Date(order.createdAt || Date.now()).toLocaleDateString();
+
+    const labelHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Delivery Label - ${orderNumber}</title>
+        <style>
+          @media print {
+            @page {
+              size: 4in 6in;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 4in;
+            margin: 0 auto;
+          }
+          .label-container {
+            border: 3px solid #000;
+            padding: 15px;
+            background: white;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+          }
+          .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+          .label-title {
+            font-size: 18px;
+            font-weight: bold;
+            background: #000;
+            color: #fff;
+            padding: 5px;
+            margin: 10px 0;
+          }
+          .section {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+          }
+          .section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+          }
+          .section-content {
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .order-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 12px;
+          }
+          .barcode {
+            text-align: center;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            letter-spacing: 2px;
+            font-weight: bold;
+          }
+          .products {
+            margin: 10px 0;
+          }
+          .product-item {
+            padding: 5px 0;
+            border-bottom: 1px dashed #ccc;
+            font-size: 12px;
+          }
+          .footer {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 2px solid #000;
+            text-align: center;
+            font-size: 10px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="label-container">
+          <div class="header">
+            <div class="company-name">TELOGICA</div>
+            <div>Telecom & IT Solutions</div>
+          </div>
+
+          <div class="label-title">DELIVERY LABEL</div>
+
+          <div class="order-info">
+            <div><strong>Order:</strong> #${orderNumber}</div>
+            <div><strong>Date:</strong> ${orderDate}</div>
+          </div>
+
+          <div class="barcode">*${orderNumber}*</div>
+
+          <div class="section">
+            <div class="section-title">Ship To:</div>
+            <div class="section-content">
+              <strong>${order.isDropship ? (order.customerDetails?.name || 'Customer') : (user?.name || 'Customer')}</strong><br>
+              ${order.isDropship ? (order.customerDetails?.address || 'Address not available') : (order.shippingAddress || 'Address not available')}<br>
+              ${order.isDropship ? (order.customerDetails?.email || '') : (user?.email || '')}<br>
+              ${order.isDropship ? (order.customerDetails?.phone || '') : ''}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Order Details:</div>
+            <div class="products">
+              ${order.products.map((p, idx) => {
+                const product = p.productId || (p as any).product;
+                return `
+                  <div class="product-item">
+                    <strong>${idx + 1}.</strong> ${product?.name || 'Product'} 
+                    <strong>x${p.quantity}</strong>
+                    ${p.serialNumbers && p.serialNumbers.length > 0 ? `<br>SN: ${p.serialNumbers.join(', ')}` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div style="margin-top: 10px; font-weight: bold; font-size: 14px;">
+              Total Amount: ₹${order.totalAmount.toLocaleString()}
+            </div>
+          </div>
+
+          ${order.trackingId ? `
+            <div class="section">
+              <div class="section-title">Tracking ID:</div>
+              <div class="section-content" style="font-weight: bold; font-size: 16px;">
+                ${order.trackingId}
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="footer">
+            <div>Handle with care • Fragile items</div>
+            <div>For queries: support@telogica.com</div>
+          </div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(labelHTML);
+    printWindow.document.close();
   };
 
   const handleExportUser360 = async (userId: string, userName: string) => {
@@ -985,13 +1177,21 @@ const AdminDashboard: React.FC = () => {
   };
 
   // Order Management
-  const handleUpdatePaymentStatus = async (orderId: string, paymentStatus: string) => {
+
+  // Order Creation (address validation)
+  const handleCreateOrder = async (orderData: any) => {
+    // Validate delivery address
+    if (!orderData.customerDetails || !orderData.customerDetails.address || !orderData.customerDetails.address.trim()) {
+      alert('Please provide a valid delivery address before proceeding with the order.');
+      return;
+    }
+    // ...existing order creation logic...
     try {
-      await api.put(`/api/orders/${orderId}`, { paymentStatus });
-      alert('Payment status updated successfully');
+      await api.post('/api/orders', orderData);
+      alert('Order created successfully');
       loadOrders();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to update payment status');
+      alert(error.response?.data?.message || 'Failed to create order');
     }
   };
 
@@ -1459,7 +1659,14 @@ const AdminDashboard: React.FC = () => {
       (acc, product) => acc + (product.stockQuantity ?? 0) + (product.stock ?? 0),
       0
     );
-    const lowStockCount = validProducts.filter((product) => (product.stockQuantity ?? 0) <= 5).length;
+    const lowStockCount = validProducts.filter((product) => {
+      const stock = product.stockQuantity ?? product.stock ?? 0;
+      return stock > 0 && stock <= 5;
+    }).length;
+    const outOfStockCount = validProducts.filter((product) => {
+      const stock = product.stockQuantity ?? product.stock ?? 0;
+      return stock === 0;
+    }).length;
     const quoteOnlyCount = validProducts.filter((product) => product.requiresQuote).length;
 
 
@@ -1508,6 +1715,14 @@ const AdminDashboard: React.FC = () => {
             </div>
             <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
             <p className="text-xs text-gray-500 mt-1">Need restock</p>
+          </div>
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-600">Out of Stock</p>
+              <Package className="w-5 h-5 text-red-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{outOfStockCount}</p>
+            <p className="text-xs text-gray-500 mt-1">Unavailable</p>
           </div>
           <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
@@ -2507,7 +2722,7 @@ const AdminDashboard: React.FC = () => {
       return true;
     });
 
-    const hasActiveFilters = quoteSearch || quoteFilterStatus !== 'all';
+    const hasActiveFilters = quoteSearch || quoteFilterStatus !== 'all' || quoteStartDate || quoteEndDate;
 
     // Calculate stats
     const pendingQuotes = quotes.filter(q => q.status === 'pending').length;
@@ -2606,11 +2821,32 @@ const AdminDashboard: React.FC = () => {
               <option value="rejected">Rejected</option>
             </select>
 
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={quoteStartDate}
+                onChange={(e) => setQuoteStartDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Start Date"
+              />
+              <span className="text-gray-500 text-sm">to</span>
+              <input
+                type="date"
+                value={quoteEndDate}
+                onChange={(e) => setQuoteEndDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="End Date"
+              />
+            </div>
+
             {hasActiveFilters && (
               <button
                 onClick={() => {
                   setQuoteSearch('');
                   setQuoteFilterStatus('all');
+                  setQuoteStartDate('');
+                  setQuoteEndDate('');
                 }}
                 className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
               >
@@ -2865,6 +3101,17 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
+  // Update Payment Status Handler
+  const handleUpdatePaymentStatus = async (orderId: string, status: string) => {
+    try {
+      await api.put(`/api/orders/${orderId}/payment-status`, { paymentStatus: status });
+      alert('Payment status updated successfully');
+      loadOrders();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update payment status');
+    }
+  };
+
   // Render Orders Tab
   const renderOrders = () => {
 
@@ -2895,7 +3142,7 @@ const AdminDashboard: React.FC = () => {
       return true;
     });
 
-    const hasActiveFilters = orderSearch || orderFilterPayment !== 'all';
+    const hasActiveFilters = orderSearch || orderFilterPayment !== 'all' || orderStartDate || orderEndDate;
 
     // Calculate stats
     const totalOrders = orders.length;
@@ -2993,11 +3240,32 @@ const AdminDashboard: React.FC = () => {
               <option value="failed">Failed</option>
             </select>
 
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={orderStartDate}
+                onChange={(e) => setOrderStartDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="Start Date"
+              />
+              <span className="text-gray-500 text-sm">to</span>
+              <input
+                type="date"
+                value={orderEndDate}
+                onChange={(e) => setOrderEndDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="End Date"
+              />
+            </div>
+
             {hasActiveFilters && (
               <button
                 onClick={() => {
                   setOrderSearch('');
                   setOrderFilterPayment('all');
+                  setOrderStartDate('');
+                  setOrderEndDate('');
                 }}
                 className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
               >
@@ -3191,6 +3459,13 @@ const AdminDashboard: React.FC = () => {
                               <Download className="w-4 h-4" />
                             </a>
                           )}
+                          <button
+                            onClick={() => handlePrintDeliveryLabel(order)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Print Delivery Label"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, undefined, order.trackingId)}
                             className={`p-2 rounded-lg transition-colors ${order.deliveryTrackingLink
@@ -5366,27 +5641,67 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Email</p>
                     <p className="text-sm text-gray-900">{selectedOrder.userId?.email || selectedOrder.user?.email || 'N/A'}</p>
                   </div>
+                  {selectedOrder.customerDetails?.phone && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Phone</p>
+                      <p className="text-sm text-gray-900">{selectedOrder.customerDetails.phone}</p>
+                    </div>
+                  )}
+                  <div className="md:col-span-2">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Role</p>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                      selectedOrder.customerDetails?.role === 'retailer' 
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                    }`}>
+                      {selectedOrder.customerDetails?.role?.toUpperCase() || 'USER'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Order Summary */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+              {/* Shipping Address */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-gray-600" />
-                  Order Summary
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  Shipping Address
                 </h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Order Date</p>
-                    <p className="text-sm text-gray-900">
-                      {new Date(selectedOrder.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-500">{new Date(selectedOrder.createdAt).toLocaleTimeString()}</p>
-                  </div>
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <p className="text-base text-gray-900 whitespace-pre-line leading-relaxed">
+                    {selectedOrder.isDropship 
+                      ? (selectedOrder.customerDetails?.address || 'No shipping address provided')
+                      : (selectedOrder.shippingAddress || 'No shipping address provided')
+                    }
+                  </p>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => {
+                      const address = selectedOrder.isDropship 
+                        ? selectedOrder.customerDetails?.address 
+                        : selectedOrder.shippingAddress;
+                      navigator.clipboard.writeText(address || '');
+                      alert('Address copied to clipboard!');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy Address
+                  </button>
+                  {(selectedOrder.shippingAddress || selectedOrder.customerDetails?.address) && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        selectedOrder.isDropship 
+                          ? (selectedOrder.customerDetails?.address || '') 
+                          : (selectedOrder.shippingAddress || '')
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold flex items-center gap-2"
+                    >
+                      View on Google Maps
+                    </a>
+                  )}
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Payment Status</p>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid'

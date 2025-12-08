@@ -45,7 +45,18 @@ const normalizeRecommendationIds = async (ids, currentProductId = null) => {
 const getProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 0; // 0 means no limit
-    const products = await Product.find({}).limit(limit).lean();
+    const { includeOutOfStock } = req.query;
+    
+    // Build filter - exclude out of stock products for regular users
+    const filter = {};
+    
+    // Only show products with stock > 0 for non-admin users
+    // Admin can see all products by passing includeOutOfStock=true
+    if (includeOutOfStock !== 'true') {
+      filter.stock = { $gt: 0 };
+    }
+    
+    const products = await Product.find(filter).limit(limit).lean();
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -11,7 +11,7 @@ const productSchema = new mongoose.Schema({
   maxDirectPurchaseQty: { type: Number, default: null }, // Max quantity for direct purchase (null = unlimited, for Telecom = 2)
   stock: { type: Number, default: 0 }, // Total stock (calculated from ProductUnits)
   offlineStock: { type: Number, default: 0 }, // Stock available for offline/retailer sales
-  isRecommended: { type: Boolean, default: false },
+  isRecommended: { type: Boolean, default: true },
   // List of related products selected by admin to recommend alongside this product
   recommendedProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   requiresQuote: { type: Boolean, default: false }, // Auto-set if price is missing

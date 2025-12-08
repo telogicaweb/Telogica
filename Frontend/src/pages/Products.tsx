@@ -64,8 +64,11 @@ const Products = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      // Only fetch products with stock > 0 for regular users
       const { data } = await api.get('/api/products');
-      setProducts(data);
+      // Additional frontend filter to ensure no out-of-stock products are shown
+      const inStockProducts = data.filter((p: Product) => (p as any).stock > 0);
+      setProducts(inStockProducts);
     } catch (error) {
       console.error("Error fetching products", error);
     } finally {
