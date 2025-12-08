@@ -68,7 +68,7 @@ const AdminLogs = () => {
       };
 
       console.log('[AdminLogs] Fetching logs with params:', params);
-      const response = await api.get('/logs/admin-logs', { params });
+      const response = await api.get('/api/logs/admin-logs', { params });
       console.log('[AdminLogs] API Response:', response.data);
       console.log('[AdminLogs] Logs array:', response.data.logs);
       console.log('[AdminLogs] Total:', response.data.total);
