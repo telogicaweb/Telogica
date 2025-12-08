@@ -1,3 +1,7 @@
+// Simple ping endpoint to keep server awake
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ message: 'pong' });
+});
 const express = require('express');
 const http = require('http');
 const dotenv = require('dotenv');
