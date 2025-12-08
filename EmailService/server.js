@@ -1,7 +1,4 @@
-// Simple ping endpoint to keep server awake
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({ message: 'pong' });
-});
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -62,6 +59,11 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 }); 
+
+// Simple ping endpoint to keep server awake
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ message: 'pong' });
+});
 
 // Error Handler
 app.use((err, req, res, next) => {
