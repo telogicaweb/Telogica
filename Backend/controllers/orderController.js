@@ -37,16 +37,27 @@ const updateOrderTrackingLink = async (req, res) => {
     order.deliveryTrackingLink = deliveryTrackingLink;
     const updatedOrder = await order.save();
 
-    // Send email notification to user
-    if (deliveryTrackingLink && order.user && order.user.email) {
+    // Determine email recipient
+    let emailRecipient = order.user ? order.user.email : null;
+    let nameRecipient = order.user ? order.user.name : 'Customer';
+
+    // If dropship, send to the customer email instead (or additionally)
+    // The requirement says "send link to customer email entered by retailer"
+    if (order.isDropship && order.customerDetails && order.customerDetails.email) {
+      emailRecipient = order.customerDetails.email;
+      nameRecipient = order.customerDetails.name;
+    }
+
+    // Send email notification
+    if (deliveryTrackingLink && emailRecipient) {
       const trackingEmailHtml = getDeliveryTrackingEmail(
-        order.user.name,
+        nameRecipient,
         order.orderNumber || order._id.toString().slice(-8),
         deliveryTrackingLink
       );
 
       sendEmail(
-        order.user.email,
+        emailRecipient,
         'Your Order is On Its Way! - Telogica',
         `Your order ${order.orderNumber || order._id} has been shipped. Track it here: ${deliveryTrackingLink}`,
         'order_tracking',
@@ -309,17 +320,17 @@ const createOrder = async (req, res) => {
     }
 
     // Send order confirmation email (Async - don't await)
-    const orderDetailsHtml = createdOrder.products.map(item => 
+    const orderDetailsHtml = createdOrder.products.map(item =>
       `<p style="margin: 5px 0;">• ${item.product?.name || 'Product'} - Qty: ${item.quantity} - ₹${item.price.toLocaleString('en-IN')}</p>`
     ).join('');
-    
+
     const confirmationEmailHtml = getOrderConfirmationEmail(
       req.user.name,
       createdOrder.orderNumber || createdOrder._id.toString().slice(-8),
       finalAmount,
       orderDetailsHtml
     );
-    
+
     sendEmail(
       req.user.email,
       'Order Confirmation - Telogica',
@@ -462,10 +473,10 @@ const verifyPayment = async (req, res) => {
             for (const serialNumber of item.serialNumbers) {
               // Find the unit to link it properly
               const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
-              
+
               // Determine warranty period based on product category
               let warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
-              
+
               // Check if product category is "Premium Extra" - add 1 extra year (12 months)
               if (item.product.category && item.product.category.toLowerCase().includes('premium extra')) {
                 warrantyMonths = 24; // 2 years total (1 year base + 1 year extra)
@@ -628,11 +639,11 @@ const getOrders = async (req, res) => {
   try {
     const { userId } = req.query;
     const filter = {};
-    
+
     if (userId) {
       filter.user = userId;
     }
-    
+
     const orders = await Order.find(filter)
       .populate('user', 'name email')
       .populate('products.product')
