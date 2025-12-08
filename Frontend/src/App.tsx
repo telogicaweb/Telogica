@@ -11,6 +11,7 @@ import Blog from './pages/Blog';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Cart from './pages/Cart';
@@ -49,6 +50,7 @@ function AppContent() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/products" element={<Products />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/cart" element={<Cart />} />

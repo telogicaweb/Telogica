@@ -41,6 +41,13 @@ const updateOrderTrackingLink = async (req, res) => {
     }
     const updatedOrder = await order.save();
 
+    // Log admin action for tracking update
+    await logAdminAction(req, 'UPDATE', 'Order', updatedOrder._id, {
+      action: 'tracking_update',
+      trackingLink: deliveryTrackingLink,
+      trackingId: trackingId
+    });
+
     // Determine email recipient
     let emailRecipient = order.user ? order.user.email : null;
     let nameRecipient = order.user ? order.user.name : 'Customer';

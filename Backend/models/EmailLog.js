@@ -24,6 +24,8 @@ const emailLogSchema = new mongoose.Schema({
       'retailer_approval',
       'retailer_sale_notification',
       'invoice_generated',
+      'password_reset',
+      'password_reset_success',
       'general'
     ],
     required: true 

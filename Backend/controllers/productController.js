@@ -200,17 +200,34 @@ const deleteProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (product) {
+      const productData = {
+        id: product._id,
+        name: product.name,
+        category: product.category
+      };
+
+      // Delete product first
       await product.deleteOne();
 
-      await logAdminAction(req, 'DELETE', 'Product', product._id, {
-        name: product.name
+      // Log the deletion
+      console.log('Logging product deletion:', {
+        admin: req.user?.name,
+        product: productData.name
       });
+
+      await logAdminAction(req, 'DELETE', 'Product', productData.id, {
+        name: productData.name,
+        category: productData.category
+      });
+
+      console.log('Product deletion logged successfully');
 
       res.json({ message: 'Product removed' });
     } else {
       res.status(404).json({ message: 'Product not found' });
     }
   } catch (error) {
+    console.error('Error in deleteProduct:', error);
     res.status(500).json({ message: error.message });
   }
 };

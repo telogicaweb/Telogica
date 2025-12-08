@@ -18,7 +18,7 @@ const adminLogSchema = new mongoose.Schema({
   },
   entity: {
     type: String,
-    enum: ['Product', 'Order', 'Warranty', 'Payment'],
+    enum: ['Product', 'Order', 'Warranty', 'Payment', 'User', 'Invoice'],
     required: true
   },
   entityId: String,

@@ -22,11 +22,11 @@ const emailLogSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'welcome', 'password_reset', 'order_confirmation', 'order_shipped',
+      'welcome', 'password_reset', 'password_reset_success', 'order_confirmation', 'order_shipped',
       'quote_request', 'quote_response', 'warranty_registration',
       'contact_confirmation', 'contact_notification', 'invoice',
       'delivery_tracking', 'retailer_welcome', 'payment_confirmation',
-      'payment-success', 'general'
+      'payment-success', 'user_registration', 'retailer_approval', 'general'
     ]
   },
   status: {

@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
   },
   phone: { type: String },
   address: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
 }, { timestamps: true });
 
 userSchema.pre('save', async function() {

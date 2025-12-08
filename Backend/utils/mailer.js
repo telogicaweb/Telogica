@@ -1,12 +1,16 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE,
+  service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   }
 });
+
+// Use EmailService microservice if available, fallback to direct SMTP
+const EMAIL_SERVICE_URL = process.env.EMAIL_SERVICE_URL || 'http://localhost:5001';
 
 // Enhanced sendEmail function with logging
 const sendEmail = async (to, subject, text, emailType, relatedEntity = null, html = null) => {
@@ -67,16 +71,46 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
   }
 
   try {
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to,
-      subject,
-      text,
-      html: html || text
-    };
-    
-    await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully to:', to);
+    // Try to use EmailService microservice first
+    try {
+      const emailServiceResponse = await axios.post(`${EMAIL_SERVICE_URL}/api/email/send`, {
+        to,
+        subject,
+        text,
+        html: html || text,
+        emailType: emailType || 'general',
+        relatedEntity
+      }, {
+        timeout: 5000 // 5 second timeout
+      });
+
+      if (emailServiceResponse.data.success) {
+        console.log('Email sent successfully via EmailService to:', to);
+        
+        // Update email log status to sent
+        if (emailLog) {
+          emailLog.status = 'sent';
+          emailLog.sentAt = new Date();
+          await emailLog.save();
+        }
+        
+        return { success: true, emailLog };
+      }
+    } catch (emailServiceError) {
+      console.log('EmailService not available, falling back to direct SMTP:', emailServiceError.message);
+      
+      // Fallback to direct SMTP
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to,
+        subject,
+        text,
+        html: html || text
+      };
+      
+      await transporter.sendMail(mailOptions);
+      console.log('Email sent successfully via SMTP to:', to);
+    }
     
     // Update email log status to sent
     if (emailLog) {

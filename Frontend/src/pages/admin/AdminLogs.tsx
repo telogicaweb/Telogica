@@ -11,17 +11,21 @@ import {
   Package,
   ShoppingCart,
   Shield,
-  DollarSign
+  DollarSign,
+  User,
+  FileText
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface AdminLog {
   _id: string;
-  adminId: {
+  adminId?: {
     _id: string;
     name: string;
     email: string;
   };
+  adminName?: string;
+  adminEmail?: string;
   action: string;
   entity: string;
   entityId?: string;
@@ -46,8 +50,8 @@ const AdminLogs = () => {
     entity: ''
   });
 
-  // Only track CRUD operations for these entities
-  const allowedEntities = ['Product', 'Order', 'Warranty', 'Payment'];
+  // Track CRUD operations for all admin entities
+  const allowedEntities = ['Product', 'Order', 'Warranty', 'Payment', 'User', 'Invoice'];
   const allowedActions = ['CREATE', 'UPDATE', 'DELETE', 'APPROVE', 'REJECT'];
 
   useEffect(() => {
@@ -63,24 +67,22 @@ const AdminLogs = () => {
         ...filters
       };
 
-      // Filter logs by entity
-      if (filters.entity) {
-        params.entity = filters.entity;
-      }
-
+      console.log('[AdminLogs] Fetching logs with params:', params);
       const response = await api.get('/logs/admin-logs', { params });
+      console.log('[AdminLogs] API Response:', response.data);
+      console.log('[AdminLogs] Logs array:', response.data.logs);
+      console.log('[AdminLogs] Total:', response.data.total);
       
-      // Filter to only show allowed entities and actions
-      const filteredLogs = response.data.logs.filter((log: AdminLog) => 
-        allowedEntities.includes(log.entity) && 
-        allowedActions.includes(log.action)
-      );
-
-      setLogs(filteredLogs);
+      // Use logs directly from backend
+      const receivedLogs = response.data.logs || [];
+      setLogs(receivedLogs);
       setTotalPages(response.data.totalPages || 1);
-      setTotalLogs(response.data.total || filteredLogs.length);
+      setTotalLogs(response.data.total || 0);
+      
+      console.log('[AdminLogs] State updated with', receivedLogs.length, 'logs');
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.error('[AdminLogs] Error fetching logs:', error);
+      alert('Error fetching logs: ' + (error as any).message);
     } finally {
       setLoading(false);
     }
@@ -127,6 +129,8 @@ const AdminLogs = () => {
       case 'Order': return <ShoppingCart className="w-4 h-4" />;
       case 'Warranty': return <Shield className="w-4 h-4" />;
       case 'Payment': return <DollarSign className="w-4 h-4" />;
+      case 'User': return <User className="w-4 h-4" />;
+      case 'Invoice': return <FileText className="w-4 h-4" />;
       default: return null;
     }
   };
@@ -138,7 +142,7 @@ const AdminLogs = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Admin Activity Logs</h2>
           <p className="text-gray-600 mt-1">
-            Track CRUD operations on Products, Orders, Warranty, and Payments
+            Track all admin CRUD operations on Products, Orders, Warranty, Payments, Users, and Invoices
           </p>
         </div>
         <div className="flex gap-3">
@@ -340,12 +344,15 @@ const AdminLogs = () => {
                 </tr>
               ) : (
                 logs
-                  .filter(log => 
-                    !searchQuery || 
-                    log.adminId.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    log.entity.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
+                  .filter(log => {
+                    if (!searchQuery) return true;
+                    const query = searchQuery.toLowerCase();
+                    return (
+                      log.adminId?.name?.toLowerCase().includes(query) ||
+                      log.action?.toLowerCase().includes(query) ||
+                      log.entity?.toLowerCase().includes(query)
+                    );
+                  })
                   .map((log) => (
                     <tr 
                       key={log._id} 
@@ -356,8 +363,12 @@ const AdminLogs = () => {
                         {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{log.adminId.name}</div>
-                        <div className="text-sm text-gray-500">{log.adminId.email}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {log.adminId?.name || log.adminName || 'Unknown'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {log.adminId?.email || log.adminEmail || '-'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -429,9 +440,13 @@ const AdminLogs = () => {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Admin</label>
-                <p className="mt-1 text-gray-900">{selectedLog.adminId.name}</p>
-                <p className="text-sm text-gray-500">{selectedLog.adminId.email}</p>
+                <p className="text-sm font-medium text-gray-500">Admin</p>
+                <p className="mt-1 text-gray-900">
+                  {selectedLog.adminId?.name || selectedLog.adminName || 'Unknown'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {selectedLog.adminId?.email || selectedLog.adminEmail || '-'}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
