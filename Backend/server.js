@@ -1,7 +1,3 @@
-// Simple ping endpoint to keep server awake
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({ message: 'pong' });
-});
 const express = require('express');
 const http = require('http');
 const dotenv = require('dotenv');
@@ -162,6 +158,11 @@ app.get('/', (req, res) => {
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'API endpoint not found' });
+});
+
+// Simple ping endpoint to keep server awake
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ message: 'pong' });
 });
 
 // Error handling middleware - ensure CORS headers are set on errors
