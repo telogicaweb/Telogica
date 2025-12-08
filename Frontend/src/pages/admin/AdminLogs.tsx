@@ -88,27 +88,34 @@ const AdminLogs = () => {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (formatType: 'csv' | 'excel' | 'pdf') => {
     try {
       const params = {
         ...filters,
-        format: 'csv'
+        format: formatType
       };
 
-      const response = await api.get('/logs/export', { 
+      const response = await api.get('/api/logs/export', {
         params,
         responseType: 'blob'
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      let fileExtension = formatType === 'excel' ? 'xlsx' : formatType;
+      let mimeType =
+        formatType === 'pdf' ? 'application/pdf'
+        : formatType === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv';
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: mimeType }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `admin-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      link.setAttribute('download', `admin-logs-${format(new Date(), 'yyyy-MM-dd')}.${fileExtension}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       console.error('Error exporting logs:', error);
+      alert('Error exporting logs: ' + (error as any).message);
     }
   };
 
@@ -155,11 +162,25 @@ const AdminLogs = () => {
             Refresh
           </button>
           <button
-            onClick={handleExport}
+            onClick={() => handleExport('csv')}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Export CSV
+          </button>
+          <button
+            onClick={() => handleExport('excel')}
+            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export PDF
           </button>
         </div>
       </div>

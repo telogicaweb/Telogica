@@ -308,11 +308,21 @@ const generatePDF = (data, config) => {
 
       // Footer
       const pageCount = doc.bufferedPageRange();
-      for (let i = 0; i < pageCount.count; i++) {
-        doc.switchToPage(i);
+      if (pageCount.count > 1) {
+        for (let i = 0; i < pageCount.count; i++) {
+          doc.switchToPage(i);
+          doc.fontSize(8).fillColor('#999999');
+          doc.text(
+            `Page ${i + 1} of ${pageCount.count} | Generated on ${new Date().toLocaleString()}`,
+            50,
+            doc.page.height - 50,
+            { align: 'center' }
+          );
+        }
+      } else {
         doc.fontSize(8).fillColor('#999999');
         doc.text(
-          `Page ${i + 1} of ${pageCount.count} | Generated on ${new Date().toLocaleString()}`,
+          `Page 1 of 1 | Generated on ${new Date().toLocaleString()}`,
           50,
           doc.page.height - 50,
           { align: 'center' }
@@ -339,18 +349,22 @@ const generatePDF = (data, config) => {
  */
 const generateCSV = (data, config) => {
   try {
-    const fields = config.fields || Object.keys(data[0] || {}).map(key => ({
-      label: key.charAt(0).toUpperCase() + key.slice(1),
-      value: key
-    }));
-
+    let fields = config.fields;
+    if (!fields) {
+      if (config.columns) {
+        fields = config.columns.map(col => ({ label: col.header, value: col.key }));
+      } else if (data.length > 0) {
+        fields = Object.keys(data[0]).map(key => ({ label: key.charAt(0).toUpperCase() + key.slice(1), value: key }));
+      } else {
+        fields = [];
+      }
+    }
     const parser = new Parser({ 
       fields,
       header: true,
       delimiter: ',',
       quote: '"'
     });
-    
     return parser.parse(data);
   } catch (error) {
     throw new Error(`CSV generation failed: ${error.message}`);
