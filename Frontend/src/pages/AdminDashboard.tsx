@@ -43,7 +43,7 @@ import {
   Upload,
   Printer,
   Copy,
-  MapPin
+  Settings as SettingsIcon
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
@@ -1314,12 +1314,18 @@ const AdminDashboard: React.FC = () => {
         : analytics.quotes.conversionRate;
 
     // Prepare Chart Data
-    const salesData = [
-      { name: 'Direct Sales', value: analytics.sales.direct },
-      { name: 'Quote Sales', value: analytics.sales.quote },
+    const userSalesData = [
+      { name: 'Direct Orders', value: analytics.sales.direct || 0 },
+      { name: 'Quote Sales', value: analytics.sales.quote || 0 },
+    ];
+
+    const retailerSalesData = [
+      { name: 'Quote Sales', value: analytics.sales.byUserType.retailer || 0 },
     ];
 
     const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+    const USER_COLORS = ['#3B82F6', '#10B981']; // Blue for Direct, Green for Quote
+    const RETAILER_COLORS = ['#10B981']; // Green for Quote only
 
     // orderStatusData is now computed at the top level
 
@@ -1416,30 +1422,224 @@ const AdminDashboard: React.FC = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Sales Distribution */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-800 mb-6">Sales Distribution</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={salesData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {salesData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
+          {/* User Sales Distribution */}
+          <div className="bg-gradient-to-br from-white to-blue-50 p-6 rounded-xl shadow-md border-2 border-blue-100 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                  User Sales Distribution
+                </h3>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  Regular Customers
+                </p>
+              </div>
+              <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                LIVE
+              </div>
+            </div>
+
+            {/* Sales Type Breakdown */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
+                <div className="flex items-center justify-between mb-2">
+                  <ShoppingCart className="w-5 h-5 opacity-80" />
+                  <TrendingUp className="w-4 h-4 opacity-60" />
+                </div>
+                <p className="text-xs font-medium opacity-90">Direct Orders</p>
+                <p className="text-2xl font-bold mt-1">{formatCurrency(analytics.sales.direct)}</p>
+                <p className="text-xs opacity-75 mt-1">
+                  {analytics.orders.direct} {analytics.orders.direct === 1 ? 'order' : 'orders'}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-md">
+                <div className="flex items-center justify-between mb-2">
+                  <FileText className="w-5 h-5 opacity-80" />
+                  <BarChart3 className="w-4 h-4 opacity-60" />
+                </div>
+                <p className="text-xs font-medium opacity-90">Quote Sales</p>
+                <p className="text-2xl font-bold mt-1">{formatCurrency(analytics.sales.quote)}</p>
+                <p className="text-xs opacity-75 mt-1">
+                  {analytics.orders.quote} {analytics.orders.quote === 1 ? 'order' : 'orders'}
+                </p>
+              </div>
+            </div>
+
+            {/* Chart */}
+            {userSalesData[0].value > 0 || userSalesData[1].value > 0 ? (
+              <div className="h-64 bg-white rounded-lg p-4 shadow-inner">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={userSalesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={(entry) => `${((entry.value / analytics.sales.byUserType.user) * 100).toFixed(1)}%`}
+                    >
+                      {userSalesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={USER_COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                    <Legend 
+                      verticalAlign="bottom" 
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: '10px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 bg-white rounded-lg p-4 shadow-inner flex items-center justify-center">
+                <div className="text-center">
+                  <ShoppingCart className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500 text-sm">No user sales data yet</p>
+                </div>
+              </div>
+            )}
+
+            {/* Summary Footer */}
+            <div className="mt-6 pt-4 border-t-2 border-blue-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Total User Sales</p>
+                  <p className="text-xl font-bold text-blue-600">{formatCurrency(analytics.sales.byUserType.user)}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Total User Orders</p>
+                  <p className="text-xl font-bold text-gray-800">{formatNumber(analytics.orders.byUserType.user)}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-gray-600 bg-blue-50 rounded-lg p-2">
+                <span className="flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  Sales through direct purchase & quote acceptance
+                </span>
+                <span className="font-semibold text-blue-700">
+                  Avg: {analytics.orders.byUserType.user > 0 
+                    ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
+                    : formatCurrency(0)
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Retailer Sales Distribution */}
+          <div className="bg-gradient-to-br from-white to-green-50 p-6 rounded-xl shadow-md border-2 border-green-100 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Store className="w-5 h-5 text-green-600" />
+                  Retailer Sales Distribution
+                </h3>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                  <Sparkles className="w-4 h-4" />
+                  Business Partners
+                </p>
+              </div>
+              <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                LIVE
+              </div>
+            </div>
+
+            {/* Sales Type Breakdown - Quote Only */}
+            <div className="mb-6">
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white shadow-md">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-6 h-6 opacity-80" />
+                    <p className="text-sm font-medium opacity-90">Quote Sales Only</p>
+                  </div>
+                  <BarChart3 className="w-5 h-5 opacity-60" />
+                </div>
+                <p className="text-3xl font-bold mt-2">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                <p className="text-sm opacity-75 mt-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {analytics.orders.byUserType.retailer} {analytics.orders.byUserType.retailer === 1 ? 'quote order' : 'quote orders'}
+                </p>
+                <div className="mt-4 pt-4 border-t border-green-400 border-opacity-30">
+                  <p className="text-xs opacity-80">Retailers can only purchase through quotes</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart - Shows 100% Quote Sales */}
+            {retailerSalesData[0].value > 0 ? (
+              <div className="h-64 bg-white rounded-lg p-4 shadow-inner">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={retailerSalesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      fill="#10B981"
+                      paddingAngle={0}
+                      dataKey="value"
+                      label={() => '100%'}
+                    >
+                      {retailerSalesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                    />
+                    <Legend 
+                      verticalAlign="bottom" 
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: '10px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 bg-white rounded-lg p-4 shadow-inner flex items-center justify-center">
+                <div className="text-center">
+                  <Store className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500 text-sm">No retailer sales data yet</p>
+                </div>
+              </div>
+            )}
+
+            {/* Summary Footer */}
+            <div className="mt-6 pt-4 border-t-2 border-green-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Total Retailer Sales</p>
+                  <p className="text-xl font-bold text-green-600">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
+                  <p className="text-xs text-gray-600 font-medium mb-1">Total Retailer Orders</p>
+                  <p className="text-xl font-bold text-gray-800">{formatNumber(analytics.orders.byUserType.retailer)}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-gray-600 bg-green-50 rounded-lg p-2">
+                <span className="flex items-center gap-1">
+                  <Info className="w-3 h-3" />
+                  All sales through quote system
+                </span>
+                <span className="font-semibold text-green-700">
+                  Avg: {analytics.orders.byUserType.retailer > 0 
+                    ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
+                    : formatCurrency(0)
+                  }
+                </span>
+              </div>
             </div>
           </div>
 
@@ -3070,27 +3270,6 @@ const AdminDashboard: React.FC = () => {
                         Reject Quote
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* Tracking Link Button - Shows for all quotes */}
-                {quote.status && quote.status !== 'pending' && quote.status !== 'rejected' && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button
-                      onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink, undefined, undefined)}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${quote.deliveryTrackingLink
-                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-md hover:shadow-lg'
-                        : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 shadow-md hover:shadow-lg'
-                        }`}
-                    >
-                      <LinkIcon className="w-5 h-5" />
-                      {quote.deliveryTrackingLink ? 'Update Delivery Tracking Link' : 'Add Delivery Tracking Link'}
-                    </button>
-                    {quote.deliveryTrackingLink && (
-                      <p className="text-xs text-gray-500 mt-2 text-center">
-                        Current: <a href={quote.deliveryTrackingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{quote.deliveryTrackingLink}</a>
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
@@ -5130,6 +5309,142 @@ const AdminDashboard: React.FC = () => {
       </div>
     );
   };
+
+  // Settings State
+  const [settings, setSettings] = useState({
+    taxPercentage: 18,
+    shippingCharge: 0,
+    minOrderValue: 0
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  // Load Settings
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data } = await api.get('/api/settings');
+      setSettings(data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
+  const updateSetting = async (key: string, value: number) => {
+    try {
+      setSettingsLoading(true);
+      await api.put(`/api/settings/${key}`, { value });
+      setSettings({ ...settings, [key]: value });
+      alert('Setting updated successfully!');
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update setting');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const renderSettings = () => {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
+        </div>
+
+        <div className="grid gap-6">
+          {/* Tax Percentage */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Tax Percentage</h3>
+                <p className="text-sm text-gray-600">GST/Tax percentage applied to orders</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-blue-600" />
+            </div>
+            <div className="flex items-center gap-4">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={settings.taxPercentage}
+                onChange={(e) => setSettings({ ...settings, taxPercentage: parseFloat(e.target.value) || 0 })}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <span className="text-gray-600 font-medium">%</span>
+              <button
+                onClick={() => updateSetting('taxPercentage', settings.taxPercentage)}
+                disabled={settingsLoading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {settingsLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+
+          {/* Shipping Charge */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Shipping Charge</h3>
+                <p className="text-sm text-gray-600">Default shipping charge for orders</p>
+              </div>
+              <Truck className="w-8 h-8 text-green-600" />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 font-medium">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={settings.shippingCharge}
+                onChange={(e) => setSettings({ ...settings, shippingCharge: parseFloat(e.target.value) || 0 })}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => updateSetting('shippingCharge', settings.shippingCharge)}
+                disabled={settingsLoading}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {settingsLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+
+          {/* Minimum Order Value */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Minimum Order Value</h3>
+                <p className="text-sm text-gray-600">Minimum order value required for checkout</p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-purple-600" />
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-600 font-medium">₹</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={settings.minOrderValue}
+                onChange={(e) => setSettings({ ...settings, minOrderValue: parseFloat(e.target.value) || 0 })}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => updateSetting('minOrderValue', settings.minOrderValue)}
+                disabled={settingsLoading}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {settingsLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'products', name: 'Products', icon: Package },
@@ -5144,6 +5459,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'content', name: 'Content', icon: Edit },
     { id: 'emails', name: 'Email Logs', icon: Mail },
     { id: 'logs', name: 'Activity Logs', icon: ClipboardList },
+    { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
   // Render Dropship Order Details Modal
   const renderDropshipOrderDetails = () => {
@@ -5582,6 +5898,7 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'content' && renderContentManagement()}
             {activeTab === 'emails' && renderEmailLogs()}
             {activeTab === 'logs' && <AdminLogs />}
+            {activeTab === 'settings' && renderSettings()}
           </>
         )}
       </div>

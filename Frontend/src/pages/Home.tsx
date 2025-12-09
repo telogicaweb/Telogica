@@ -19,6 +19,9 @@ interface Product {
 }
 
 const Home = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [categories, setCategories] = useState([{ value: 'all', label: 'ALL' }]);

@@ -116,7 +116,7 @@ export default function Header() {
           Mobile: header height = h-20 (80px)
           Desktop (md+): top strip (h-10) + main (h-20) = 120px -> md:h-[120px]
           Using a spacer here avoids adding <br/> to every page and centralizes the layout fix. */}
-      <div className="h-20 md:h-[120px] w-full" aria-hidden="true" />
+      <div className="h-10 md:h-[120px] w-full" aria-hidden="true" />
     </>
   );
 }

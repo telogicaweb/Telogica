@@ -28,6 +28,7 @@ export interface Product {
   extendedWarrantyAvailable?: boolean;
   extendedWarrantyMonths?: number;
   extendedWarrantyPrice?: number;
+  taxPercentage?: number;
   specifications?: Record<string, string>;
   createdAt?: string;
   updatedAt?: string;

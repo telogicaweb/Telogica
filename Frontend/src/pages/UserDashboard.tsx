@@ -893,104 +893,231 @@ const UserDashboard = () => {
                   </div>
                 ) : (
                   <div>
-                    <div className="mb-4 flex justify-end">
+                    <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">My Warranties</h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {warranties.filter((w: any) => w.status === 'approved').length} approved, {warranties.filter((w: any) => w.status === 'pending').length} pending
+                        </p>
+                      </div>
                       <button
                         onClick={() => navigate('/warranty-registration')}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 text-sm font-medium shadow-md flex items-center gap-2"
                       >
+                        <Shield size={16} />
                         Register New Warranty
                       </button>
                     </div>
-                    <div className="space-y-4">
-                      {warranties.map((warranty: any) => (
-                        <div
-                          key={warranty._id}
-                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="font-semibold text-lg text-gray-900">
-                                {warranty.productName}
-                              </h3>
-                              <p className="text-sm text-gray-500">
-                                Registered: {new Date(warranty.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                warranty.status
-                              )}`}
-                            >
-                              {getStatusIcon(warranty.status)}
-                              {warranty.status}
-                            </span>
-                          </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div>
-                              <p className="text-xs text-gray-500">Serial Number</p>
-                              <p className="font-medium text-gray-900">{warranty.serialNumber}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Model Number</p>
-                              <p className="font-medium text-gray-900">{warranty.modelNumber}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Purchase Date</p>
-                              <p className="font-medium text-gray-900">
-                                {new Date(warranty.purchaseDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Purchase Type</p>
-                              <p className="font-medium text-gray-900 capitalize">
-                                {warranty.purchaseType}
-                              </p>
-                            </div>
-                          </div>
+                    {/* Approved Warranties Section */}
+                    {warranties.filter((w: any) => w.status === 'approved').length > 0 && (
+                      <div className="mb-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <CheckCircle className="text-green-600" size={20} />
+                          Active Warranties
+                        </h3>
+                        <div className="grid md:grid-cols-2 gap-6">
+                          {warranties
+                            .filter((w: any) => w.status === 'approved')
+                            .map((warranty: any) => {
+                              const endDate = new Date(warranty.warrantyEndDate);
+                              const now = new Date();
+                              const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                              const isExpired = daysRemaining < 0;
+                              const isExpiringSoon = daysRemaining <= 30 && daysRemaining > 0;
 
-                          {warranty.warrantyStartDate && warranty.warrantyEndDate && (
-                            <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <p className="text-xs text-green-700">Warranty Period</p>
-                                  <p className="text-sm font-medium text-green-900">
-                                    {new Date(warranty.warrantyStartDate).toLocaleDateString()} -{' '}
-                                    {new Date(warranty.warrantyEndDate).toLocaleDateString()}
-                                  </p>
+                              return (
+                                <div
+                                  key={warranty._id}
+                                  className="bg-gradient-to-br from-white to-green-50 border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all"
+                                >
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Shield className="text-green-600" size={24} />
+                                        <h3 className="font-bold text-lg text-gray-900">
+                                          {warranty.productName}
+                                        </h3>
+                                      </div>
+                                      <p className="text-xs text-gray-500 font-mono">
+                                        S/N: {warranty.serialNumber}
+                                      </p>
+                                    </div>
+                                    <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                      ACTIVE
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-white rounded-lg p-4 mb-4">
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                      <div>
+                                        <p className="text-gray-500 text-xs mb-1">Model</p>
+                                        <p className="font-semibold text-gray-900">{warranty.modelNumber}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-gray-500 text-xs mb-1">Purchase Date</p>
+                                        <p className="font-semibold text-gray-900">
+                                          {new Date(warranty.purchaseDate).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className={`rounded-lg p-4 mb-4 ${
+                                    isExpired ? 'bg-red-50 border border-red-200' :
+                                    isExpiringSoon ? 'bg-amber-50 border border-amber-200' :
+                                    'bg-green-50 border border-green-200'
+                                  }`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className={`text-xs font-medium ${
+                                        isExpired ? 'text-red-700' :
+                                        isExpiringSoon ? 'text-amber-700' :
+                                        'text-green-700'
+                                      }`}>
+                                        <Calendar size={14} className="inline mr-1" />
+                                        Warranty Period
+                                      </p>
+                                      <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                        isExpired ? 'bg-red-200 text-red-800' :
+                                        isExpiringSoon ? 'bg-amber-200 text-amber-800' :
+                                        'bg-green-200 text-green-800'
+                                      }`}>
+                                        {warranty.warrantyPeriodMonths || 12} months
+                                      </span>
+                                    </div>
+                                    <p className={`text-sm font-semibold ${
+                                      isExpired ? 'text-red-900' :
+                                      isExpiringSoon ? 'text-amber-900' :
+                                      'text-green-900'
+                                    }`}>
+                                      {new Date(warranty.warrantyStartDate).toLocaleDateString()} - {endDate.toLocaleDateString()}
+                                    </p>
+                                    {!isExpired && (
+                                      <p className={`text-xs mt-2 font-medium ${
+                                        isExpiringSoon ? 'text-amber-700' : 'text-green-700'
+                                      }`}>
+                                        {isExpiringSoon ? '⚠️ ' : '✓ '}
+                                        {daysRemaining} days remaining
+                                      </p>
+                                    )}
+                                    {isExpired && (
+                                      <p className="text-xs mt-2 font-medium text-red-700">
+                                        ✗ Warranty expired
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex gap-3">
+                                    {warranty.warrantyCertificateUrl && (
+                                      <a
+                                        href={warranty.warrantyCertificateUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                                      >
+                                        <Download size={16} />
+                                        Certificate
+                                      </a>
+                                    )}
+                                    {warranty.invoice && (
+                                      <a
+                                        href={warranty.invoice}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                                      >
+                                        <Eye size={16} />
+                                        Invoice
+                                      </a>
+                                    )}
+                                  </div>
                                 </div>
-                                <CheckCircle className="text-green-600" size={20} />
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex gap-4 mt-2">
-                            {warranty.invoiceUrl && (
-                              <a
-                                href={warranty.invoiceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
-                              >
-                                <Eye size={16} />
-                                View Invoice
-                              </a>
-                            )}
-                            {warranty.warrantyCertificateUrl && (
-                              <a
-                                href={warranty.warrantyCertificateUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1"
-                              >
-                                <Download size={16} />
-                                Warranty Certificate
-                              </a>
-                            )}
-                          </div>
+                              );
+                            })}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Pending/Other Warranties */}
+                    {warranties.filter((w: any) => w.status !== 'approved').length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Clock className="text-yellow-600" size={20} />
+                          Other Registrations
+                        </h3>
+                        <div className="space-y-4">
+                          {warranties
+                            .filter((w: any) => w.status !== 'approved')
+                            .map((warranty: any) => (
+                              <div
+                                key={warranty._id}
+                                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                              >
+                                <div className="flex justify-between items-start mb-4">
+                                  <div>
+                                    <h3 className="font-semibold text-lg text-gray-900">
+                                      {warranty.productName}
+                                    </h3>
+                                    <p className="text-sm text-gray-500">
+                                      Registered: {new Date(warranty.createdAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                      warranty.status
+                                    )}`}
+                                  >
+                                    {getStatusIcon(warranty.status)}
+                                    {warranty.status.charAt(0).toUpperCase() + warranty.status.slice(1)}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500">Serial Number</p>
+                                    <p className="font-medium text-gray-900">{warranty.serialNumber}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Model Number</p>
+                                    <p className="font-medium text-gray-900">{warranty.modelNumber}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Purchase Date</p>
+                                    <p className="font-medium text-gray-900">
+                                      {new Date(warranty.purchaseDate).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Purchase Type</p>
+                                    <p className="font-medium text-gray-900 capitalize">
+                                      {warranty.purchaseType.replace('_', ' ')}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {warranty.rejectionReason && (
+                                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                                    <p className="text-xs text-red-700 font-medium mb-1">Rejection Reason:</p>
+                                    <p className="text-sm text-red-900">{warranty.rejectionReason}</p>
+                                  </div>
+                                )}
+
+                                {warranty.invoice && (
+                                  <a
+                                    href={warranty.invoice}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
+                                  >
+                                    <Eye size={16} />
+                                    View Invoice
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

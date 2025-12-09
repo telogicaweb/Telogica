@@ -36,6 +36,7 @@ interface ProductDetailsForm {
   extendedWarrantyAvailable: boolean;
   extendedWarrantyMonths: number;
   extendedWarrantyPrice: string;
+  taxPercentage: string;
   specifications: Record<string, string>;
   images: string[];
 }
@@ -80,6 +81,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     extendedWarrantyAvailable: product.extendedWarrantyAvailable ?? true,
     extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
     extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
+    taxPercentage: product.taxPercentage?.toString() || '18',
     specifications: product.specifications || {},
     images: product.images ? [...product.images] : []
   }));
@@ -97,6 +99,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
       extendedWarrantyAvailable: product.extendedWarrantyAvailable ?? true,
       extendedWarrantyMonths: product.extendedWarrantyMonths || 24,
       extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
+      taxPercentage: product.taxPercentage?.toString() || '18',
       specifications: product.specifications || {},
       images: product.images ? [...product.images] : []
     });
@@ -153,6 +156,11 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
         payload.extendedWarrantyPrice = Number(form.extendedWarrantyPrice);
       } else {
         payload.extendedWarrantyPrice = 0;
+      }
+      if (form.taxPercentage !== '') {
+        payload.taxPercentage = Number(form.taxPercentage);
+      } else {
+        payload.taxPercentage = 18;
       }
 
       await api.put(`/api/products/${product._id}`, payload);
@@ -377,7 +385,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Price (₹)</label>
                   <input
@@ -397,6 +405,22 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                     onChange={(e) => setForm((prev) => ({ ...prev, retailerPrice: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Tax Percentage (%)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={form.taxPercentage}
+                    onChange={(e) => setForm((prev) => ({ ...prev, taxPercentage: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="18"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">GST/Tax rate for this product</p>
                 </div>
               </div>
 
@@ -418,7 +442,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                 </div>
                 <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">Suggested Product</p>
+                    <p className="text-sm font-medium text-gray-800">Recommended Product</p>
                     <p className="text-xs text-gray-500">Highlight in storefront</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">

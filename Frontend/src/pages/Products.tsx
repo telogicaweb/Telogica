@@ -20,11 +20,13 @@ interface Product {
 }
 
 const Products = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showQuoteOnly, setShowQuoteOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
@@ -49,13 +51,8 @@ const Products = () => {
       );
     }
 
-    // Filter quote-only products
-    if (showQuoteOnly) {
-      filtered = filtered.filter(p => p.requiresQuote || !p.price);
-    }
-
     setFilteredProducts(filtered);
-  }, [products, activeCategory, searchQuery, showQuoteOnly]);
+  }, [products, activeCategory, searchQuery]);
 
   useEffect(() => {
     filterProducts();
@@ -77,6 +74,10 @@ const Products = () => {
   };
 
   const handleAddToCart = (product: Product, useRetailerPrice?: boolean) => {
+    // Check if adding this would make total items >= 3 (for non-retailers)
+    if (user?.role !== 'retailer') {
+      // This check will be done in Cart page when user tries to checkout
+    }
     addToCart(product, 1, useRetailerPrice);
     alert('Added to Cart');
   };
@@ -99,10 +100,10 @@ const Products = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
+    <div className="min-h-screen bg-gray-50 pt-20 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Our Products
           </h1>
@@ -146,20 +147,6 @@ const Products = () => {
                 ))}
               </div>
             </div>
-
-            {/* Quote Only Filter */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="quoteOnly"
-                checked={showQuoteOnly}
-                onChange={(e) => setShowQuoteOnly(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <label htmlFor="quoteOnly" className="text-sm text-gray-700 cursor-pointer">
-                Show only quote-required products
-              </label>
-            </div>
           </div>
 
           {/* Results Count */}
@@ -185,7 +172,6 @@ const Products = () => {
               onClick={() => {
                 setActiveCategory('all');
                 setSearchQuery('');
-                setShowQuoteOnly(false);
               }}
               className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
@@ -202,29 +188,14 @@ const Products = () => {
                 {/* Product Image */}
                 <div className="relative h-56 overflow-hidden bg-gray-100">
                   <img 
-                    src={product.images[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'} 
+                    src={product.images[0] || '/placeholder.jpg'} 
                     alt={product.name} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                    <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide shadow-lg border-2 border-white">
-                      {product.category}
-                    </span>
-                    {(!product.price || product.requiresQuote) && (
-                      <span className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-white animate-pulse">
-                        Quote Only
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 {/* Product Info */}
                 <div className="p-5 flex-grow flex flex-col">
-                  <div className="mb-2">
-                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-                      {product.category}
-                    </span>
-                  </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                     {product.name}
                   </h3>
@@ -307,7 +278,7 @@ const Products = () => {
                         )
                       ) : (
                         <>
-                          {product.isTelecom && product.price && !product.requiresQuote && (
+                          {product.isTelecom && (
                             <button 
                               onClick={() => handleAddToCart(product)} 
                               className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
@@ -318,7 +289,7 @@ const Products = () => {
                           )}
                           <button 
                             onClick={() => handleAddToQuote(product)} 
-                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(!product.isTelecom || !product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
+                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${!product.isTelecom ? 'col-span-2' : ''}`}
                           >
                             <FileText className="w-4 h-4" />
                             Quote
