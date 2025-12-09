@@ -7,8 +7,27 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2, CheckCircle } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
+
+interface DropshipShipment {
+  id: string;
+  customerDetails: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+  items: {
+    productId: string;
+    quantity: number;
+    productName: string;
+    price: number;
+    quotedProductId?: string; // Essential for quoting logic
+  }[];
+  invoiceUrl: string;
+}
+
 const Cart = () => {
-  const { cart, removeFromCart, clearCart } = useContext(CartContext)!;
+  const { cart, removeFromCart, clearCart, updateQuantity } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
   const toast = useToast();
   const navigate = useNavigate();
@@ -28,14 +47,26 @@ const Cart = () => {
 
   // Dropship State
   const [isDropship, setIsDropship] = useState(false);
-  const [customerDetails, setCustomerDetails] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: ''
+  const [shipments, setShipments] = useState<DropshipShipment[]>([]);
+  const [currentShipment, setCurrentShipment] = useState<Partial<DropshipShipment>>({
+    customerDetails: { name: '', email: '', phone: '', address: '' },
+    items: [],
+    invoiceUrl: ''
   });
-  const [customerInvoiceUrl, setCustomerInvoiceUrl] = useState('');
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
+  // Helper to get remaining quantity for a product not yet assigned to any shipment
+  const getRemainingQuantity = (productId: string) => {
+    const totalInCart = cart.find(i => i.product._id === productId)?.quantity || 0;
+    const assignedInShipments = shipments.reduce((sum, s) => {
+      const item = s.items?.find(i => i.productId === productId);
+      return sum + (item?.quantity || 0);
+    }, 0);
+    // Also consider what's currently being added in the form (if we implement dynamic item adding)
+    // For now, let's just return what's available to be added to a NEW shipment.
+    return Math.max(0, totalInCart - assignedInShipments);
+  };
+
 
   // Calculate price based on whether retailer price should be used
   const getItemPrice = (item: typeof cart[0]) => {
@@ -122,12 +153,23 @@ const Cart = () => {
     }
 
     if (isDropship) {
-      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
-        toast.error('Please fill in all customer details');
+      if (shipments.length === 0) {
+        toast.error('Please add at least one shipment');
         return;
       }
-      if (!customerInvoiceUrl) {
-        toast.error('Please generate the customer invoice first');
+
+      // Check for any negative stock assignment (validation only)
+      const invalidAssignment = cart.some(item => getRemainingQuantity(item.product._id) < 0);
+      if (invalidAssignment) {
+        toast.error('You have assigned more items than available in your cart. Please check quantities.');
+        return;
+      }
+
+      // Removed "Unassigned Items" blocker to allow partial dropshipping.
+      // Retailers can now ship a subset of their cart and keep the rest.
+
+      // CONFIRMATION DEBUG:
+      if (!window.confirm(`Preparing to checkout with ${shipments.length} separate dropship shipments.\n\nClick OK to proceed.`)) {
         return;
       }
     }
@@ -141,7 +183,9 @@ const Cart = () => {
     setIsProcessing(true);
 
     try {
-      const { data } = await api.post('/api/orders', {
+      console.log('[DEBUG] Submitting Dropship Order. Shipments:', shipments);
+
+      const payload = {
         products: cart.map(item => ({
           product: item.product._id,
           quantity: item.quantity,
@@ -152,12 +196,26 @@ const Cart = () => {
           warrantyPrice: getWarrantyPrice(item)
         })),
         totalAmount: total,
-        shippingAddress: isDropship ? customerDetails.address : formatAddress(),
+        shippingAddress: isDropship ? shipments[0]?.customerDetails?.address : formatAddress(),
         isRetailerDirectPurchase: user?.role === 'retailer',
-        isDropship,
-        customerDetails: isDropship ? customerDetails : undefined,
-        customerInvoiceUrl: isDropship ? customerInvoiceUrl : undefined
-      });
+        isDropship: true, // FORCE TRUE for debug and safety
+        dropshipShipments: shipments.map(s => ({
+          customerDetails: s.customerDetails,
+          items: s.items.map(i => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            price: i.price,
+            quotedProductId: i.quotedProductId // Pass the key for backend validation
+          })),
+          invoiceUrl: s.invoiceUrl // Pass the generated Cloudinary URL
+        })),
+        // Fallback customer details for standard flow
+        customerDetails: isDropship && shipments.length > 0 ? shipments[0].customerDetails : undefined
+      };
+
+
+
+      const { data } = await api.post('/api/orders', payload);
 
       if (!data.razorpayOrder || !data.order) {
         throw new Error('Invalid order response from server');
@@ -182,7 +240,36 @@ const Cart = () => {
               razorpaySignature: response.razorpay_signature
             });
             toast.success('Payment completed successfully! Your order has been placed.');
-            clearCart();
+
+            if (isDropship) {
+              // Partial Checkout Logic:
+              // Deduct shipped quantities from cart instead of clearing it.
+              shipments.forEach(shipment => {
+                shipment.items.forEach(shippedItem => {
+                  // Find the matching cart item (handle quoted vs regular)
+                  // The shipment item object stores productId. We need to be careful with quoted/regular distinction if that exists in shipment items.
+                  // Current shipment item structure: { productId, quantity, ... }
+                  // This assumes shipment item maps 1:1 to product ID.
+                  // CAUTION: If user added quoted + regular of same product, getRemaining logic might be complex.
+                  // But typically dropship flow uses product ID.
+                  // Simple approach: decrease quantity by delta = -shippedQty
+                  updateQuantity(shippedItem.productId, -shippedItem.quantity);
+                });
+              });
+
+              // Clear shipments state
+              setShipments([]);
+              setCurrentShipment({
+                customerDetails: { name: '', email: '', phone: '', address: '' },
+                items: [],
+                invoiceUrl: ''
+              });
+
+            } else {
+              // Standard checkout - clear everything
+              clearCart();
+            }
+
             // Redirect to appropriate dashboard based on user role
             navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
           } catch (verifyError) {
@@ -406,110 +493,268 @@ const Cart = () => {
                   )}
 
                   {isDropship ? (
-                    <div className="space-y-4 animate-fadeIn">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Name *</label>
-                          <input
-                            type="text"
-                            required
-                            value={customerDetails.name}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, name: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="Customer Name"
-                          />
+                    <div className="space-y-6 animate-fadeIn">
+                      {/* Added Shipments List */}
+                      {shipments.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-medium text-gray-900">Pending Shipments ({shipments.length})</h3>
+                          {shipments.map((shipment) => (
+                            <div key={shipment.id} className="bg-white border boundary-gray-200 rounded-lg p-3 flex justify-between items-start shadow-sm">
+                              <div>
+                                <p className="font-medium text-gray-900 text-sm">{shipment.customerDetails.name}</p>
+                                <p className="text-xs text-gray-500">{shipment.customerDetails.address}</p>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {shipment.items.map((item, idx) => (
+                                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {item.productName} (x{item.quantity})
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setShipments(shipments.filter(s => s.id !== shipment.id))}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Email *</label>
-                          <input
-                            type="email"
-                            required
-                            value={customerDetails.email}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="customer@example.com"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Customer Phone *</label>
-                          <input
-                            type="tel"
-                            required
-                            value={customerDetails.phone}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="Phone Number"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Customer Address *</label>
-                        <textarea
-                          required
-                          rows={3}
-                          value={customerDetails.address}
-                          onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          placeholder="Full delivery address..."
-                        />
-                      </div>
+                      )}
 
-                      {/* Invoice Generation */}
-                      <div className="pt-2 border-t border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">Customer Invoice</p>
-                            <p className="text-xs text-gray-500">Generate a delivery note (no prices shown)</p>
+                      {/* Add New Shipment Form */}
+                      <div className="bg-white p-6 rounded-xl border border-indigo-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
+                          <h3 className="text-lg font-bold text-gray-900 tracking-tight flex items-center">
+                            <span className="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg mr-3">
+                              <User size={20} />
+                            </span>
+                            New Drop Shipment
+                          </h3>
+                          <span className="text-xs font-semibold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100 uppercase tracking-wider">
+                            Shipment #{shipments.length + 1}
+                          </span>
+                        </div>
+
+                        {/* Customer Details */}
+                        <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-100 mb-8">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
+                            <User size={14} className="mr-2" />
+                            Customer Information
+                          </h4>
+                          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Customer Name</label>
+                              <div className="relative">
+                                <User className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                                <input
+                                  type="text"
+                                  placeholder="e.g. John Doe"
+                                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                                  value={currentShipment.customerDetails?.name || ''}
+                                  onChange={e => setCurrentShipment(prev => ({ ...prev, customerDetails: { ...prev.customerDetails!, name: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Email Address</label>
+                              <div className="relative">
+                                <div className="absolute left-3 top-2.5 text-gray-400">@</div>
+                                <input
+                                  type="email"
+                                  placeholder="e.g. john@example.com"
+                                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                                  value={currentShipment.customerDetails?.email || ''}
+                                  onChange={e => setCurrentShipment(prev => ({ ...prev, customerDetails: { ...prev.customerDetails!, email: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                                <input
+                                  type="tel"
+                                  placeholder="e.g. +91 98765 43210"
+                                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-gray-400"
+                                  value={currentShipment.customerDetails?.phone || ''}
+                                  onChange={e => setCurrentShipment(prev => ({ ...prev, customerDetails: { ...prev.customerDetails!, phone: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                              <label className="text-sm font-medium text-gray-700">Delivery Address</label>
+                              <div className="relative">
+                                <MapPin className="absolute left-3 top-3 text-gray-400" size={18} />
+                                <textarea
+                                  placeholder="Full delivery address with pincode..."
+                                  rows={3}
+                                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-gray-400 resize-none"
+                                  value={currentShipment.customerDetails?.address || ''}
+                                  onChange={e => setCurrentShipment(prev => ({ ...prev, customerDetails: { ...prev.customerDetails!, address: e.target.value } }))}
+                                />
+                              </div>
+                            </div>
                           </div>
+                        </div>
+
+                        {/* Product Selection Table */}
+                        <div className="mb-6">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center">
+                            <ShoppingBag size={14} className="mr-2" />
+                            Allocate Products
+                          </h4>
+                          <div className="border border-gray-200 rounded-xl shadow-sm overflow-hidden bg-white">
+                            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                              <table className="min-w-full divide-y divide-gray-100">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="px-5 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Info</th>
+                                    <th className="px-5 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Cart Total</th>
+                                    <th className="px-5 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Availability</th>
+                                    <th className="px-5 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ship Qty</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {cart.map(item => {
+                                    const remaining = getRemainingQuantity(item.product._id);
+                                    const currentQty = currentShipment.items?.find(i => i.productId === item.product._id)?.quantity || 0;
+                                    const isFullyAssigned = remaining === 0 && currentQty === 0;
+
+                                    return (
+                                      <tr key={item.product._id} className={`transition-colors ${isFullyAssigned ? 'bg-gray-50/50 opacity-50' : 'hover:bg-indigo-50/30'}`}>
+                                        <td className="px-5 py-3.5 text-sm text-gray-900">
+                                          <div className="font-semibold text-gray-800 line-clamp-1 min-w-[120px]">{item.product.name}</div>
+                                          {item.product.serialNumber && <div className="text-[10px] text-gray-500 mt-0.5 font-mono">SN: {item.product.serialNumber}</div>}
+                                          <div className="text-xs text-gray-400 mt-0.5">₹{getItemPrice(item).toLocaleString()}</div>
+                                        </td>
+                                        <td className="px-5 py-3.5 text-sm text-gray-600 text-center font-medium">
+                                          {item.quantity}
+                                        </td>
+                                        <td className="px-5 py-3.5 text-sm text-center">
+                                          <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${remaining > 0 ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' : 'bg-gray-100 text-gray-500'}`}>
+                                            {remaining} Rem
+                                          </span>
+                                        </td>
+                                        <td className="px-5 py-3.5 text-right">
+                                          <div className="flex justify-end items-center">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={remaining + currentQty}
+                                              disabled={isFullyAssigned}
+                                              className={`w-20 pl-2 pr-1 py-1.5 text-sm border rounded-lg text-center font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${isFullyAssigned ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'border-gray-200 text-gray-900 hover:border-indigo-300'}`}
+                                              value={currentQty > 0 ? currentQty : ''}
+                                              placeholder={isFullyAssigned ? '-' : '0'}
+                                              onChange={e => {
+                                                const valStr = e.target.value;
+                                                const val = valStr === '' ? 0 : parseInt(valStr);
+
+                                                if (val < 0) return;
+                                                if (val > remaining + currentQty) return;
+
+                                                const newItems = [...(currentShipment.items || [])];
+                                                const existingIdx = newItems.findIndex(i => i.productId === item.product._id);
+
+                                                if (val === 0) {
+                                                  if (existingIdx > -1) newItems.splice(existingIdx, 1);
+                                                } else {
+                                                  if (existingIdx > -1) {
+                                                    newItems[existingIdx].quantity = val;
+                                                  } else {
+                                                    newItems.push({
+                                                      productId: item.product._id,
+                                                      productName: item.product.name,
+                                                      quantity: val,
+                                                      price: getItemPrice(item),
+                                                      quotedProductId: item.quotedProductId // Capture link
+                                                    });
+                                                  }
+                                                }
+                                                setCurrentShipment(prev => ({ ...prev, items: newItems }));
+                                              }}
+                                            />
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                          {/* Status Message */}
+                          {cart.every(item => getRemainingQuantity(item.product._id) === 0) && (currentShipment.items?.length || 0) === 0 && (
+                            <div className="mt-4 p-4 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center text-green-700 text-sm font-medium shadow-sm">
+                              <CheckCircle size={18} className="mr-2.5" />
+                              Success! All items in your cart have been fully assigned.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-between border-t border-gray-100 pt-5 mt-2">
                           <button
                             type="button"
+                            disabled={isGeneratingInvoice || !currentShipment.items?.length || !currentShipment.customerDetails?.name}
                             onClick={async () => {
-                              if (!customerDetails.name || !customerDetails.email || !customerDetails.address) {
-                                toast.error('Please fill customer details first');
+                              if (!currentShipment.customerDetails?.name || !currentShipment.customerDetails?.address) {
+                                toast.error('Fill customer info');
                                 return;
                               }
                               setIsGeneratingInvoice(true);
                               try {
                                 const response = await api.post('/api/orders/dropship-invoice', {
-                                  customerDetails,
-                                  items: cart.map(item => ({
-                                    product: { name: item.product.name },
-                                    quantity: item.quantity
+                                  customerDetails: currentShipment.customerDetails,
+                                  items: currentShipment.items!.map(i => ({
+                                    product: { name: i.productName },
+                                    quantity: i.quantity
                                   }))
-                                }, { responseType: 'blob' });
+                                });
 
-                                // Create URL for the blob
-                                const url = window.URL.createObjectURL(new Blob([response.data]));
-                                setCustomerInvoiceUrl(url); // Save URL for checkout
+                                // Changed: Backend now returns { url: string } (Cloudinary URL)
+                                const { url } = response.data;
+                                setCurrentShipment(prev => ({ ...prev, invoiceUrl: url }));
 
-                                // Auto-download for user to verify
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = `delivery-note.pdf`;
-                                document.body.appendChild(link);
-                                link.click();
-                                link.remove();
-
-                                toast.success('Invoice generated & downloaded!');
-                              } catch (err) {
-                                console.error(err);
-                                toast.error('Failed to generate invoice');
-                              } finally {
-                                setIsGeneratingInvoice(false);
-                              }
+                                // Auto open/download
+                                window.open(url, '_blank');
+                                toast.success('Invoice generated and saved');
+                              } catch (e) { toast.error('Failed to generate invoice'); }
+                              finally { setIsGeneratingInvoice(false); }
                             }}
-                            disabled={isGeneratingInvoice}
-                            className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-md text-sm font-medium hover:bg-indigo-100 disabled:opacity-50"
+                            className="bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-50 hover:border-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
                           >
+                            {isGeneratingInvoice ? <Loader2 className="animate-spin mr-2 w-4 h-4" /> : <Building2 size={16} className="mr-2" />}
                             {isGeneratingInvoice ? 'Generating...' : 'Generate Invoice'}
                           </button>
+
+                          <button
+                            type="button"
+                            disabled={!currentShipment.invoiceUrl || !currentShipment.items?.length}
+                            onClick={() => {
+                              if (!currentShipment.invoiceUrl) { toast.error('Generate invoice first'); return; }
+                              // Add to shipments
+                              const newShipment: DropshipShipment = {
+                                id: Date.now().toString(),
+                                customerDetails: currentShipment.customerDetails as any,
+                                items: currentShipment.items as any,
+                                invoiceUrl: currentShipment.invoiceUrl
+                              };
+                              setShipments([...shipments, newShipment]);
+                              setCurrentShipment({
+                                customerDetails: { name: '', email: '', phone: '', address: '' },
+                                items: [],
+                                invoiceUrl: ''
+                              });
+                              toast.success('Shipment added');
+                            }}
+                            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:bg-indigo-300 shadow-md shadow-indigo-100 flex items-center"
+                          >
+                            <span className="mr-2">Save Shipment</span>
+                            <ArrowRight size={16} />
+                          </button>
                         </div>
-                        {customerInvoiceUrl && (
-                          <div className="mt-2 text-xs text-green-600 flex items-center">
-                            <CheckCircle size={14} className="mr-1" />
-                            Invoice generated successfully
-                          </div>
-                        )}
+                        {currentShipment.invoiceUrl && <p className="text-xs text-green-600 mt-3 flex items-center bg-green-50 p-2 rounded-md border border-green-100"><CheckCircle size={14} className="mr-1.5" /> Invoice generated successfully</p>}
                       </div>
                     </div>
                   ) : (

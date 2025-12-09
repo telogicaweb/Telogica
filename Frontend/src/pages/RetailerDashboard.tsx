@@ -98,6 +98,13 @@ interface Order {
   orderStatus: string;
   paymentStatus: string;
   createdAt: string;
+  isDropship?: boolean;
+  customerDetails?: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
 }
 
 interface Sale {
@@ -169,6 +176,7 @@ const RetailerDashboard = () => {
 
   // Products
   const [products, setProducts] = useState<Product[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [productCategory, setProductCategory] = useState('');
 
@@ -203,13 +211,7 @@ const RetailerDashboard = () => {
     soldDate: new Date().toISOString().split('T')[0]
   });
 
-  // Customer Invoice Modal (Dropship)
-  const [showCustomerInvoiceModal, setShowCustomerInvoiceModal] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [customerInvoiceData, setCustomerInvoiceData] = useState({
-    sellingPrice: '',
-    invoiceNumber: ''
-  });
+
 
   useEffect(() => {
     if (authContext?.loading) {
@@ -533,42 +535,6 @@ const RetailerDashboard = () => {
     }
   };
 
-  const openCustomerInvoiceModal = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setCustomerInvoiceData({
-      sellingPrice: '',
-      invoiceNumber: ''
-    });
-    setShowCustomerInvoiceModal(true);
-  };
-
-  const handleGenerateCustomerInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrderId || !customerInvoiceData.sellingPrice) return;
-
-    setLoading(true);
-    try {
-      const response = await api.post(`/api/orders/${selectedOrderId}/customer-invoice`, customerInvoiceData, {
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `customer-invoice-${customerInvoiceData.invoiceNumber || selectedOrderId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      setShowCustomerInvoiceModal(false);
-      success('Invoice generated successfully!');
-    } catch (err: any) {
-      error('Failed to generate invoice: ' + (err.response?.data?.message || 'Server error'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter products
   const filteredProducts = products.filter(p => {
@@ -720,15 +686,37 @@ const RetailerDashboard = () => {
   const renderCustomerShipments = () => {
     // Filter for dropship orders
     const dropshipOrders = orders.filter(
-      (order: any) => order.isDropship && order.customerDetails
+      (order: any) => {
+        const isDropshipValid = order.isDropship && order.customerDetails;
+        if (!isDropshipValid) return false;
+
+        if (customerSearch) {
+          const searchLower = customerSearch.toLowerCase();
+          const nameMatch = order.customerDetails.name.toLowerCase().includes(searchLower);
+          const emailMatch = order.customerDetails.email.toLowerCase().includes(searchLower);
+          const orderMatch = (order.orderNumber || order._id).toLowerCase().includes(searchLower);
+          return nameMatch || emailMatch || orderMatch;
+        }
+        return true;
+      }
     );
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments ({dropshipOrders.length})</h2>
             <p className="text-sm text-gray-600 mt-1">Track your dropship orders and shipments to customers.</p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search by customer name, email..."
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+            />
           </div>
         </div>
 
@@ -813,7 +801,7 @@ const RetailerDashboard = () => {
                             className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
                           >
                             <FileText size={16} />
-                            Delivery Note
+                            Customer Invoice
                           </a>
                         ) : (
                           <span className="text-xs text-gray-400">Processing...</span>
@@ -834,23 +822,16 @@ const RetailerDashboard = () => {
                             )}
                             Get Tax Invoice
                           </button>
-                          <button
-                            onClick={() => openCustomerInvoiceModal(order._id)}
-                            className="flex items-center gap-2 text-green-600 hover:text-green-800 font-medium text-sm"
-                          >
-                            <FileText size={16} />
-                            Create Customer Invoice
-                          </button>
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
+            </div >
+          </div >
         )}
-      </div>
+      </div >
     );
   };
 
@@ -1014,69 +995,72 @@ const RetailerDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quotedProducts.map(qp => (
-              <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
-                {qp.product.images && qp.product.images[0] && (
-                  <div className="relative">
-                    <img
-                      src={qp.product.images[0]}
-                      alt={qp.product.name}
-                      className="w-full h-48 object-cover"
-                    />
-                    <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                      Special Price
-                    </span>
-                    {qp.product.category && (
-                      <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
-                        {qp.product.category}
+            {quotedProducts.filter(qp => qp && qp.product).map(qp => {
+              const stock = qp.product.stock || 0;
+              return (
+                <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+                  {qp.product.images && qp.product.images[0] && (
+                    <div className="relative">
+                      <img
+                        src={qp.product.images[0]}
+                        alt={qp.product.name}
+                        className="w-full h-48 object-cover"
+                      />
+                      <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        Special Price
                       </span>
-                    )}
-                  </div>
-                )}
-                <div className="p-4">
-                  <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
-                  {qp.product.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
-                  )}
-
-                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-gray-600">Your Quoted Price:</span>
-                      <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
+                      {qp.product.category && (
+                        <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                          {qp.product.category}
+                        </span>
+                      )}
                     </div>
-                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">Original Price:</span>
-                        <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
-                      </div>
+                  )}
+                  <div className="p-4">
+                    <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
+                    {qp.product.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
                     )}
-                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                      <div className="mt-2 text-xs text-green-600 font-medium">
-                        Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm text-gray-600">Your Quoted Price:</span>
+                        <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
                       </div>
-                    )}
-                  </div>
+                      {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-500">Original Price:</span>
+                          <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                        <div className="mt-2 text-xs text-green-600 font-medium">
+                          Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${qp.product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {qp.product.stock > 0 ? `${qp.product.stock} in stock` : 'Out of stock'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Updated: {new Date(qp.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`px-2 py-1 rounded-full text-xs ${stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {stock > 0 ? `${stock} in stock` : 'Out of stock'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Updated: {new Date(qp.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
 
-                  <button
-                    onClick={() => handleAddToCart(qp)}
-                    disabled={qp.product.stock <= 0}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart size={16} />
-                    Add to Cart
-                  </button>
+                    <button
+                      onClick={() => handleAddToCart(qp)}
+                      disabled={stock <= 0}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart size={16} />
+                      Add to Cart
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1322,7 +1306,19 @@ const RetailerDashboard = () => {
               <div className="bg-gray-50 px-6 py-4 border-b flex flex-wrap justify-between items-center gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Order ID</p>
-                  <p className="font-medium">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</p>
+                  <p className="font-medium">
+                    #{order.orderNumber || order._id.slice(-8).toUpperCase()}
+                    {order.isDropship && (
+                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
+                        Dropship
+                      </span>
+                    )}
+                  </p>
+                  {order.isDropship && order.customerDetails && (
+                    <p className="text-xs text-blue-600 font-medium mt-0.5">
+                      Ship to: {order.customerDetails.name}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Date</p>
@@ -1872,63 +1868,7 @@ const RetailerDashboard = () => {
 
 
       {/* Customer Invoice Modal */}
-      {showCustomerInvoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Generate Customer Invoice</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Enter the details for the invoice you want to provide to your customer. You are listed as the seller.
-            </p>
 
-            <form onSubmit={handleGenerateCustomerInvoice} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Selling Price (to Customer) *</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={customerInvoiceData.sellingPrice}
-                    onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, sellingPrice: e.target.value })}
-                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number (Optional)</label>
-                <input
-                  type="text"
-                  value={customerInvoiceData.invoiceNumber}
-                  onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, invoiceNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., INV-001"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCustomerInvoiceModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading || !customerInvoiceData.sellingPrice}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {loading ? 'Generating...' : 'Generate PDF'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* Generic Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}

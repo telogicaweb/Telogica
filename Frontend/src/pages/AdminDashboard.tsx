@@ -874,15 +874,15 @@ const AdminDashboard: React.FC = () => {
             <div class="section-title">Order Details:</div>
             <div class="products">
               ${order.products.map((p, idx) => {
-                const product = p.productId || (p as any).product;
-                return `
+      const product = p.productId || (p as any).product;
+      return `
                   <div class="product-item">
                     <strong>${idx + 1}.</strong> ${product?.name || 'Product'} 
                     <strong>x${p.quantity}</strong>
                     ${p.serialNumbers && p.serialNumbers.length > 0 ? `<br>SN: ${p.serialNumbers.join(', ')}` : ''}
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
             <div style="margin-top: 10px; font-weight: bold; font-size: 14px;">
               Total Amount: ₹${order.totalAmount.toLocaleString()}
@@ -1216,7 +1216,7 @@ const AdminDashboard: React.FC = () => {
         ? `/api/orders/${selectedTrackingId}/tracking`
         : `/api/quotes/${selectedTrackingId}/tracking`;
 
-      await api.put(endpoint, { 
+      await api.put(endpoint, {
         deliveryTrackingLink: trackingLinkInput,
         trackingId: trackingIdInput.trim() || undefined
       });
@@ -3384,9 +3384,23 @@ const AdminDashboard: React.FC = () => {
                           </div>
                           <div>
                             <div className="font-medium text-gray-900">
+                              {/* Display Retailer Name */}
                               {order.user?.name || order.userId?.name || 'Unknown User'}
+                              {/* If Dropship, show explicit tag and End Customer Name */}
+                              {order.isDropship && (
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  Dropship
+                                </span>
+                              )}
                             </div>
                             <div className="text-sm text-gray-600">{order.user?.email || order.userId?.email}</div>
+                            {/* Dropship Customer Info */}
+                            {order.isDropship && order.customerDetails && (
+                              <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                                <Truck size={12} />
+                                <span>Ship to: <strong>{order.customerDetails.name}</strong></span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -3927,8 +3941,8 @@ const AdminDashboard: React.FC = () => {
     const filteredDocs = investorDocuments.filter((doc) => {
       if (investorDocSearch) {
         const searchLower = investorDocSearch.toLowerCase();
-        if (!doc.title.toLowerCase().includes(searchLower) && 
-            !doc.category.toLowerCase().includes(searchLower)) {
+        if (!doc.title.toLowerCase().includes(searchLower) &&
+          !doc.category.toLowerCase().includes(searchLower)) {
           return false;
         }
       }
@@ -4062,9 +4076,8 @@ const AdminDashboard: React.FC = () => {
                         {new Date(doc.publishDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          doc.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${doc.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {doc.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -4124,7 +4137,7 @@ const AdminDashboard: React.FC = () => {
                     <input
                       type="text"
                       value={investorDocForm.title}
-                      onChange={(e) => setInvestorDocForm({...investorDocForm, title: e.target.value})}
+                      onChange={(e) => setInvestorDocForm({ ...investorDocForm, title: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       required
                     />
@@ -4135,7 +4148,7 @@ const AdminDashboard: React.FC = () => {
                     <input
                       type="text"
                       value={investorDocForm.category}
-                      onChange={(e) => setInvestorDocForm({...investorDocForm, category: e.target.value})}
+                      onChange={(e) => setInvestorDocForm({ ...investorDocForm, category: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       placeholder="e.g., Annual Reports, Quarterly Results"
                       required
@@ -4146,7 +4159,7 @@ const AdminDashboard: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                     <textarea
                       value={investorDocForm.description}
-                      onChange={(e) => setInvestorDocForm({...investorDocForm, description: e.target.value})}
+                      onChange={(e) => setInvestorDocForm({ ...investorDocForm, description: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       rows={3}
                     />
@@ -4226,7 +4239,7 @@ const AdminDashboard: React.FC = () => {
                       <input
                         type="date"
                         value={investorDocForm.publishDate}
-                        onChange={(e) => setInvestorDocForm({...investorDocForm, publishDate: e.target.value})}
+                        onChange={(e) => setInvestorDocForm({ ...investorDocForm, publishDate: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                         required
                       />
@@ -4237,7 +4250,7 @@ const AdminDashboard: React.FC = () => {
                       <input
                         type="number"
                         value={investorDocForm.displayOrder}
-                        onChange={(e) => setInvestorDocForm({...investorDocForm, displayOrder: parseInt(e.target.value)})}
+                        onChange={(e) => setInvestorDocForm({ ...investorDocForm, displayOrder: parseInt(e.target.value) })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       />
                     </div>
@@ -4248,7 +4261,7 @@ const AdminDashboard: React.FC = () => {
                       type="checkbox"
                       id="isActive"
                       checked={investorDocForm.isActive}
-                      onChange={(e) => setInvestorDocForm({...investorDocForm, isActive: e.target.checked})}
+                      onChange={(e) => setInvestorDocForm({ ...investorDocForm, isActive: e.target.checked })}
                       className="mr-2"
                     />
                     <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Active (visible to public)</label>
@@ -4996,7 +5009,7 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Retailer Shipments</h2>
+              <h2 className="text-3xl font-bold mb-2">Retailer Shipments ({filteredDropshipOrders.length})</h2>
               <p className="text-purple-100">Manage direct shipments from retailers to their customers</p>
             </div>
             <Package className="w-16 h-16 text-purple-200 opacity-50" />
@@ -5053,7 +5066,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="text-xs text-gray-500">{order.user?.email || order.userId?.email}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{order.customerDetails?.name || 'Unknown'}</div>
+                        <div className="font-bold text-blue-700 text-base">{order.customerDetails?.name || 'Unknown'}</div>
                         <div className="text-xs text-gray-500">{order.customerDetails?.phone}</div>
                         <div className="text-xs text-gray-400 truncate max-w-[150px]" title={order.customerDetails?.address}>
                           {order.customerDetails?.address}
@@ -5101,7 +5114,7 @@ const AdminDashboard: React.FC = () => {
                             className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                           >
                             <FileText size={14} />
-                            View Invoice
+                            Customer Invoice
                           </a>
                         ) : (
                           <span className="text-gray-400 text-xs">Not generated</span>
@@ -5649,11 +5662,10 @@ const AdminDashboard: React.FC = () => {
                   )}
                   <div className="md:col-span-2">
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Role</p>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                      selectedOrder.customerDetails?.role === 'retailer' 
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                        : 'bg-gray-100 text-gray-800 border border-gray-200'
-                    }`}>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${selectedOrder.customerDetails?.role === 'retailer'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : 'bg-gray-100 text-gray-800 border border-gray-200'
+                      }`}>
                       {selectedOrder.customerDetails?.role?.toUpperCase() || 'USER'}
                     </span>
                   </div>
@@ -5668,7 +5680,7 @@ const AdminDashboard: React.FC = () => {
                 </h3>
                 <div className="bg-white rounded-lg p-4 border border-blue-200">
                   <p className="text-base text-gray-900 whitespace-pre-line leading-relaxed">
-                    {selectedOrder.isDropship 
+                    {selectedOrder.isDropship
                       ? (selectedOrder.customerDetails?.address || 'No shipping address provided')
                       : (selectedOrder.shippingAddress || 'No shipping address provided')
                     }
@@ -5677,8 +5689,8 @@ const AdminDashboard: React.FC = () => {
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={() => {
-                      const address = selectedOrder.isDropship 
-                        ? selectedOrder.customerDetails?.address 
+                      const address = selectedOrder.isDropship
+                        ? selectedOrder.customerDetails?.address
                         : selectedOrder.shippingAddress;
                       navigator.clipboard.writeText(address || '');
                       alert('Address copied to clipboard!');
@@ -5691,8 +5703,8 @@ const AdminDashboard: React.FC = () => {
                   {(selectedOrder.shippingAddress || selectedOrder.customerDetails?.address) && (
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        selectedOrder.isDropship 
-                          ? (selectedOrder.customerDetails?.address || '') 
+                        selectedOrder.isDropship
+                          ? (selectedOrder.customerDetails?.address || '')
                           : (selectedOrder.shippingAddress || '')
                       )}`}
                       target="_blank"
@@ -6198,7 +6210,7 @@ const AdminDashboard: React.FC = () => {
 
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tracking ID / Reference Number 
+                  Tracking ID / Reference Number
                 </label>
                 <div className="relative">
                   <input

@@ -89,7 +89,172 @@ const updateOrderTrackingLink = async (req, res) => {
 // @access  Private
 // @access  Private
 const createOrder = async (req, res) => {
-  const { products, totalAmount, shippingAddress, quoteId, isRetailerDirectPurchase, isDropship, customerDetails, customerInvoiceUrl } = req.body;
+  let { products, totalAmount, shippingAddress, quoteId, isRetailerDirectPurchase, isDropship, customerDetails, customerInvoiceUrl, dropshipShipments } = req.body;
+
+  // ROBUSTNESS: If dropshipShipments is provided, treat as dropship regardless of flag
+  const hasMultipleShipments = Array.isArray(dropshipShipments) && dropshipShipments.length > 0;
+  if (hasMultipleShipments) {
+    isDropship = true;
+    console.log('[DEBUG] Auto-detected Dropship Mode from payload data.');
+  }
+
+  // -------------------------------------------------------------------------
+  // MULTI-SHIPMENT DROPSHIP LOGIC
+  // -------------------------------------------------------------------------
+  if (hasMultipleShipments) {
+    console.log('[DEBUG] Entering MULTI-SHIPMENT Block (Shipments:', dropshipShipments.length, ')');
+    try {
+      // 1. Validation & Calculation
+      let grandTotal = 0;
+      const allOrdersData = [];
+
+      // Fetch all involved products once to minimize DB calls
+      const allProductIds = new Set();
+      const allQuoteIds = new Set();
+      dropshipShipments.forEach(s => s.items.forEach(i => {
+        allProductIds.add(i.productId);
+        if (i.quotedProductId) allQuoteIds.add(i.quotedProductId);
+      }));
+
+      const dbProducts = await Product.find({ _id: { $in: [...allProductIds] } });
+      const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+
+      // Fetch Quoted Products if any
+      let quoteMap = new Map();
+      if (allQuoteIds.size > 0) {
+        const quotes = await RetailerQuotedProduct.find({ _id: { $in: [...allQuoteIds] } });
+        quoteMap = new Map(quotes.map(q => [q._id.toString(), q]));
+      }
+
+      for (const shipment of dropshipShipments) {
+        let shipmentTotal = 0;
+        const shipmentProcessedProducts = [];
+
+        for (const item of shipment.items) {
+          const dbProduct = productMap.get(item.productId);
+          if (!dbProduct) return res.status(400).json({ message: `Product not found: ${item.productName}` });
+
+          // Price Calculation Priority:
+          // 1. Quoted Price (if provided and valid)
+          // 2. Retailer Price (if user is retailer)
+          // 3. Standard Price
+          let itemPrice = 0;
+          let usedQuoteId = undefined;
+
+          if (item.quotedProductId && quoteMap.has(item.quotedProductId)) {
+            const quote = quoteMap.get(item.quotedProductId);
+            // Verify quote belongs to this product and retailer
+            // FIXED: Model uses 'retailer' field, not 'user'
+            if (quote.product.toString() === item.productId && quote.retailer.toString() === req.user._id.toString()) {
+              itemPrice = quote.quotedPrice;
+              usedQuoteId = item.quotedProductId;
+            } else {
+              // Fallback if quote is invalid/mismatched (shouldn't happen with valid frontend)
+              itemPrice = (req.user.role === 'retailer' && dbProduct.retailerPrice) ? dbProduct.retailerPrice : dbProduct.price;
+            }
+          } else if (req.user.role === 'retailer' && dbProduct.retailerPrice) {
+            itemPrice = dbProduct.retailerPrice;
+          } else {
+            itemPrice = dbProduct.price;
+          }
+
+          shipmentTotal += itemPrice * item.quantity;
+          shipmentProcessedProducts.push({
+            product: item.productId,
+            quantity: item.quantity,
+            price: itemPrice,
+            useRetailerPrice: req.user.role === 'retailer',
+            quotedProductId: usedQuoteId, // Store this linkage
+            warrantyOption: 'standard',
+            warrantyPrice: 0
+          });
+        }
+        grandTotal += shipmentTotal;
+        allOrdersData.push({
+          shipment,
+          total: shipmentTotal,
+          products: shipmentProcessedProducts
+        });
+      }
+
+      // Stock Check (Accumulated)
+      const demandMap = {};
+      dropshipShipments.forEach(s => s.items.forEach(i => {
+        demandMap[i.productId] = (demandMap[i.productId] || 0) + i.quantity;
+      }));
+
+      for (const [pid, qty] of Object.entries(demandMap)) {
+        const avail = await ProductUnit.countDocuments({
+          product: pid,
+          status: 'available',
+          stockType: { $in: ['offline', 'both'] }
+        });
+        if (avail < qty) {
+          return res.status(400).json({ message: `Insufficient stock for product ID ${pid}. Required: ${qty}, Available: ${avail}` });
+        }
+      }
+
+      // 2. Create Razorpay Order (One for Grand Total)
+      const options = {
+        amount: Math.round(grandTotal * 100),
+        currency: "INR",
+        receipt: `receipt_ds_batch_${Date.now()}`
+      };
+      const razorpayOrder = await razorpay.orders.create(options);
+
+      // 3. Create Order Documents
+      const createdOrders = [];
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      let index = 0;
+      for (const data of allOrdersData) {
+        index++;
+        const random = Math.floor(1000 + Math.random() * 9000);
+        // Ensure uniqueness by adding index and extra random digits
+        const orderNumber = `ORD-${year}${month}${day}-${Date.now().toString().slice(-4)}-${index}-${random}`;
+
+        const order = new Order({
+          user: req.user._id,
+          products: data.products,
+          totalAmount: data.total,
+          shippingAddress: data.shipment.customerDetails.address,
+          razorpayOrderId: razorpayOrder.id, // Shared ID
+          orderNumber,
+          isDropship: true,
+          customerDetails: data.shipment.customerDetails,
+          customerInvoiceUrl: data.shipment.invoiceUrl
+        });
+        const saved = await order.save();
+        console.log(`[DEBUG] Created Dropship Order: ${saved._id}, OrderNum: ${saved.orderNumber} for RazorpayID: ${razorpayOrder.id}`);
+        createdOrders.push(saved);
+      }
+
+      // 4. Return Response
+      res.status(201).json({ order: createdOrders[0], razorpayOrder, allOrders: createdOrders });
+
+    } catch (error) {
+      console.error('Error in createOrder (Dropship):', error);
+      res.status(500).json({ message: error.message });
+    }
+    return;
+  }
+
+  // STANDARD FLOW (Only reached if hasMultipleShipments is false)
+  console.log('[DEBUG] Executing STANDARD SINGLE ORDER Flow');
+
+  // CRITICAL FAIL-SAFE:
+  // If we are here, but the request IS marked as dropship, something is wrong with the data processing.
+  // We must abort to prevent creating a single aggregated order.
+  if (isDropship) {
+    console.error('[CRITICAL] isDropship is TRUE but fell back to Standard Flow. Shipments Array:', typeof dropshipShipments, dropshipShipments ? dropshipShipments.length : 'null');
+    return res.status(400).json({
+      message: 'Dropship Error: Request marked as dropship but multiple shipments were not processed. Please contact support.',
+      debug: { type: typeof dropshipShipments, length: dropshipShipments?.length }
+    });
+  }
 
   if (products && products.length === 0) {
     return res.status(400).json({ message: 'No order items' });
@@ -375,250 +540,207 @@ const verifyPayment = async (req, res) => {
       .update(order.razorpayOrderId + "|" + razorpayPaymentId)
       .digest('hex');
 
-    console.log('--- Payment Verification Debug ---');
-    console.log('Order ID:', orderId);
-    console.log('Razorpay Order ID (DB):', order.razorpayOrderId);
-    console.log('Razorpay Payment ID (Client):', razorpayPaymentId);
-    console.log('Razorpay Signature (Client):', razorpaySignature);
-    console.log('Generated Signature:', generated_signature);
-    console.log('Match:', generated_signature === razorpaySignature);
-    console.log('----------------------------------');
+    console.log('[DEBUG] --- Payment Verification ---');
+    console.log(`[DEBUG] Received Order ID: ${orderId}`);
+    console.log(`[DEBUG] Razorpay Order ID (DB): ${order.razorpayOrderId}`);
+    console.log(`[DEBUG] Razorpay Payment ID: ${razorpayPaymentId}`);
+    console.log(`[DEBUG] Signature Matched: ${generated_signature === razorpaySignature}`);
 
     if (generated_signature === razorpaySignature) {
-      order.paymentStatus = 'completed';
-      order.orderStatus = 'completed'; // Immediately complete order
-      order.razorpayPaymentId = razorpayPaymentId;
-      order.razorpaySignature = razorpaySignature;
-      await order.save();
+      const ordersToFinalize = await Order.find({ razorpayOrderId: order.razorpayOrderId });
+      console.log(`[DEBUG] Payment Verified. Finalizing ${ordersToFinalize.length} orders for RazorpayID: ${order.razorpayOrderId}`);
 
-      // Update quote status if this order was from a quote
-      if (order.quoteId) {
-        await Quote.findByIdAndUpdate(order.quoteId, { status: 'completed' });
+      if (ordersToFinalize.length === 0) {
+        console.error(`[CRITICAL] No orders found for RazorpayID: ${order.razorpayOrderId} despite verification success.`);
       }
 
-      await order.populate('user products.product');
-
-      if (!order.user) {
-        console.error('Order user not found after populate:', order.user);
-        throw new Error('User not found for this order');
-      }
-
-      console.log('Order user populated:', order.user._id, order.user.role);
-
-      // Assign product units to the order
-      const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
-
-      // Use a for loop to allow updating the order object in place
-      for (let i = 0; i < order.products.length; i++) {
-        const item = order.products[i];
+      // Define processing function for parallel execution
+      const processOrderForVerification = async (order) => {
         try {
-          // Assign units to order
-          const filter = {
-            product: item.product._id,
-            status: 'available'
-          };
+          console.log(`[DEBUG] Processing Order Verification: ${order._id} (${order.orderNumber})`);
+          order.paymentStatus = 'completed';
+          order.orderStatus = 'completed';
+          order.razorpayPaymentId = razorpayPaymentId;
+          order.razorpaySignature = razorpaySignature;
+          await order.save();
 
-          if (stockType === 'offline') {
-            filter.stockType = { $in: ['offline', 'both'] };
-          } else {
-            filter.stockType = { $in: ['online', 'both'] };
+          // Update quote status if this order was from a quote
+          if (order.quoteId) {
+            await Quote.findByIdAndUpdate(order.quoteId, { status: 'completed' });
           }
 
-          const units = await ProductUnit.find(filter).limit(item.quantity);
+          await order.populate('user products.product');
 
-          if (units.length < item.quantity) {
-            throw new Error('Insufficient stock while finalizing order');
+          if (!order.user) {
+            console.error('Order user not found after populate:', order.user);
+            return;
           }
 
-          await Promise.all(
-            units.map(unit =>
-              ProductUnit.findByIdAndUpdate(
-                unit._id,
-                {
-                  status: 'sold',
-                  currentOwner: order.user._id,
-                  order: order._id,
-                  soldDate: new Date(),
-                  retailer: order.user.role === 'retailer' ? order.user._id : null,
-                  retailerPurchaseDate: order.user.role === 'retailer' ? new Date() : null
-                }
-              )
-            )
-          );
+          // Assign product units
+          const stockType = order.user.role === 'retailer' ? 'offline' : 'online';
 
-          // Update order item with serial numbers
-          order.products[i].serialNumbers = units.map(u => u.serialNumber);
+          for (let i = 0; i < order.products.length; i++) {
+            const item = order.products[i];
+            try {
+              const filter = {
+                product: item.product._id,
+                status: 'available'
+              };
 
-          await recalculateProductInventory(item.product._id);
-
-          // Note: RetailerInventory is created immediately for retailers
-          if (order.user.role === 'retailer') {
-            const inventoryEntries = units.map(unit => ({
-              retailer: order.user._id,
-              productUnit: unit._id,
-              product: item.product._id,
-              purchaseOrder: order._id,
-              purchaseDate: new Date(),
-              purchasePrice: item.price,
-              status: 'in_stock'
-            }));
-
-            if (inventoryEntries.length > 0) {
-              await RetailerInventory.insertMany(inventoryEntries);
-              console.log(`Added ${inventoryEntries.length} items to retailer inventory`);
-            }
-          }
-        } catch (error) {
-          console.error('Error assigning units:', error);
-        }
-      }
-
-      // Save the order again to persist serial numbers
-      await order.save();
-
-      // Generate Warranties
-      const warrantyLinks = [];
-      try {
-        console.log('Generating warranties for order:', order._id);
-        for (const item of order.products) {
-          if (item.serialNumbers && item.serialNumbers.length > 0) {
-            for (const serialNumber of item.serialNumbers) {
-              // Find the unit to link it properly
-              const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
-
-              // Determine warranty period based on product category
-              let warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
-
-              // Check if product category is "Premium Extra" - add 1 extra year (12 months)
-              if (item.product.category && item.product.category.toLowerCase().includes('premium extra')) {
-                warrantyMonths = 24; // 2 years total (1 year base + 1 year extra)
+              if (stockType === 'offline') {
+                filter.stockType = { $in: ['offline', 'both'] };
+              } else {
+                filter.stockType = { $in: ['online', 'both'] };
               }
 
-              const startDate = new Date();
-              startDate.setDate(startDate.getDate() + 3); // Today + 3 days
+              const units = await ProductUnit.find(filter).limit(item.quantity);
 
-              const endDate = new Date(startDate);
-              endDate.setMonth(endDate.getMonth() + warrantyMonths); // + warranty months
+              if (units.length < item.quantity) {
+                console.error(`Insufficient stock for product ${item.product.name} in order ${order._id}`);
+              }
 
-              const warranty = new Warranty({
-                user: order.user._id,
-                product: item.product._id,
-                productUnit: productUnit ? productUnit._id : null,
-                productName: item.product.name,
-                modelNumber: productUnit ? productUnit.modelNumber : (item.product.modelNumberPrefix || 'N/A'),
-                serialNumber: serialNumber,
-                purchaseDate: new Date(),
-                purchaseType: order.user.role === 'retailer' ? 'retailer' : 'telogica_online',
-                status: 'approved',
-                warrantyStartDate: startDate,
-                warrantyEndDate: endDate,
-                warrantyPeriodMonths: warrantyMonths
-              });
+              await Promise.all(
+                units.map(unit =>
+                  ProductUnit.findByIdAndUpdate(
+                    unit._id,
+                    {
+                      status: 'sold',
+                      currentOwner: order.user._id,
+                      order: order._id,
+                      soldDate: new Date(),
+                      retailer: order.user.role === 'retailer' ? order.user._id : null,
+                      retailerPurchaseDate: order.user.role === 'retailer' ? new Date() : null
+                    }
+                  )
+                )
+              );
 
-              // Generate PDF
-              const pdfUrl = await generateAndUploadWarranty(warranty, order.user);
-              warranty.warrantyCertificateUrl = pdfUrl;
+              order.products[i].serialNumbers = units.map(u => u.serialNumber);
+              await recalculateProductInventory(item.product._id);
 
-              await warranty.save();
-              console.log(`Warranty generated for ${serialNumber}: ${pdfUrl}`);
+              if (order.user.role === 'retailer') {
+                const inventoryEntries = units.map(unit => ({
+                  retailer: order.user._id,
+                  productUnit: unit._id,
+                  product: item.product._id,
+                  purchaseOrder: order._id,
+                  purchaseDate: new Date(),
+                  purchasePrice: item.price,
+                  status: 'in_stock'
+                }));
 
-              warrantyLinks.push({
-                name: item.product.name,
-                serial: serialNumber,
-                url: pdfUrl
-              });
+                if (inventoryEntries.length > 0) {
+                  await RetailerInventory.insertMany(inventoryEntries);
+                  console.log(`Added ${inventoryEntries.length} items to retailer inventory`);
+                }
+              }
+            } catch (error) {
+              console.error('Error assigning units:', error);
             }
           }
-        }
-      } catch (error) {
-        console.error('Error generating warranties:', error);
-      }
 
-      // Generate invoice
-      let invoice;
-      try {
-        const productsWithSerials = await Promise.all(
-          order.products.map(async (item) => {
-            const units = await ProductUnit.find({
-              order: order._id,
-              product: item.product._id
-            }).limit(item.quantity);
+          await order.save(); // Persist serial numbers
 
-            return {
-              product: item.product._id,
-              productName: item.product.name,
-              quantity: item.quantity,
-              price: item.price,
-              serialNumbers: units.map(u => u.serialNumber)
-            };
-          })
-        );
+          // Generate Warranties
+          try {
+            console.log('Generating warranties for order:', order._id);
+            for (const item of order.products) {
+              if (item.serialNumbers && item.serialNumbers.length > 0) {
+                const warrantyPromises = item.serialNumbers.map(async (serialNumber) => {
+                  const productUnit = await ProductUnit.findOne({ serialNumber: serialNumber });
+                  let warrantyMonths = productUnit ? (productUnit.warrantyPeriodMonths || 12) : 12;
 
-        const subtotal = order.products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                  if (item.product.category && item.product.category.toLowerCase().includes('premium extra')) {
+                    warrantyMonths = 24;
+                  }
 
-        invoice = await Invoice.create({
-          user: order.user._id,
-          order: order._id,
-          products: productsWithSerials,
-          subtotal,
-          discount: order.discountApplied || 0,
-          tax: 0,
-          totalAmount: order.totalAmount,
-          shippingAddress: order.shippingAddress,
-          billingAddress: order.shippingAddress,
-          paymentMethod: 'Razorpay',
-          paymentStatus: 'completed',
-          invoiceDate: new Date(),
-          paidDate: new Date()
-        });
+                  const startDate = new Date();
+                  startDate.setDate(startDate.getDate() + 3);
 
-        // Generate and upload PDF
-        try {
-          const invoiceUrl = await generateAndUploadInvoice(order, invoice);
-          if (invoiceUrl) {
-            invoice.invoiceUrl = invoiceUrl;
-            await invoice.save();
+                  const endDate = new Date(startDate);
+                  endDate.setMonth(endDate.getMonth() + warrantyMonths);
+
+                  const warranty = new Warranty({
+                    user: order.user._id,
+                    product: item.product._id,
+                    productUnit: productUnit ? productUnit._id : null,
+                    productName: item.product.name,
+                    modelNumber: productUnit ? productUnit.modelNumber : (item.product.modelNumberPrefix || 'N/A'),
+                    serialNumber: serialNumber,
+                    purchaseDate: new Date(),
+                    purchaseType: order.user.role === 'retailer' ? 'retailer' : 'telogica_online',
+                    status: 'approved',
+                    warrantyStartDate: startDate,
+                    warrantyEndDate: endDate,
+                    warrantyPeriodMonths: warrantyMonths
+                  });
+
+                  const pdfUrl = await generateAndUploadWarranty(warranty, order.user);
+                  warranty.warrantyCertificateUrl = pdfUrl;
+                  await warranty.save();
+                });
+                await Promise.all(warrantyPromises);
+              }
+            }
+          } catch (error) {
+            console.error('Error generating warranties:', error);
           }
-        } catch (pdfError) {
-          console.error('Error generating/uploading PDF:', pdfError);
+
+          // Generate Invoice
+          try {
+            const productsWithSerials = await Promise.all(
+              order.products.map(async (item) => {
+                const units = await ProductUnit.find({
+                  order: order._id,
+                  product: item.product._id
+                }).limit(item.quantity);
+                return {
+                  product: item.product._id,
+                  productName: item.product.name,
+                  quantity: item.quantity,
+                  price: item.price,
+                  serialNumbers: units.map(u => u.serialNumber)
+                };
+              })
+            );
+
+            const subtotal = order.products.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            await Invoice.create({
+              user: order.user._id,
+              order: order._id,
+              products: productsWithSerials,
+              subtotal,
+              discount: order.discountApplied || 0,
+              tax: 0,
+              totalAmount: order.totalAmount,
+              shippingAddress: order.shippingAddress,
+              billingAddress: order.shippingAddress,
+              paymentMethod: 'Razorpay',
+              paymentStatus: 'completed',
+              invoiceDate: new Date(),
+              paidDate: new Date()
+            });
+
+            // Email (Async)
+            if (order.user && order.user.email) {
+              // Email logic here if needed
+            }
+
+          } catch (error) {
+            console.error('Error generating invoice/email:', error);
+          }
+
+        } catch (error) {
+          console.error(`Error processing order ${order._id}:`, error);
         }
-      } catch (error) {
-        console.error('Error generating invoice:', error);
-      }
+      };
 
-      // Send professional payment confirmation email
-      if (order.user && order.user.email) {
-        const { getPaymentSuccessEmail } = require('../utils/emailTemplates');
-        const emailHtml = getPaymentSuccessEmail(
-          order.user.name || 'Customer',
-          order._id.toString().slice(-8),
-          order.totalAmount,
-          invoice && invoice.invoiceUrl ? invoice.invoiceUrl : null,
-          warrantyLinks
-        );
-
-        sendEmail(
-          order.user.email,
-          'Payment Successful - Order Confirmed | Telogica',
-          '',
-          'payment_confirmation',
-          { entityType: 'order', entityId: order._id },
-          emailHtml
-        ).catch(err => console.error('Error sending payment confirmation email:', err));
-      }
-
-      // Notify admin (Async)
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@telogica.com';
-      sendEmail(
-        adminEmail,
-        'New Order Placed',
-        `New order from ${order.user ? order.user.name : 'Unknown User'} (${order.user ? order.user.role : 'unknown'}). Order ID: ${order._id}. Amount: ₹${order.totalAmount}`,
-        'order_confirmation',
-        { entityType: 'order', entityId: order._id }
-      ).catch(err => console.error('Error sending admin notification email:', err));
+      // EXECUTE IN PARALLEL
+      await Promise.all(ordersToFinalize.map(order => processOrderForVerification(order)));
 
       res.json({ message: 'Payment verified successfully' });
     } else {
+      console.log('[DEBUG] Signature Mismatch');
       order.paymentStatus = 'failed';
       await order.save();
       res.status(400).json({ message: 'Payment verification failed' });
@@ -679,7 +801,7 @@ const getOrders = async (req, res) => {
     // Fetch invoices for all orders
     const orderIds = orders.map(order => order._id);
     const invoices = await Invoice.find({ order: { $in: orderIds } }).select('order invoiceUrl').lean();
-    
+
     // Create a map of order ID to invoice URL
     const invoiceMap = {};
     invoices.forEach(invoice => {
@@ -792,7 +914,8 @@ const generateDropshipInvoice = async (req, res) => {
     const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
     const invoiceNumber = `DS-${dateStr}-${randomStr}`;
 
-    const buffer = await generateDropshipInvoicePdfBuffer({
+    // Generate AND Upload to Cloudinary
+    const url = await generateAndUploadDropshipInvoice({
       retailer: req.user,
       customerDetails,
       items,
@@ -800,13 +923,9 @@ const generateDropshipInvoice = async (req, res) => {
       date: new Date()
     });
 
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=delivery-note-${invoiceNumber}.pdf`,
-      'Content-Length': buffer.length
-    });
+    // Return the persistent Cloudinary URL
+    res.json({ url });
 
-    res.send(buffer);
   } catch (error) {
     console.error('Error generating dropship invoice:', error);
     res.status(500).json({ message: 'Failed to generate invoice' });
@@ -823,6 +942,8 @@ const getDropshipOrders = async (req, res) => {
       .populate('products.product', 'name price modelNumberPrefix')
       .sort({ createdAt: -1 });
 
+    console.log(`[DEBUG] getDropshipOrders returning ${orders.length} orders.`);
+
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -834,14 +955,16 @@ const getDropshipOrders = async (req, res) => {
 // @access  Private
 const downloadInvoice = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email address phone')
+      .populate('products.product');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
     // Authorization check
-    if (order.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
@@ -860,7 +983,25 @@ const downloadInvoice = async (req, res) => {
       return res.redirect(invoice.invoiceUrl);
     }
 
-    res.status(404).json({ message: 'Invoice not generated for this order' });
+    // Fallback: Generate it dynamically if not found
+    const { generateOrderInvoicePdfBuffer } = require('../utils/invoiceGenerator');
+    const ProductUnit = require('../models/ProductUnit');
+
+    // Fetch product units to get serial numbers
+    const productUnits = await ProductUnit.find({
+      _id: { $in: order.products.flatMap(p => p.productUnit || []) }
+    }).populate('product');
+
+    const pdfBuffer = await generateOrderInvoicePdfBuffer(order, productUnits);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=tax-invoice-${order.orderNumber || order._id}.pdf`,
+      'Content-Length': pdfBuffer.length
+    });
+
+    res.send(pdfBuffer);
+
   } catch (error) {
     console.error('Error downloading invoice:', error);
     res.status(500).json({ message: 'Server error' });
