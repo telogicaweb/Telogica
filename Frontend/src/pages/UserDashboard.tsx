@@ -541,6 +541,26 @@ const UserDashboard = () => {
                                     </div>
                                   </div>
                                 )}
+                                {p.product?.brochureUrl && (
+                                  <div className="ml-4 mt-2">
+                                    <button
+                                      onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = p.product.brochureUrl;
+                                        link.download = `${p.product.name.replace(/[^a-z0-9]/gi, '_')}_Brochure.pdf`;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      }}
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                      </svg>
+                                      Download Product Brochure
+                                    </button>
+                                  </div>
+                                )}
                               </li>
                             ))}
                           </ul>

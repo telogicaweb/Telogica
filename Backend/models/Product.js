@@ -23,7 +23,8 @@ const productSchema = new mongoose.Schema({
   modelNumberPrefix: { type: String }, // Default model number prefix/template (e.g., "TEL-2024-")
   features: [{ type: String }], // Key features of the product
   technicalSpecs: { type: Map, of: String }, // Additional technical specifications
-  taxPercentage: { type: Number, default: 18 } // Tax percentage for the product (default 18% GST)
+  taxPercentage: { type: Number, default: 18 }, // Tax percentage for the product (default 18% GST)
+  brochureUrl: { type: String } // Product brochure PDF URL (visible only to buyers in their dashboard)
 }, { timestamps: true });
 
 // Auto-set requiresQuote if price is not provided

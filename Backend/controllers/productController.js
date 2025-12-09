@@ -101,7 +101,8 @@ const createProduct = async (req, res) => {
     modelNumberPrefix,
     features,
     technicalSpecs,
-    recommendedProductIds
+    recommendedProductIds,
+    brochureUrl
   } = req.body;
 
   try {
@@ -123,7 +124,8 @@ const createProduct = async (req, res) => {
       modelNumberPrefix,
       features,
       technicalSpecs,
-      recommendedProductIds: sanitizedRecommendations
+      recommendedProductIds: sanitizedRecommendations,
+      brochureUrl: brochureUrl || undefined
     });
 
     const createdProduct = await product.save();
@@ -160,7 +162,8 @@ const updateProduct = async (req, res) => {
     modelNumberPrefix,
     features,
     technicalSpecs,
-    recommendedProductIds
+    recommendedProductIds,
+    brochureUrl
   } = req.body;
 
   try {
@@ -186,6 +189,7 @@ const updateProduct = async (req, res) => {
       product.modelNumberPrefix = modelNumberPrefix !== undefined ? modelNumberPrefix : product.modelNumberPrefix;
       product.features = features || product.features;
       product.technicalSpecs = technicalSpecs || product.technicalSpecs;
+      product.brochureUrl = brochureUrl !== undefined ? brochureUrl : product.brochureUrl;
 
       const updatedProduct = await product.save();
 
