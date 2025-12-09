@@ -14,6 +14,10 @@ const Quote = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Auto-populate quote items from cart if user has more than 3 items
   useEffect(() => {
     if (user?.role === 'user' && cart.length > 3 && quoteItems.length === 0) {
@@ -38,11 +42,14 @@ const Quote = () => {
     // Validation Logic
     const telecomItems = itemsToQuote.filter(item => item.product.isTelecom || item.product.category === 'Telecom');
     const hasTelecom = telecomItems.length > 0;
+    const totalTelecomQuantity = telecomItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    // If has telecom items, must have at least 3 telecom items
-    if (hasTelecom && telecomItems.length < 3) {
-      toastError(`For Telecom products, a minimum of 3 items is required. You currently have ${telecomItems.length} Telecom items.`);
-      return;
+    // If has telecom items, must have quantity >= 3 OR total items >= 3
+    if (hasTelecom) {
+      if (totalTelecomQuantity < 3 && telecomItems.length < 3) {
+        toastError(`For Telecom products, you need either a total quantity of 3+ or 3+ different items. Currently: ${totalTelecomQuantity} total quantity, ${telecomItems.length} items.`);
+        return;
+      }
     }
 
     try {
@@ -74,7 +81,8 @@ const Quote = () => {
   // Validation Logic for UI
   const telecomItems = displayItems.filter(item => item.product.isTelecom || item.product.category === 'Telecom');
   const hasTelecom = telecomItems.length > 0;
-  const isTelecomValid = !hasTelecom || telecomItems.length >= 3;
+  const totalTelecomQuantity = telecomItems.reduce((sum, item) => sum + item.quantity, 0);
+  const isTelecomValid = !hasTelecom || (totalTelecomQuantity >= 3 || telecomItems.length >= 3);
   const isMinimumMet = displayItems.length > 0 && isTelecomValid;
 
   return (
@@ -102,14 +110,14 @@ const Quote = () => {
             <div className="ml-3">
               <p className={`text-sm ${isMinimumMet ? 'text-green-700' : 'text-yellow-700'}`}>
                 {isMinimumMet
-                  ? `✓ You have ${displayItems.length} items. Ready to submit quote request.`
+                  ? `✓ You have ${displayItems.length} items (${hasTelecom ? `${totalTelecomQuantity} telecom quantity` : 'no telecom'}). Ready to submit quote request.`
                   : hasTelecom
-                    ? `You have ${telecomItems.length} Telecom items. Minimum 3 Telecom products required. Add ${3 - telecomItems.length} more.`
+                    ? `You have ${telecomItems.length} Telecom items with total quantity ${totalTelecomQuantity}. Need either 3+ quantity OR 3+ different items.`
                     : `You have ${displayItems.length} items. Add items to request a quote.`}
               </p>
               {hasTelecom && (
                 <p className="text-xs mt-1 text-gray-500">
-                  * Telecom products require a minimum quantity of 3. Other products have no minimum.
+                  * Telecom products require either total quantity of 3+ OR 3+ different items.
                 </p>
               )}
             </div>
@@ -213,7 +221,7 @@ const Quote = () => {
                   )}
                 </button>
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/products')}
                   className="px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                 >
                   Continue Shopping

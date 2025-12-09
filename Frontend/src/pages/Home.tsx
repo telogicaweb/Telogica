@@ -19,6 +19,9 @@ interface Product {
 }
 
 const Home = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [categories, setCategories] = useState([{ value: 'all', label: 'ALL' }]);
@@ -115,16 +118,6 @@ const Home = () => {
                       alt={product.name} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                     />
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-                      <span className="bg-white/90 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
-                        {product.category}
-                      </span>
-                      {!product.price && (
-                        <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow">
-                          Quote Only
-                        </span>
-                      )}
-                    </div>
                   </div>
 
                   {/* Product Info */}

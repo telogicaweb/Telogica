@@ -842,7 +842,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               {stats.quoteOnly} quote-only
             </span>
             <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
-              {stats.recommended} suggested
+              {stats.recommended} recommended
             </span>
           </div>
         </div>
@@ -1075,9 +1075,9 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
               {/* Recommendations */}
               <div className="bg-gradient-to-r from-yellow-50 via-amber-50 to-orange-50 p-4 rounded-xl">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Suggested Products</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommended Products</h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Select existing products to surface as suggestions alongside this item on the storefront.
+                  Select existing products to show as recommendations alongside this item on the storefront.
                 </p>
                 <select
                   multiple
@@ -1139,7 +1139,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">Suggested Product</p>
+                      <p className="font-medium text-gray-900">Recommended Product</p>
                       <p className="text-sm text-gray-600">Mark as recommended product</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">

@@ -22,6 +22,7 @@ interface Product {
   extendedWarrantyPrice?: number;
   isRecommended?: boolean;
   recommendedProductIds?: Array<string | { _id: string }>;
+  brochureUrl?: string;
 }
 
 interface ProductFormState {
@@ -37,6 +38,7 @@ interface ProductFormState {
   isRecommended: boolean;
   images: string[];
   recommendedProductIds: string[];
+  brochureUrl: string;
 }
 
 export default function EditProduct() {
@@ -57,6 +59,7 @@ export default function EditProduct() {
     isRecommended: false,
     images: [],
     recommendedProductIds: [],
+    brochureUrl: '',
   });
 
   const uniqueCategories = ['Telecommunication', 'Defence', 'Railway', 'Industrial'];
@@ -93,6 +96,7 @@ export default function EditProduct() {
             .map((id: any) => (typeof id === 'string' ? id : id?._id))
             .filter((id: any): id is string => Boolean(id))
           : [],
+        brochureUrl: product.brochureUrl || '',
       });
       setLoading(false);
     } catch (error) {
@@ -130,6 +134,8 @@ export default function EditProduct() {
         extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
         recommendedProductIds: productForm.recommendedProductIds,
       };
+
+      if (productForm.brochureUrl) payload.brochureUrl = productForm.brochureUrl;
 
       if (productForm.normalPrice) payload.price = parseFloat(productForm.normalPrice);
       if (productForm.retailerPrice) payload.retailerPrice = parseFloat(productForm.retailerPrice);
@@ -264,10 +270,65 @@ export default function EditProduct() {
               </div>
             </div>
 
-            {/* Product Images */}
+            {/* Product Brochure */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">3</span>
+                Product Brochure (PDF)
+              </h2>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+                <label className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-2">
+                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-700">Click to upload PDF brochure</span>
+                    <span className="text-xs text-gray-500">or drag and drop</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setProductForm((prev) => ({
+                          ...prev,
+                          brochureUrl: reader.result as string
+                        }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Upload product brochure (PDF only). Will be visible to buyers in their dashboard after purchase.</p>
+              
+              {productForm.brochureUrl && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-green-800">Brochure uploaded successfully</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProductForm((prev) => ({ ...prev, brochureUrl: '' }))}
+                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Product Images */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">4</span>
                 Product Images <span className="text-red-500">*</span>
               </h2>
               <input
@@ -328,7 +389,7 @@ export default function EditProduct() {
             {/* Warranty Configuration */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">4</span>
+                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">5</span>
                 Warranty Options
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
@@ -397,7 +458,7 @@ export default function EditProduct() {
             {/* Recommended Products */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">5</span>
+                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">6</span>
                 Additional Options
               </h2>
               <div className="space-y-4">

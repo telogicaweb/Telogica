@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
-interface Product {
+export interface Product {
   _id: string;
   name: string;
   price?: number;
@@ -14,10 +14,10 @@ interface Product {
   extendedWarrantyAvailable?: boolean;
   extendedWarrantyMonths?: number;
   extendedWarrantyPrice?: number;
-  serialNumber?: string;
+  taxPercentage?: number;
 }
 
-interface CartItem {
+export interface CartItem {
   product: Product;
   quantity: number;
   useRetailerPrice?: boolean;
@@ -31,8 +31,8 @@ interface CartContextType {
   addToCart: (product: Product, quantity: number, useRetailerPrice?: boolean, quotedProduct?: { id: string; price: number }) => void;
   addToQuote: (product: Product, quantity: number) => void;
   removeFromCart: (productId: string, quotedProductId?: string) => void;
-  updateQuantity: (productId: string, quantityDelta: number, quotedProductId?: string) => void;
   removeFromQuote: (productId: string) => void;
+  updateQuantity: (productId: string, newQuantity: number, quotedProductId?: string) => void;
   clearCart: () => void;
   clearQuote: () => void;
   setUserId: (userId: string | null) => void;
@@ -177,23 +177,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setQuoteItems(prev => prev.filter(item => item.product._id !== productId));
   };
 
-  const updateQuantity = (productId: string, quantityDelta: number, quotedProductId?: string) => {
-    setCart(prev => {
-      return prev.map(item => {
-        if (item.product._id === productId && item.quotedProductId === quotedProductId) {
-          const newQuantity = Math.max(0, item.quantity + quantityDelta);
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      }).filter(item => item.quantity > 0);
-    });
+  const updateQuantity = (productId: string, newQuantity: number, quotedProductId?: string) => {
+    if (newQuantity < 1) return;
+    setCart(prev => prev.map(item =>
+      (item.product._id === productId && item.quotedProductId === quotedProductId)
+        ? { ...item, quantity: newQuantity }
+        : item
+    ));
   };
 
   const clearCart = () => setCart([]);
   const clearQuote = () => setQuoteItems([]);
 
   return (
-    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, updateQuantity, removeFromQuote, clearCart, clearQuote, setUserId }}>
+    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, removeFromQuote, updateQuantity, clearCart, clearQuote, setUserId }}>
       {children}
     </CartContext.Provider>
   );

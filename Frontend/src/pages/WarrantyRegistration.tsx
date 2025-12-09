@@ -1,12 +1,14 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info } from 'lucide-react';
+import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info, Calendar, FileText } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const WarrantyRegistration = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext) || {};
+  const toast = useToast();
   const [formData, setFormData] = useState({
     productId: '',
     productName: '',
@@ -20,6 +22,7 @@ const WarrantyRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [serialValid, setSerialValid] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
+  const [existingWarrantyInfo, setExistingWarrantyInfo] = useState<any>(null);
 
   useEffect(() => {
     if (!user) {
@@ -51,10 +54,14 @@ const WarrantyRegistration = () => {
       const res = await api.get(`/api/warranties/check-serial?serialNumber=${serialNumber}`);
       setSerialValid(res.data.valid && !res.data.alreadyRegistered);
       if (res.data.alreadyRegistered) {
-        alert('This serial number is already registered for warranty.');
+        setExistingWarrantyInfo(res.data.warrantyInfo);
+        toast.warning('This serial number is already registered for warranty. Check details below.');
+      } else {
+        setExistingWarrantyInfo(null);
       }
     } catch (error) {
       setSerialValid(false);
+      setExistingWarrantyInfo(null);
     }
   };
 
@@ -79,10 +86,10 @@ const WarrantyRegistration = () => {
         },
       });
       setFormData(prev => ({ ...prev, invoice: res.data.url }));
-      // alert('Invoice uploaded successfully');
+      toast.success('Invoice uploaded successfully');
     } catch (error) {
       console.error('Error uploading invoice:', error);
-      alert('Failed to upload invoice');
+      toast.error('Failed to upload invoice');
     } finally {
       setLoading(false);
     }
@@ -92,14 +99,19 @@ const WarrantyRegistration = () => {
     e.preventDefault();
     
     if (formData.purchaseType !== 'telogica_online' && !formData.invoice) {
-      alert('Please upload an invoice for offline or retailer purchases.');
+      toast.warning('Please upload an invoice for offline or retailer purchases.');
+      return;
+    }
+
+    if (existingWarrantyInfo) {
+      toast.error('Cannot register warranty. This serial number is already registered.');
       return;
     }
 
     setLoading(true);
     try {
       await api.post('/api/warranties', formData);
-      alert('Warranty registered successfully! You will receive an email notification once admin reviews it.');
+      toast.success('Warranty registered successfully! You will receive an email notification once admin reviews it.');
       setFormData({
         productId: '',
         productName: '',
@@ -110,11 +122,23 @@ const WarrantyRegistration = () => {
         invoice: ''
       });
       setSerialValid(null);
+      setExistingWarrantyInfo(null);
       fetchWarranties();
       setActiveTab('history');
     } catch (error: any) {
       console.error('Error registering warranty:', error);
-      alert(error.response?.data?.message || 'Failed to register warranty');
+      
+      // Check if it's a duplicate warranty error with details
+      if (error.response?.data?.alreadyExists) {
+        const warrantyData = error.response.data.warranty;
+        setExistingWarrantyInfo(warrantyData);
+        toast.error(error.response.data.message);
+        
+        // Scroll to show the existing warranty info
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to register warranty');
+      }
     } finally {
       setLoading(false);
     }
@@ -181,6 +205,87 @@ const WarrantyRegistration = () => {
 
         {activeTab === 'register' ? (
           <div>
+            {/* Existing Warranty Alert */}
+            {existingWarrantyInfo && (
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-6 mb-6 rounded-r-lg">
+                <div className="flex items-start">
+                  <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
+                  <div className="ml-4 flex-1">
+                    <h3 className="text-lg font-bold text-amber-900 mb-2">Warranty Already Registered</h3>
+                    <p className="text-sm text-amber-800 mb-4">
+                      This product already has a warranty registration in our system.
+                    </p>
+                    
+                    <div className="bg-white rounded-lg p-4 border border-amber-200">
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600 font-medium">Product:</p>
+                          <p className="text-gray-900">{existingWarrantyInfo.productName}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 font-medium">Serial Number:</p>
+                          <p className="text-gray-900 font-mono">{existingWarrantyInfo.serialNumber}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 font-medium">Status:</p>
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                            existingWarrantyInfo.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            existingWarrantyInfo.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {existingWarrantyInfo.status?.charAt(0).toUpperCase() + existingWarrantyInfo.status?.slice(1)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 font-medium">Registered On:</p>
+                          <p className="text-gray-900">{new Date(existingWarrantyInfo.registeredOn).toLocaleDateString()}</p>
+                        </div>
+                        
+                        {existingWarrantyInfo.warrantyStartDate && existingWarrantyInfo.warrantyEndDate && (
+                          <>
+                            <div>
+                              <p className="text-gray-600 font-medium flex items-center gap-1">
+                                <Calendar size={14} />
+                                Warranty Period:
+                              </p>
+                              <p className="text-gray-900">
+                                {new Date(existingWarrantyInfo.warrantyStartDate).toLocaleDateString()} - {new Date(existingWarrantyInfo.warrantyEndDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-600 font-medium">Duration:</p>
+                              <p className="text-gray-900">{existingWarrantyInfo.warrantyPeriodMonths} months</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      
+                      {existingWarrantyInfo.status === 'approved' && (
+                        <div className="mt-4 pt-4 border-t border-amber-200">
+                          <div className="flex items-center gap-2 text-green-700">
+                            <CheckCircle size={18} />
+                            <p className="text-sm font-medium">
+                              {new Date(existingWarrantyInfo.warrantyEndDate) > new Date() 
+                                ? `Warranty active for ${Math.ceil((new Date(existingWarrantyInfo.warrantyEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} more days`
+                                : 'Warranty period has expired'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => setActiveTab('history')}
+                      className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      View Warranty History
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Info Box */}
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
               <div className="flex">

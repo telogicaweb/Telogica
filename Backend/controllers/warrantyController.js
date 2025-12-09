@@ -71,11 +71,43 @@ exports.registerWarranty = async (req, res) => {
     }
 
     // Check if warranty already exists for this serial number
-    const existingWarranty = await Warranty.findOne({ serialNumber });
+    const existingWarranty = await Warranty.findOne({ serialNumber }).populate('user');
     if (existingWarranty) {
-      return res.status(400).json({ 
-        message: 'Warranty already registered for this serial number' 
-      });
+      const warrantyInfo = {
+        message: 'Warranty already registered for this serial number',
+        alreadyExists: true,
+        warranty: {
+          status: existingWarranty.status,
+          productName: existingWarranty.productName,
+          serialNumber: existingWarranty.serialNumber,
+          purchaseDate: existingWarranty.purchaseDate,
+          registeredOn: existingWarranty.createdAt
+        }
+      };
+
+      // Add warranty dates if approved
+      if (existingWarranty.status === 'approved' && existingWarranty.warrantyStartDate && existingWarranty.warrantyEndDate) {
+        warrantyInfo.warranty.warrantyStartDate = existingWarranty.warrantyStartDate;
+        warrantyInfo.warranty.warrantyEndDate = existingWarranty.warrantyEndDate;
+        warrantyInfo.warranty.warrantyPeriodMonths = existingWarranty.warrantyPeriodMonths;
+        
+        const startDate = new Date(existingWarranty.warrantyStartDate);
+        const endDate = new Date(existingWarranty.warrantyEndDate);
+        const now = new Date();
+        
+        if (now < endDate) {
+          const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          warrantyInfo.message = `This product's warranty is active from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}. ${daysRemaining} days remaining.`;
+        } else {
+          warrantyInfo.message = `This product's warranty was active from ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}. Warranty has expired.`;
+        }
+      } else if (existingWarranty.status === 'pending') {
+        warrantyInfo.message = `This product's warranty registration is pending approval. Registered on ${new Date(existingWarranty.createdAt).toLocaleDateString()}.`;
+      } else if (existingWarranty.status === 'rejected') {
+        warrantyInfo.message = `Previous warranty registration was rejected. Reason: ${existingWarranty.rejectionReason || 'Not specified'}`;
+      }
+
+      return res.status(400).json(warrantyInfo);
     }
 
     // Create warranty registration

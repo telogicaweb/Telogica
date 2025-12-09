@@ -69,6 +69,7 @@ function AppContent() {
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/retailer-dashboard" element={<RetailerDashboard />} />
         <Route path="/warranty" element={<WarrantyRegistration />} />
+        <Route path="/warranty-registration" element={<WarrantyRegistration />} />
         <Route path="/retailer-inventory" element={<RetailerInventory />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />

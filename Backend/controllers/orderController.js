@@ -294,8 +294,9 @@ const createOrder = async (req, res) => {
     const dbProducts = await Product.find({ _id: { $in: productIds } });
     const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
 
-    // Calculate total with warranty costs and validate pricing
-    let calculatedTotal = 0;
+    // Calculate total with warranty costs, tax and validate pricing
+    let calculatedSubtotal = 0;
+    let calculatedTax = 0;
     const processedProducts = [];
 
     for (const item of products) {
@@ -363,7 +364,14 @@ const createOrder = async (req, res) => {
         warrantyMonths = dbProduct.extendedWarrantyMonths || 24;
       }
 
-      calculatedTotal += (itemPrice * item.quantity) + (warrantyPrice * item.quantity);
+      // Calculate item subtotal (price + warranty)
+      const itemSubtotal = (itemPrice * item.quantity) + (warrantyPrice * item.quantity);
+      calculatedSubtotal += itemSubtotal;
+
+      // Calculate tax for this item
+      const taxPercentage = dbProduct.taxPercentage || 18;
+      const itemTax = (itemSubtotal * taxPercentage) / 100;
+      calculatedTax += itemTax;
 
       processedProducts.push({
         ...item,
@@ -372,11 +380,16 @@ const createOrder = async (req, res) => {
       });
     }
 
+    // Calculate total including GST
+    const calculatedTotal = calculatedSubtotal + calculatedTax;
+
     // Validate total amount (allow small tolerance for floating point)
     if (!quoteId && Math.abs(calculatedTotal - totalAmount) > PRICE_TOLERANCE) {
       return res.status(400).json({
-        message: `Price mismatch. Expected: ₹${calculatedTotal}, Received: ₹${totalAmount}`,
+        message: `Price mismatch. Expected: ₹${calculatedTotal.toFixed(2)} (Subtotal: ₹${calculatedSubtotal.toFixed(2)} + GST: ₹${calculatedTax.toFixed(2)}), Received: ₹${totalAmount}`,
         calculatedTotal,
+        calculatedSubtotal,
+        calculatedTax,
         receivedTotal: totalAmount
       });
     }
