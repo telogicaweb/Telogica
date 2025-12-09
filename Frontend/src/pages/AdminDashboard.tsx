@@ -1421,224 +1421,387 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* User Sales Distribution */}
-          <div className="bg-gradient-to-br from-white to-blue-50 p-6 rounded-xl shadow-md border-2 border-blue-100 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-blue-600" />
-                  User Sales Distribution
-                </h3>
-                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  Regular Customers
-                </p>
-              </div>
-              <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                LIVE
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+            {/* Premium Header with Gradient */}
+            <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <ShoppingCart className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">User Sales Distribution</h3>
+                  </div>
+                  <p className="text-blue-100 text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Regular Customers
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                    <div className="w-2 h-2 bg-green-900 rounded-full animate-pulse"></div>
+                    LIVE
+                  </div>
+                  <div className="text-white/80 text-xs">Real-time data</div>
+                </div>
               </div>
             </div>
 
-            {/* Sales Type Breakdown */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white shadow-md">
-                <div className="flex items-center justify-between mb-2">
-                  <ShoppingCart className="w-5 h-5 opacity-80" />
-                  <TrendingUp className="w-4 h-4 opacity-60" />
+            {/* Premium Sales Type Breakdown */}
+            <div className="p-6 space-y-4">
+              {/* Direct Orders Card */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur"></div>
+                <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl p-5 hover:shadow-xl transition-all">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
+                        <ShoppingCart className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-700 uppercase tracking-wider">Direct Orders</p>
+                        <p className="text-xs text-blue-600 mt-0.5">Instant purchase transactions</p>
+                      </div>
+                    </div>
+                    <TrendingUp className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-4xl font-black text-blue-900">{formatCurrency(analytics.sales.direct)}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="px-2.5 py-1 bg-blue-200 text-blue-800 rounded-lg font-bold">
+                          {analytics.orders.direct}
+                        </div>
+                        <span className="text-blue-700 font-medium">{analytics.orders.direct === 1 ? 'order' : 'orders'}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-blue-600 font-medium">Avg Value</p>
+                        <p className="text-sm font-bold text-blue-800">
+                          {analytics.orders.direct > 0 ? formatCurrency(analytics.sales.direct / analytics.orders.direct) : '₹0'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs font-medium opacity-90">Direct Orders</p>
-                <p className="text-2xl font-bold mt-1">{formatCurrency(analytics.sales.direct)}</p>
-                <p className="text-xs opacity-75 mt-1">
-                  {analytics.orders.direct} {analytics.orders.direct === 1 ? 'order' : 'orders'}
-                </p>
               </div>
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white shadow-md">
-                <div className="flex items-center justify-between mb-2">
-                  <FileText className="w-5 h-5 opacity-80" />
-                  <BarChart3 className="w-4 h-4 opacity-60" />
+
+              {/* Quote Sales Card */}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur"></div>
+                <div className="relative bg-gradient-to-br from-emerald-50 to-green-100 border-2 border-emerald-200 rounded-2xl p-5 hover:shadow-xl transition-all">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-emerald-500 rounded-xl shadow-lg">
+                        <FileText className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-700 uppercase tracking-wider">Quote Sales</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">Approved quotation orders</p>
+                      </div>
+                    </div>
+                    <BarChart3 className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-4xl font-black text-emerald-900">{formatCurrency(analytics.sales.quote)}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="px-2.5 py-1 bg-emerald-200 text-emerald-800 rounded-lg font-bold">
+                          {analytics.orders.quote}
+                        </div>
+                        <span className="text-emerald-700 font-medium">{analytics.orders.quote === 1 ? 'order' : 'orders'}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-emerald-600 font-medium">Avg Value</p>
+                        <p className="text-sm font-bold text-emerald-800">
+                          {analytics.orders.quote > 0 ? formatCurrency(analytics.sales.quote / analytics.orders.quote) : '₹0'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs font-medium opacity-90">Quote Sales</p>
-                <p className="text-2xl font-bold mt-1">{formatCurrency(analytics.sales.quote)}</p>
-                <p className="text-xs opacity-75 mt-1">
-                  {analytics.orders.quote} {analytics.orders.quote === 1 ? 'order' : 'orders'}
-                </p>
               </div>
             </div>
 
-            {/* Chart */}
-            {userSalesData[0].value > 0 || userSalesData[1].value > 0 ? (
-              <div className="h-64 bg-white rounded-lg p-4 shadow-inner">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={userSalesData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={(entry) => `${((entry.value / analytics.sales.byUserType.user) * 100).toFixed(1)}%`}
-                    >
-                      {userSalesData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={USER_COLORS[index]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      iconType="circle"
-                      wrapperStyle={{ paddingTop: '10px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 bg-white rounded-lg p-4 shadow-inner flex items-center justify-center">
-                <div className="text-center">
-                  <ShoppingCart className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                  <p className="text-gray-500 text-sm">No user sales data yet</p>
+            {/* Premium Chart Section */}
+            <div className="px-6 pb-4">
+              {userSalesData[0].value > 0 || userSalesData[1].value > 0 ? (
+                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-4 border border-gray-200 shadow-inner">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie
+                        data={userSalesData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        fill="#8884d8"
+                        paddingAngle={8}
+                        dataKey="value"
+                        label={(entry) => {
+                          const total = analytics.sales.direct + analytics.sales.quote;
+                          const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
+                          return `${percent}%`;
+                        }}
+                        labelLine={{stroke: '#64748b', strokeWidth: 2}}
+                      >
+                        {userSalesData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={USER_COLORS[index]} stroke="#fff" strokeWidth={3} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
+                          borderRadius: '12px', 
+                          border: '2px solid #3b82f6',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                          padding: '12px'
+                        }}
+                        labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
+                      />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={40}
+                        iconType="circle"
+                        wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-8 border border-gray-200 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="p-4 bg-gray-200 rounded-full inline-flex mb-3">
+                      <ShoppingCart className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 font-semibold">No user sales data yet</p>
+                    <p className="text-gray-500 text-sm mt-1">Data will appear when orders are placed</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* Summary Footer */}
-            <div className="mt-6 pt-4 border-t-2 border-blue-200">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
-                  <p className="text-xs text-gray-600 font-medium mb-1">Total User Sales</p>
-                  <p className="text-xl font-bold text-blue-600">{formatCurrency(analytics.sales.byUserType.user)}</p>
+            {/* Premium Summary Footer */}
+            <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50 border-t-2 border-blue-200">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-blue-500 hover:scale-105 transition-transform">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Sales</p>
+                    <DollarSign className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <p className="text-3xl font-black text-blue-600">{formatCurrency(analytics.sales.byUserType.user)}</p>
+                  <p className="text-xs text-gray-600 mt-1">Revenue generated</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-100">
-                  <p className="text-xs text-gray-600 font-medium mb-1">Total User Orders</p>
-                  <p className="text-xl font-bold text-gray-800">{formatNumber(analytics.orders.byUserType.user)}</p>
+                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-indigo-500 hover:scale-105 transition-transform">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Orders</p>
+                    <Package className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <p className="text-3xl font-black text-gray-800">{formatNumber(analytics.orders.byUserType.user)}</p>
+                  <p className="text-xs text-gray-600 mt-1">Completed transactions</p>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-600 bg-blue-50 rounded-lg p-2">
-                <span className="flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  Sales through direct purchase & quote acceptance
-                </span>
-                <span className="font-semibold text-blue-700">
-                  Avg: {analytics.orders.byUserType.user > 0 
-                    ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
-                    : formatCurrency(0)
-                  }
-                </span>
+              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl p-4 border border-blue-300 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <Info className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-700 font-semibold">Sales Insight</p>
+                      <p className="text-xs text-blue-600">Direct purchase & quote acceptance</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-blue-700 font-semibold mb-0.5">Average Order Value</p>
+                    <p className="text-xl font-black text-blue-900">
+                      {analytics.orders.byUserType.user > 0 
+                        ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
+                        : formatCurrency(0)
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Retailer Sales Distribution */}
-          <div className="bg-gradient-to-br from-white to-green-50 p-6 rounded-xl shadow-md border-2 border-green-100 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Store className="w-5 h-5 text-green-600" />
-                  Retailer Sales Distribution
-                </h3>
-                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                  <Sparkles className="w-4 h-4" />
-                  Business Partners
-                </p>
-              </div>
-              <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                LIVE
-              </div>
-            </div>
-
-            {/* Sales Type Breakdown - Quote Only */}
-            <div className="mb-6">
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white shadow-md">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-6 h-6 opacity-80" />
-                    <p className="text-sm font-medium opacity-90">Quote Sales Only</p>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+            {/* Premium Header with Gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <Store className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">Retailer Sales Distribution</h3>
                   </div>
-                  <BarChart3 className="w-5 h-5 opacity-60" />
+                  <p className="text-emerald-100 text-sm font-medium flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Business Partners
+                  </p>
                 </div>
-                <p className="text-3xl font-bold mt-2">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
-                <p className="text-sm opacity-75 mt-2 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  {analytics.orders.byUserType.retailer} {analytics.orders.byUserType.retailer === 1 ? 'quote order' : 'quote orders'}
-                </p>
-                <div className="mt-4 pt-4 border-t border-green-400 border-opacity-30">
-                  <p className="text-xs opacity-80">Retailers can only purchase through quotes</p>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                    <div className="w-2 h-2 bg-green-900 rounded-full animate-pulse"></div>
+                    LIVE
+                  </div>
+                  <div className="text-white/80 text-xs">Real-time data</div>
                 </div>
               </div>
             </div>
 
-            {/* Chart - Shows 100% Quote Sales */}
-            {retailerSalesData[0].value > 0 ? (
-              <div className="h-64 bg-white rounded-lg p-4 shadow-inner">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={retailerSalesData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      fill="#10B981"
-                      paddingAngle={0}
-                      dataKey="value"
-                      label={() => '100%'}
-                    >
-                      {retailerSalesData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      iconType="circle"
-                      wrapperStyle={{ paddingTop: '10px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-64 bg-white rounded-lg p-4 shadow-inner flex items-center justify-center">
-                <div className="text-center">
-                  <Store className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                  <p className="text-gray-500 text-sm">No retailer sales data yet</p>
-                </div>
-              </div>
-            )}
+            {/* Premium Quote Sales Section */}
+            <div className="p-6">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-xl"></div>
+                <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center gap-4">
+                      <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl">
+                        <FileText className="w-8 h-8 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2">
+                          Quote Sales Only
+                          <span className="px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded-full text-xs">100%</span>
+                        </p>
+                        <p className="text-xs text-emerald-600 mt-1">Exclusive quotation-based purchasing</p>
+                      </div>
+                    </div>
+                    <BarChart3 className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-5xl font-black text-emerald-900 mb-2">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 bg-emerald-200 px-3 py-1.5 rounded-lg">
+                          <CheckCircle className="w-4 h-4 text-emerald-700" />
+                          <span className="text-sm font-bold text-emerald-900">
+                            {analytics.orders.byUserType.retailer} {analytics.orders.byUserType.retailer === 1 ? 'quote order' : 'quote orders'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Summary Footer */}
-            <div className="mt-6 pt-4 border-t-2 border-green-200">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
-                  <p className="text-xs text-gray-600 font-medium mb-1">Total Retailer Sales</p>
-                  <p className="text-xl font-bold text-green-600">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
-                  <p className="text-xs text-gray-600 font-medium mb-1">Total Retailer Orders</p>
-                  <p className="text-xl font-bold text-gray-800">{formatNumber(analytics.orders.byUserType.retailer)}</p>
+                    <div className="pt-4 border-t-2 border-emerald-300 bg-white/50 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-emerald-100 rounded-lg">
+                          <Shield className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-emerald-900 uppercase mb-1">Business Model</p>
+                          <p className="text-sm text-emerald-700 font-medium">Retailers can only purchase through quotes</p>
+                          <p className="text-xs text-emerald-600 mt-1">Ensures custom pricing & bulk negotiations</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-600 bg-green-50 rounded-lg p-2">
-                <span className="flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  All sales through quote system
-                </span>
-                <span className="font-semibold text-green-700">
-                  Avg: {analytics.orders.byUserType.retailer > 0 
-                    ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
-                    : formatCurrency(0)
-                  }
-                </span>
+            </div>
+
+            {/* Premium Chart Section */}
+            <div className="px-6 pb-4">
+              {retailerSalesData[0].value > 0 ? (
+                <div className="bg-gradient-to-br from-gray-50 to-emerald-50 rounded-2xl p-4 border border-gray-200 shadow-inner">
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie
+                        data={retailerSalesData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        fill="#10B981"
+                        paddingAngle={0}
+                        dataKey="value"
+                        label={() => '100%'}
+                        labelLine={{stroke: '#10b981', strokeWidth: 2}}
+                      >
+                        {retailerSalesData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} stroke="#fff" strokeWidth={3} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
+                          borderRadius: '12px', 
+                          border: '2px solid #10b981',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                          padding: '12px'
+                        }}
+                        labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
+                      />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        height={40}
+                        iconType="circle"
+                        wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-gray-50 to-emerald-50 rounded-2xl p-8 border border-gray-200 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="p-4 bg-gray-200 rounded-full inline-flex mb-3">
+                      <Store className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 font-semibold">No retailer sales data yet</p>
+                    <p className="text-gray-500 text-sm mt-1">Data will appear when quotes are approved</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Premium Summary Footer */}
+            <div className="p-6 bg-gradient-to-br from-slate-50 to-emerald-50 border-t-2 border-emerald-200">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-emerald-500 hover:scale-105 transition-transform">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Sales</p>
+                    <DollarSign className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <p className="text-3xl font-black text-emerald-600">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                  <p className="text-xs text-gray-600 mt-1">B2B revenue generated</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-teal-500 hover:scale-105 transition-transform">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Orders</p>
+                    <Package className="w-4 h-4 text-teal-500" />
+                  </div>
+                  <p className="text-3xl font-black text-gray-800">{formatNumber(analytics.orders.byUserType.retailer)}</p>
+                  <p className="text-xs text-gray-600 mt-1">Quote-based orders</p>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-emerald-100 to-teal-100 rounded-xl p-4 border border-emerald-300 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <Info className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-700 font-semibold">Sales Insight</p>
+                      <p className="text-xs text-emerald-600">All sales through quote system</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-emerald-700 font-semibold mb-0.5">Average Order Value</p>
+                    <p className="text-xl font-black text-emerald-900">
+                      {analytics.orders.byUserType.retailer > 0 
+                        ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
+                        : formatCurrency(0)
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
