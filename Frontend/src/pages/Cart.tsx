@@ -1,10 +1,10 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useMemo } from 'react';
 import { CartContext, type CartItem } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2, CheckCircle, Plus, Minus, FileText, Mail } from 'lucide-react';
+import { Trash2, ArrowRight, ShoppingBag, AlertCircle, Loader2, MapPin, Phone, User, Building2, CheckCircle, Plus, Minus, FileText, Mail, Package, Truck, UserPlus } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 
 const Cart = () => {
@@ -34,12 +34,12 @@ const Cart = () => {
   // Fetch location details based on pincode
   const fetchLocationByPincode = async (pincode: string) => {
     if (pincode.length !== 6) return;
-    
+
     setPincodeLoading(true);
     try {
       const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
       const data = await response.json();
-      
+
       if (data && data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
         const postOffice = data[0].PostOffice[0];
         setAddressForm(prev => ({
@@ -59,28 +59,93 @@ const Cart = () => {
     }
   };
 
-  // Handle pincode change
   const handlePincodeChange = (value: string) => {
-    // Only allow numbers and limit to 6 digits
     const numericValue = value.replace(/\D/g, '').slice(0, 6);
-    setAddressForm({ ...addressForm, pincode: numericValue });
-    
-    // Auto-fetch when 6 digits are entered
+    setAddressForm(prev => ({ ...prev, pincode: numericValue }));
+
     if (numericValue.length === 6) {
       fetchLocationByPincode(numericValue);
     }
   };
 
+
+
   // Dropship State
   const [isDropship, setIsDropship] = useState(false);
-  const [customerDetails, setCustomerDetails] = useState({
+
+  interface CustomerDetails {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  }
+
+  interface ShipmentGroup {
+    id: string;
+    customer: CustomerDetails;
+    items: Array<{
+      productId: string;
+      quantity: number;
+      price: number;
+      warrantyPrice: number;
+      warrantyOption: 'standard' | 'extended';
+      quotedProductId?: string;
+    }>;
+    invoiceUrl?: string;
+  }
+
+  const [shipmentGroups, setShipmentGroups] = useState<ShipmentGroup[]>([]);
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+
+  // Dedicated state for new customer form (split address)
+  const [newCustomer, setNewCustomer] = useState({
     name: '',
     email: '',
     phone: '',
-    address: ''
+    streetAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
+    landmark: ''
   });
-  const [customerInvoiceUrl, setCustomerInvoiceUrl] = useState('');
-  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
+  const [newCustomerPincodeLoading, setNewCustomerPincodeLoading] = useState(false);
+
+  // Fetch location for new customer modal
+  const fetchNewCustomerLocationByPincode = async (pincode: string) => {
+    if (pincode.length !== 6) return;
+
+    setNewCustomerPincodeLoading(true);
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+
+      if (data && data[0]?.Status === 'Success' && data[0]?.PostOffice?.length > 0) {
+        const postOffice = data[0].PostOffice[0];
+        setNewCustomer(prev => ({
+          ...prev,
+          city: postOffice.District || prev.city,
+          state: postOffice.State || prev.state
+        }));
+        toast.success('Location detected!');
+      } else {
+        toast.error('Invalid pincode');
+      }
+    } catch (error) {
+      console.error('Error fetching pincode:', error);
+    } finally {
+      setNewCustomerPincodeLoading(false);
+    }
+  };
+
+  const handleNewCustomerPincodeChange = (value: string) => {
+    const numericValue = value.replace(/\D/g, '').slice(0, 6);
+    setNewCustomer(prev => ({ ...prev, pincode: numericValue }));
+
+    if (numericValue.length === 6) {
+      fetchNewCustomerLocationByPincode(numericValue);
+    }
+  };
 
   // Calculate price based on whether retailer price should be used
   const getItemPrice = (item: CartItem) => {
@@ -116,11 +181,34 @@ const Cart = () => {
     return (itemTotal * taxPercentage) / 100;
   };
 
+  // Calculate Unassigned Items (Available for Assignment)
+  const unassignedItems = useMemo(() => {
+    return cart.map(item => {
+      // Calculate total assigned quantity for this product across all groups
+      const totalAssigned = shipmentGroups.reduce((sum, group) => {
+        const groupItem = group.items.find(i => i.productId === item.product._id);
+        return sum + (groupItem ? groupItem.quantity : 0);
+      }, 0);
+
+      return {
+        ...item,
+        remainingQuantity: Math.max(0, item.quantity - totalAssigned)
+      };
+    });
+  }, [cart, shipmentGroups]);
+
+  // Initial Check / Reset
+  useEffect(() => {
+    if (!isDropship) {
+      setShipmentGroups([]);
+    }
+  }, [isDropship]);
+
   const subtotal = cart.reduce((acc, item) => acc + getItemTotal(item), 0);
   const totalTax = cart.reduce((acc, item) => acc + getItemTax(item), 0);
   const shipping = 0; // Free shipping for now
   const total = subtotal + totalTax + shipping;
-  
+
   // Calculate total items count (sum of all quantities)
   const totalItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -144,13 +232,144 @@ const Cart = () => {
     return `${addressForm.fullName}, ${addressForm.phone}\n${addressForm.streetAddress}${addressForm.landmark ? ', ' + addressForm.landmark : ''}\n${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`;
   };
 
+  // Multi-Ship Actions
+  const handleAssignItem = (groupId: string, productId: string, assignQty: number) => {
+    if (assignQty <= 0) return;
+
+    setShipmentGroups(prev => prev.map(group => {
+      if (group.id !== groupId) return group;
+
+      // Find if item already exists in group
+      const existingItemIndex = group.items.findIndex(i => i.productId === productId);
+      const originalItem = cart.find(i => i.product._id === productId);
+
+      if (!originalItem) return group;
+
+      const newItem = {
+        productId,
+        quantity: assignQty,
+        price: getItemPrice(originalItem),
+        warrantyPrice: getWarrantyPrice(originalItem),
+        warrantyOption: warrantyOptions[productId] || 'standard',
+        quotedProductId: originalItem.quotedProductId
+      };
+
+      let newItems = [...group.items];
+      if (existingItemIndex >= 0) {
+        newItems[existingItemIndex].quantity += assignQty;
+      } else {
+        newItems.push(newItem);
+      }
+
+      return { ...group, items: newItems, invoiceUrl: undefined }; // Reset invoice on change
+    }));
+  };
+
+  const handleRemoveFromGroup = (groupId: string, productId: string) => {
+    setShipmentGroups(prev => prev.map(group => {
+      if (group.id !== groupId) return group;
+      return {
+        ...group,
+        items: group.items.filter(i => i.productId !== productId),
+        invoiceUrl: undefined
+      };
+    }));
+  };
+
+  const handleRemoveGroup = (groupId: string) => {
+    setShipmentGroups(prev => prev.filter(g => g.id !== groupId));
+  };
+
+  const handleAddCustomer = () => {
+    if (!newCustomer.name || !newCustomer.email || !newCustomer.streetAddress || !newCustomer.pincode) {
+      toast.error("Please fill all required customer details");
+      return;
+    }
+
+    // Format full address for storage/display
+    const formattedAddress = `${newCustomer.streetAddress}${newCustomer.landmark ? ', ' + newCustomer.landmark : ''}\n${newCustomer.city}, ${newCustomer.state} - ${newCustomer.pincode}`;
+
+    const newGroup: ShipmentGroup = {
+      id: Date.now().toString(),
+      customer: {
+        name: newCustomer.name,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        address: formattedAddress
+      },
+      items: []
+    };
+    setShipmentGroups([...shipmentGroups, newGroup]);
+
+    // Reset form
+    setNewCustomer({
+      name: '',
+      email: '',
+      phone: '',
+      streetAddress: '',
+      city: '',
+      state: '',
+      pincode: '',
+      landmark: ''
+    });
+    setIsAddingCustomer(false);
+  };
+
+  // ... (keep assignment/remove logic)
+
+  const generateGroupInvoice = async (group: ShipmentGroup) => {
+    if (group.items.length === 0) {
+      toast.error("Add items to this customer first");
+      return;
+    }
+
+    const loadingId = toast.loading("Generating Invoice...");
+    try {
+      // Construct items payload for API
+      const invoiceItems = group.items.map(gi => {
+        const original = cart.find(c => c.product._id === gi.productId);
+        return {
+          product: { name: original?.product.name || 'Unknown Product' },
+          quantity: gi.quantity
+        };
+      });
+
+      // FIX: Expect JSON response with URL, not blob
+      const response = await api.post('/api/orders/dropship-invoice', {
+        customerDetails: group.customer,
+        items: invoiceItems
+      });
+
+      const { url } = response.data;
+
+      if (!url) throw new Error("No URL returned");
+
+      setShipmentGroups(prev => prev.map(g => {
+        if (g.id === group.id) return { ...g, invoiceUrl: url };
+        return g;
+      }));
+
+      // Open URL in new tab
+      window.open(url, '_blank');
+
+      toast.dismiss(loadingId);
+      toast.success("Invoice generated!");
+    } catch (error) {
+      console.error(error);
+      toast.dismiss(loadingId);
+      toast.error("Failed to generate invoice");
+    }
+  };
+
+  // ... (Update Add Customer Modal rendering in the JSX below)
+
+
   const handleCheckout = async () => {
     if (!user) {
       navigate('/login');
       return;
     }
 
-    // If user is a regular user with more than 3 items, redirect to quote
     if (requiresQuote) {
       toast.warning('You have more than 3 items in your cart. Please request a quote for bulk orders.');
       navigate('/quote');
@@ -177,13 +396,16 @@ const Cart = () => {
       return;
     }
 
+    // Multi-Customer Dropship Validation
     if (isDropship) {
-      if (!customerDetails.name || !customerDetails.email || !customerDetails.phone || !customerDetails.address) {
-        toast.error('Please fill in all customer details');
+      if (shipmentGroups.length === 0) {
+        toast.error("Please add at least one customer shipment group");
         return;
       }
-      if (!customerInvoiceUrl) {
-        toast.error('Please generate the customer invoice first');
+
+      const groupsWithoutInvoice = shipmentGroups.filter(g => !g.invoiceUrl && g.items.length > 0);
+      if (groupsWithoutInvoice.length > 0) {
+        toast.error(`Please generate delivery notes for all customer groups (${groupsWithoutInvoice[0].customer.name})`);
         return;
       }
     }
@@ -197,7 +419,7 @@ const Cart = () => {
     setIsProcessing(true);
 
     try {
-      const { data } = await api.post('/api/orders', {
+      const payload: any = {
         products: cart.map(item => ({
           product: item.product._id,
           quantity: item.quantity,
@@ -208,14 +430,28 @@ const Cart = () => {
           warrantyPrice: getWarrantyPrice(item)
         })),
         totalAmount: total,
-        shippingAddress: isDropship ? customerDetails.address : formatAddress(),
+        shippingAddress: isDropship ? 'Multiple Shipments' : formatAddress(),
         isRetailerDirectPurchase: user?.role === 'retailer',
-        isDropship,
-        customerDetails: isDropship ? customerDetails : undefined,
-        customerInvoiceUrl: isDropship ? customerInvoiceUrl : undefined
-      });
+        isDropship
+      };
 
-      if (!data.razorpayOrder || !data.order) {
+      // Multi-Customer Dropship Payload
+      if (isDropship && shipmentGroups.length > 0) {
+        payload.dropshipShipments = shipmentGroups.map(group => ({
+          customerDetails: {
+            name: group.customer.name,
+            email: group.customer.email,
+            phone: group.customer.phone,
+            address: group.customer.address
+          },
+          items: group.items,
+          invoiceUrl: group.invoiceUrl
+        }));
+      }
+
+      const { data } = await api.post('/api/orders', payload);
+
+      if (!data.razorpayOrder) {
         throw new Error('Invalid order response from server');
       }
 
@@ -232,8 +468,15 @@ const Cart = () => {
         order_id: data.razorpayOrder.id,
         handler: async function (response: RazorpayResponse) {
           try {
+            // For multi-orders, data.order might be the first order or an array. 
+            // The verification endpoint should handle it.
+            // If backend returns 'order' as single object even for bulk, verification works fine.
+            // Only if using bulk verification we might need adjustments. 
+            // Existing code uses data.order._id.
+            const orderIdToVerify = data.order ? data.order._id : (data.allOrders ? data.allOrders[0]._id : null);
+
             await api.post('/api/orders/verify', {
-              orderId: data.order._id,
+              orderId: orderIdToVerify,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
             });
@@ -322,122 +565,425 @@ const Cart = () => {
 
         <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
           <div className="lg:col-span-7">
-            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            {/* Cart Items / Unassigned Pool */}
+            <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-indigo-600" />
+                    {isDropship ? "Unassigned Items (Self-Shipment)" : "Shopping Cart"}
+                  </h2>
+                  {isDropship && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Items left here will be shipped to your registered address.
+                    </p>
+                  )}
+                </div>
+                <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                  {isDropship
+                    ? `${unassignedItems.reduce((acc, i) => acc + i.remainingQuantity, 0)} items remaining`
+                    : `${totalItemsCount} items total`}
+                </span>
+              </div>
+
               <ul className="divide-y divide-gray-200">
-                {cart.map((item) => (
-                  <li key={item.product._id} className="p-6 flex">
-                    <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden relative">
-                      <img
-                        src={item.product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
-                        alt={item.product.name}
-                        className="w-full h-full object-center object-cover"
-                      />
-                      <span className="absolute top-1 right-1 bg-white/90 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow">
-                        {item.product.category}
-                      </span>
-                    </div>
+                {(isDropship ? unassignedItems : cart).map((item) => {
+                  const displayQty = isDropship ? (item as any).remainingQuantity : item.quantity;
+                  if (isDropship && displayQty === 0) return null;
 
-                    <div className="ml-4 flex-1 flex flex-col">
-                      <div>
-                        <div className="flex justify-between text-base font-medium text-gray-900">
-                          <h3>
-                            <Link to={`/product/${item.product._id}`}>{item.product.name}</Link>
-                          </h3>
-                          <p className="ml-4">₹{getItemTotal(item).toFixed(2)}</p>
-                        </div>
-                        <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
-                        {item.quotedProductId ? (
-                          <p className="text-xs text-green-600 mt-1 font-semibold">Special Quoted Price Applied</p>
-                        ) : item.useRetailerPrice && item.product.retailerPrice ? (
-                          <p className="text-xs text-green-600 mt-1">Retailer Price Applied</p>
-                        ) : null}
-                        <div className="mt-2 flex items-center gap-4 text-xs">
-                          <span className="text-gray-600">
-                            Price: ₹{getItemPrice(item).toFixed(2)} x {item.quantity}
-                          </span>
-                          <span className="text-indigo-600 font-medium">
-                            Tax: {item.product.taxPercentage || 18}% GST
-                          </span>
-                        </div>
+                  return (
+                    <li key={item.product._id} className="p-6 flex flex-col sm:flex-row gap-4">
+                      <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden relative">
+                        <img
+                          src={item.product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80'}
+                          alt={item.product.name}
+                          className="w-full h-full object-center object-cover"
+                        />
+                        <span className="absolute top-1 right-1 bg-white/90 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow">
+                          {item.product.category}
+                        </span>
+                      </div>
 
-                        {/* Warranty Selection */}
-                        <div className="mt-3 space-y-2">
-                          <p className="text-xs font-medium text-gray-700">Warranty Option:</p>
-                          <div className="flex flex-col gap-2">
-                            <label className="flex items-center space-x-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`warranty-${item.product._id}`}
-                                checked={(warrantyOptions[item.product._id] || 'standard') === 'standard'}
-                                onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'standard' }))}
-                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                              />
-                              <span className="text-sm text-gray-700">
-                                Standard - {item.product.warrantyPeriodMonths || 12} months (Free)
-                              </span>
-                            </label>
+                      <div className="flex-1 flex flex-col">
+                        <div>
+                          <div className="flex justify-between text-base font-medium text-gray-900">
+                            <h3>
+                              <Link to={`/product/${item.product._id}`} className="hover:text-indigo-600 transition-colors">
+                                {item.product.name}
+                              </Link>
+                            </h3>
+                            <p className="ml-4 font-bold text-indigo-600">₹{getItemTotal(item).toFixed(2)}</p>
+                          </div>
+                          <p className="mt-1 text-sm text-gray-500">{item.product.category}</p>
+                          {item.quotedProductId ? (
+                            <p className="text-xs text-green-600 mt-1 font-semibold flex items-center gap-1">
+                              <CheckCircle size={12} /> Special Quoted Price
+                            </p>
+                          ) : item.useRetailerPrice && item.product.retailerPrice ? (
+                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                              <CheckCircle size={12} /> Retailer Price
+                            </p>
+                          ) : null}
 
-                            {item.product.extendedWarrantyAvailable && (
-                              <label className="flex items-center space-x-2 cursor-pointer">
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                            <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                              Price: <strong>₹{getItemPrice(item).toFixed(2)}</strong> x {item.quantity}
+                            </span>
+                            <span className="text-indigo-600 bg-indigo-50 px-2 py-1 rounded font-medium border border-indigo-100">
+                              Tax: {item.product.taxPercentage || 18}% GST
+                            </span>
+                          </div>
+
+                          {/* Warranty Selection */}
+                          <div className="mt-3 bg-gray-50 p-3 rounded-md border border-gray-100">
+                            <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Warranty Option</p>
+                            <div className="flex flex-col gap-2">
+                              <label className="flex items-center space-x-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
                                 <input
                                   type="radio"
                                   name={`warranty-${item.product._id}`}
-                                  checked={warrantyOptions[item.product._id] === 'extended'}
-                                  onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'extended' }))}
+                                  checked={(warrantyOptions[item.product._id] || 'standard') === 'standard'}
+                                  onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'standard' }))}
                                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                                 />
                                 <span className="text-sm text-gray-700">
-                                  Extended - {item.product.extendedWarrantyMonths || 24} months (+₹{(item.product.extendedWarrantyPrice || 0).toFixed(2)})
+                                  Standard - {item.product.warrantyPeriodMonths || 12} months <span className="text-green-600 font-medium">(Free)</span>
                                 </span>
                               </label>
-                            )}
+
+                              {item.product.extendedWarrantyAvailable && (
+                                <label className="flex items-center space-x-2 cursor-pointer hover:bg-white p-1 rounded transition-colors">
+                                  <input
+                                    type="radio"
+                                    name={`warranty-${item.product._id}`}
+                                    checked={warrantyOptions[item.product._id] === 'extended'}
+                                    onChange={() => setWarrantyOptions(prev => ({ ...prev, [item.product._id]: 'extended' }))}
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    Extended - {item.product.extendedWarrantyMonths || 24} months <span className="text-indigo-600 font-medium">(+₹{(item.product.extendedWarrantyPrice || 0).toFixed(2)})</span>
+                                  </span>
+                                </label>
+                              )}
+                            </div>
                           </div>
-                          {warrantyOptions[item.product._id] === 'extended' && (
-                            <p className="text-xs text-green-600 mt-1">
-                              Extended warranty: +₹{((item.product.extendedWarrantyPrice || 0) * item.quantity).toFixed(2)}
-                            </p>
+                        </div>
+
+                        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 bg-white border border-gray-300 rounded-lg p-1 shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.product._id, item.quantity - 1, item.quotedProductId)}
+                              disabled={item.quantity <= 1}
+                              className="p-1.5 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <Minus size={14} className="text-gray-600" />
+                            </button>
+                            <span className="text-gray-900 font-semibold w-8 text-center text-sm">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.product._id, item.quantity + 1, item.quotedProductId)}
+                              className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                            >
+                              <Plus size={14} className="text-gray-600" />
+                            </button>
+                          </div>
+
+                          {/* Dropship Controls or Remove */}
+                          {isDropship ? (
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <select
+                                className="block w-full sm:w-40 pl-3 pr-10 py-1.5 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAssignItem(e.target.value, item.product._id, 1);
+                                    e.target.value = ''; // Reset
+                                  }
+                                }}
+                                value=""
+                              >
+                                <option value="">Assign to...</option>
+                                {shipmentGroups.map(bg => (
+                                  <option key={bg.id} value={bg.id}>{bg.customer.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => removeFromCart(item.product._id, item.quotedProductId)}
+                              className="font-medium text-red-600 hover:text-red-700 flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                              <span>Remove</span>
+                            </button>
                           )}
                         </div>
                       </div>
-                      <div className="flex-1 flex items-end justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.product._id, item.quantity - 1, item.quotedProductId)}
-                            disabled={item.quantity <= 1}
-                            className="p-1 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Minus size={16} className="text-gray-600" />
-                          </button>
-                          <span className="text-gray-700 font-medium w-8 text-center">{item.quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.product._id, item.quantity + 1, item.quotedProductId)}
-                            className="p-1 rounded-md border border-gray-300 hover:bg-gray-100"
-                          >
-                            <Plus size={16} className="text-gray-600" />
-                          </button>
-                        </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
+            {/* Dropship Shipment Groups */}
+            {isDropship && (
+              <div className="space-y-6 mb-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-indigo-600" />
+                    Customer Shipments
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingCustomer(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    <Plus className="-ml-1 mr-2 h-4 w-4" />
+                    Add Customer
+                  </button>
+                </div>
+
+                {/* Add Customer Form */}
+                {isAddingCustomer && (
+                  <div className="bg-white p-6 rounded-lg shadow-md border border-indigo-100 ring-4 ring-indigo-50/50 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <UserPlus size={18} className="text-indigo-600" />
+                      New Customer Details
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Name & Email */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <User size={14} className="text-indigo-600" /> Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.name}
+                          onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                          placeholder="Customer Name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <Mail size={14} className="text-indigo-600" /> Email *
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.email}
+                          onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                          placeholder="customer@example.com"
+                        />
+                      </div>
+
+                      {/* Phone */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <Phone size={14} className="text-indigo-600" /> Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.phone}
+                          onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+                          placeholder="Phone Number"
+                        />
+                      </div>
+
+                      {/* Detailed Address Fields */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <Building2 size={14} className="text-indigo-600" /> Street Address *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.streetAddress}
+                          onChange={e => setNewCustomer({ ...newCustomer, streetAddress: e.target.value })}
+                          placeholder="House No, Building, Street"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1">
+                          <MapPin size={14} className="text-gray-400" /> Landmark
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.landmark}
+                          onChange={e => setNewCustomer({ ...newCustomer, landmark: e.target.value })}
+                          placeholder="Optional"
+                        />
+                      </div>
+
+                      {/* Pincode with Auto-Fetch */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                          <MapPin size={14} className="text-indigo-600" /> Pincode *
+                          {newCustomerPincodeLoading && (
+                            <span className="text-xs text-indigo-600 flex items-center gap-1">
+                              <Loader2 size={12} className="animate-spin" /> Fetching...
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={6}
+                          className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          value={newCustomer.pincode}
+                          onChange={e => handleNewCustomerPincodeChange(e.target.value)}
+                          placeholder="6-digit Pincode"
+                          disabled={newCustomerPincodeLoading}
+                        />
+                      </div>
+
+                      {/* Auto-filled City & State */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          City {newCustomer.city ? <span className="text-green-600 text-xs">(Auto)</span> : '*'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          readOnly
+                          className={`w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm ${newCustomer.city ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-300'}`}
+                          value={newCustomer.city}
+                          placeholder="Auto-filled"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          State {newCustomer.state ? <span className="text-green-600 text-xs">(Auto)</span> : '*'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          readOnly
+                          className={`w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm ${newCustomer.state ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-300'}`}
+                          value={newCustomer.state}
+                          placeholder="Auto-filled"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+                      <button
+                        onClick={() => setIsAddingCustomer(false)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddCustomer}
+                        disabled={!newCustomer.city || !newCustomer.pincode || newCustomer.pincode.length !== 6}
+                        className="px-6 py-2 text-sm font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        Save Customer
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Group Cards */}
+                {shipmentGroups.map((group, idx) => (
+                  <div key={group.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    {/* Group Header */}
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-start md:items-center gap-3">
+                        <div className="bg-indigo-100 p-2 rounded-full hidden sm:block">
+                          <User size={20} className="text-indigo-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900">{group.customer.name}</h4>
+                          <div className="text-xs text-gray-500 flex flex-col sm:flex-row sm:gap-4 mt-1">
+                            <span className="flex items-center gap-1"><Mail size={12} /> {group.customer.email}</span>
+                            <span className="flex items-center gap-1"><Phone size={12} /> {group.customer.phone}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 flex items-start gap-1 max-w-lg truncate">
+                            <Building2 size={12} className="flex-shrink-0 mt-0.5" />
+                            {group.customer.address}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {group.invoiceUrl ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            <CheckCircle size={12} /> Invoice Generated
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => generateGroupInvoice(group)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 border border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-md text-xs font-medium transition-colors"
+                          >
+                            <FileText size={14} /> Generate Invoice
+                          </button>
+                        )}
                         <button
-                          type="button"
-                          onClick={() => removeFromCart(item.product._id, item.quotedProductId)}
-                          className="font-medium text-red-600 hover:text-red-500 flex items-center gap-1"
+                          onClick={() => handleRemoveGroup(group.id)}
+                          className="text-gray-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-md transition-colors"
+                          title="Remove Customer"
                         >
                           <Trash2 size={16} />
-                          <span>Remove</span>
                         </button>
                       </div>
                     </div>
-                  </li>
+
+                    {/* Group Items */}
+                    <div className="px-6 py-4">
+                      {group.items.length === 0 ? (
+                        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                          <p className="text-gray-500 text-sm">No items assigned yet.</p>
+                          <p className="text-gray-400 text-xs mt-1">Select items from the "Unassigned Pool" above.</p>
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100">
+                          {group.items.map(gi => {
+                            const product = cart.find(c => c.product._id === gi.productId)?.product;
+                            if (!product) return null;
+                            return (
+                              <li key={gi.productId} className="py-3 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+                                    <img src={product.images?.[0]} className="w-full h-full object-cover" alt="" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                                    <p className="text-xs text-gray-500">Qty: {gi.quantity} x ₹{gi.price.toFixed(2)}</p>
+                                    {gi.warrantyOption === 'extended' && (
+                                      <span className="text-[10px] text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded border border-green-100">+ Extended Warranty</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveFromGroup(group.id, gi.productId)}
+                                  className="text-gray-400 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </ul>
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-5 mt-8 lg:mt-0">
             <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
-              {/* Order Summary Header */}
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5" />
@@ -543,137 +1089,17 @@ const Cart = () => {
                   )}
 
                   {isDropship ? (
-                    <div className="space-y-4 animate-fadeIn bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                            <User size={14} className="text-indigo-600" />
-                            Customer Name *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={customerDetails.name}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                            placeholder="Customer Name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                            <Mail size={14} className="text-indigo-600" />
-                            Customer Email *
-                          </label>
-                          <input
-                            type="email"
-                            required
-                            value={customerDetails.email}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, email: e.target.value })}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                            placeholder="customer@example.com"
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                            <Phone size={14} className="text-indigo-600" />
-                            Customer Phone *
-                          </label>
-                          <input
-                            type="tel"
-                            required
-                            value={customerDetails.phone}
-                            onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
-                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                            placeholder="Phone Number"
-                          />
-                        </div>
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-6 text-center mb-6">
+                      <div className="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <UserPlus className="text-indigo-600" size={24} />
                       </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                          <MapPin size={14} className="text-indigo-600" />
-                          Customer Address *
-                        </label>
-                        <textarea
-                          required
-                          rows={3}
-                          value={customerDetails.address}
-                          onChange={(e) => setCustomerDetails({ ...customerDetails, address: e.target.value })}
-                          className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none"
-                          placeholder="Full delivery address..."
-                        />
-                      </div>
-
-                      {/* Invoice Generation */}
-                      <div className="pt-4 border-t-2 border-gray-200">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-gray-900 mb-1">Customer Invoice</p>
-                            <p className="text-xs text-gray-600">Generate a delivery note (no prices shown)</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!customerDetails.name || !customerDetails.email || !customerDetails.address) {
-                                toast.error('Please fill customer details first');
-                                return;
-                              }
-                              setIsGeneratingInvoice(true);
-                              try {
-                                const response = await api.post('/api/orders/dropship-invoice', {
-                                  customerDetails,
-                                  items: cart.map(item => ({
-                                    product: { name: item.product.name },
-                                    quantity: item.quantity
-                                  }))
-                                }, { responseType: 'blob' });
-
-                                // Create URL for the blob
-                                const url = window.URL.createObjectURL(new Blob([response.data]));
-                                setCustomerInvoiceUrl(url); // Save URL for checkout
-
-                                // Auto-download for user to verify
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = `delivery-note.pdf`;
-                                document.body.appendChild(link);
-                                link.click();
-                                link.remove();
-
-                                toast.success('Invoice generated & downloaded!');
-                              } catch (err) {
-                                console.error(err);
-                                toast.error('Failed to generate invoice');
-                              } finally {
-                                setIsGeneratingInvoice(false);
-                              }
-                            }}
-                            disabled={isGeneratingInvoice}
-                            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg text-sm font-semibold hover:from-indigo-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all flex items-center gap-2 whitespace-nowrap"
-                          >
-                            {isGeneratingInvoice ? (
-                              <>
-                                <Loader2 size={16} className="animate-spin" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <FileText size={16} />
-                                Generate
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        {customerInvoiceUrl && (
-                          <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                            <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-                            <p className="text-xs text-green-700 font-medium">Invoice generated successfully</p>
-                          </div>
-                        )}
-                      </div>
+                      <h4 className="text-indigo-900 font-medium mb-1">Multi-Customer Shipping</h4>
+                      <p className="text-indigo-700 text-sm">
+                        Please manage customer addresses and assign items in the <strong>Customer Shipments</strong> section on the left.
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      {/* Full Name and Phone */}
+                    <div className="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                           <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
@@ -707,7 +1133,6 @@ const Cart = () => {
                         </div>
                       </div>
 
-                      {/* Street Address */}
                       <div>
                         <label htmlFor="streetAddress" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
                           <Building2 size={14} className="text-indigo-600" />
@@ -724,7 +1149,6 @@ const Cart = () => {
                         />
                       </div>
 
-                      {/* Landmark */}
                       <div>
                         <label htmlFor="landmark" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
                           <MapPin size={14} className="text-gray-400" />
@@ -740,7 +1164,6 @@ const Cart = () => {
                         />
                       </div>
 
-                      {/* Pincode First, then City & State */}
                       <div className="grid grid-cols-1 gap-4">
                         <div>
                           <label htmlFor="pincode" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -771,7 +1194,6 @@ const Cart = () => {
                         </div>
                       </div>
 
-                      {/* City & State */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -781,11 +1203,9 @@ const Cart = () => {
                             type="text"
                             id="city"
                             required
+                            readOnly
                             value={addressForm.city}
-                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                            className={`w-full px-4 py-2.5 border-2 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all ${
-                              addressForm.city ? 'border-green-300 bg-green-50' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all ${addressForm.city ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
                             placeholder="City will auto-fill"
                           />
                         </div>
@@ -797,18 +1217,15 @@ const Cart = () => {
                             type="text"
                             id="state"
                             required
+                            readOnly
                             value={addressForm.state}
-                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                            className={`w-full px-4 py-2.5 border-2 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all ${
-                              addressForm.state ? 'border-green-300 bg-green-50' : 'border-gray-300'
-                            }`}
+                            className={`w-full px-4 py-2.5 border-2 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all ${addressForm.state ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
                             placeholder="State will auto-fill"
                           />
                         </div>
                       </div>
                     </div>
                   )}
-
 
                   {/* Action Buttons */}
                   <div className="pt-6 border-t-2 border-gray-100">

@@ -9,11 +9,13 @@ interface ToastMessage {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type: ToastType, duration?: number) => void;
-  success: (message: string, duration?: number) => void;
-  error: (message: string, duration?: number) => void;
-  warning: (message: string, duration?: number) => void;
-  info: (message: string, duration?: number) => void;
+  showToast: (message: string, type: ToastType, duration?: number) => string;
+  success: (message: string, duration?: number) => string;
+  error: (message: string, duration?: number) => string;
+  warning: (message: string, duration?: number) => string;
+  info: (message: string, duration?: number) => string;
+  loading: (message: string) => string;
+  dismiss: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -32,6 +34,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const showToast = useCallback((message: string, type: ToastType, duration = 3000) => {
     const id = Math.random().toString(36).substring(7);
     setToasts(prev => [...prev, { id, message, type, duration }]);
+    return id;
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -39,23 +42,31 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const success = useCallback((message: string, duration?: number) => {
-    showToast(message, 'success', duration);
+    return showToast(message, 'success', duration);
   }, [showToast]);
 
   const error = useCallback((message: string, duration?: number) => {
-    showToast(message, 'error', duration);
+    return showToast(message, 'error', duration);
   }, [showToast]);
 
   const warning = useCallback((message: string, duration?: number) => {
-    showToast(message, 'warning', duration);
+    return showToast(message, 'warning', duration);
   }, [showToast]);
 
   const info = useCallback((message: string, duration?: number) => {
-    showToast(message, 'info', duration);
+    return showToast(message, 'info', duration);
   }, [showToast]);
 
+  const loading = useCallback((message: string) => {
+    return showToast(message, 'loading', 0); // 0 duration means indefinite
+  }, [showToast]);
+
+  const dismiss = useCallback((id: string) => {
+    removeToast(id);
+  }, [removeToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
+    <ToastContext.Provider value={{ showToast, success, error, warning, info, loading, dismiss }}>
       {children}
       <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-md">
         {toasts.map(toast => (
