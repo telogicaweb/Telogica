@@ -184,6 +184,8 @@ const RetailerDashboard = () => {
   // Inventory
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryFilter, setInventoryFilter] = useState('all');
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategory, setInventoryCategory] = useState('');
 
   // Quotes
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -563,9 +565,27 @@ const RetailerDashboard = () => {
 
   // Filter inventory
   const filteredInventory = inventory.filter(item => {
-    if (inventoryFilter === 'all') return true;
-    return item.status === inventoryFilter;
+    if (!item.product) return false;
+
+    // Status filter
+    if (inventoryFilter !== 'all' && item.status !== inventoryFilter) return false;
+
+    // Search filter
+    if (inventorySearch) {
+      const searchLower = inventorySearch.toLowerCase();
+      const nameMatch = item.product.name?.toLowerCase().includes(searchLower) || false;
+      const descMatch = item.product.description?.toLowerCase().includes(searchLower) || false;
+      if (!nameMatch && !descMatch) return false;
+    }
+
+    // Category filter
+    if (inventoryCategory && item.product.category !== inventoryCategory) return false;
+
+    return true;
   });
+
+  // Get unique categories from all products for dropdown
+  const inventoryCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
 
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -1409,21 +1429,46 @@ const RetailerDashboard = () => {
   // Render Inventory Tab
   const renderInventory = () => (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+      <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">My Inventory</h2>
-        <div className="flex gap-2">
-          {['all', 'in_stock', 'sold'].map(filter => (
-            <button
-              key={filter}
-              onClick={() => setInventoryFilter(filter)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
-            </button>
-          ))}
+
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search inventory..."
+              value={inventorySearch}
+              onChange={(e) => setInventorySearch(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
+            />
+          </div>
+
+          <select
+            value={inventoryCategory}
+            onChange={(e) => setInventoryCategory(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Categories</option>
+            {inventoryCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          <div className="flex gap-2">
+            {['all', 'in_stock', 'sold'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => setInventoryFilter(filter)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
