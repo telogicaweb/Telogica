@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, MapPin, Send, Clock, Globe, Building2, Users, Headphones, MessageSquare, CheckCircle, ArrowRight, Linkedin, Twitter, Facebook, Instagram } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Clock, Globe, Building2, Users, Headphones, MessageSquare, CheckCircle, ArrowRight, Linkedin, Facebook, Youtube } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import api from '../api';
 
@@ -361,17 +361,14 @@ export default function Contact() {
             <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Follow Us</h3>
               <div className="flex gap-3">
-                <a href="#" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
-                  <Linkedin size={20} />
-                </a>
-                <a href="#" className="flex-1 bg-sky-500 hover:bg-sky-600 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
-                  <Twitter size={20} />
-                </a>
-                <a href="#" className="flex-1 bg-blue-700 hover:bg-blue-800 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
+                <a href="https://www.facebook.com/aishwaryatechtele" target="_blank" rel="noopener noreferrer" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
                   <Facebook size={20} />
                 </a>
-                <a href="#" className="flex-1 bg-gradient-to-tr from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
-                  <Instagram size={20} />
+                <a href="https://www.youtube.com/user/aishwaryatechtele" target="_blank" rel="noopener noreferrer" className="flex-1 bg-red-600 hover:bg-red-700 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
+                  <Youtube size={20} />
+                </a>
+                <a href="https://www.linkedin.com/company/telogica-limited/" target="_blank" rel="noopener noreferrer" className="flex-1 bg-blue-700 hover:bg-blue-800 text-white p-3 rounded-xl flex items-center justify-center transition-colors">
+                  <Linkedin size={20} />
                 </a>
               </div>
             </div>

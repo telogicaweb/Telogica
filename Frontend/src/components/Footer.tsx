@@ -1,4 +1,4 @@
-import { Facebook, Linkedin } from 'lucide-react';
+import { Facebook, Linkedin, Youtube } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -26,14 +26,27 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex gap-4">
               <a
-                href="#facebook"
+                href="https://www.facebook.com/aishwaryatechtele"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors"
                 aria-label="Facebook"
               >
                 <Facebook size={20} />
               </a>
               <a
-                href="#linkedin"
+                href="https://www.youtube.com/user/aishwaryatechtele"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube size={20} />
+              </a>
+              <a
+                href="https://www.linkedin.com/company/telogica-limited/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors"
                 aria-label="LinkedIn"
               >
