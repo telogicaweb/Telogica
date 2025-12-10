@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
@@ -193,10 +194,12 @@ const RetailerDashboard = () => {
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderFilter, setOrderFilter] = useState('monthly');
   const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
 
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
+  const [salesFilter, setSalesFilter] = useState('monthly');
 
   // Quoted Products
   const [quotedProducts, setQuotedProducts] = useState<QuotedProduct[]>([]);
@@ -650,37 +653,210 @@ const RetailerDashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Inventory Summary</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">In Stock</span>
-              <span className="font-bold text-green-600">{stats?.inventory.inStock || 0}</span>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Sales Summary</h3>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {['weekly', 'monthly', 'yearly'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSalesFilter(period)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${salesFilter === period
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Sold</span>
-              <span className="font-bold text-blue-600">{stats?.inventory.sold || 0}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Inventory Value</span>
-              <span className="font-bold text-purple-600">{formatCurrency(stats?.inventory.totalValue || 0)}</span>
-            </div>
+          </div>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={(() => {
+                  let dataPoints = [];
+
+                  if (salesFilter === 'weekly') {
+                    // Last 7 days
+                    dataPoints = Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - (6 - i));
+                      return d;
+                    }).map(date => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      const daySales = (sales || []).filter(s => s.saleDate.startsWith(dateStr))
+                        .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: date.toLocaleString('default', { weekday: 'short' }), value: daySales };
+                    });
+                  } else if (salesFilter === 'monthly') {
+                    // Last 30 days (grouped by 5-day intervals or weeks for cleaner chart? Let's do last 4 weeks)
+                    // Or just simply last 4 weeks.
+                    dataPoints = Array.from({ length: 4 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - ((3 - i) * 7));
+                      return d;
+                    }).map((date, i) => {
+                      // Week starting from 'date'
+                      const weekStart = new Date(date);
+                      weekStart.setDate(weekStart.getDate() - 6); // Look back 7 days
+                      // Approximation: Filter sales in this week window. 
+                      // Actually, simpler to just group by week number or something. 
+                      // Let's stick to simple "Last 4 Weeks" by aggregate
+                      const weekSales = (sales || []).filter(s => {
+                        const sDate = new Date(s.saleDate);
+                        return sDate <= date && sDate > weekStart;
+                      }).reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: `Week ${i + 1}`, value: weekSales };
+                    });
+                  } else {
+                    // Yearly - Last 12 months
+                    dataPoints = Array.from({ length: 12 }, (_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - (11 - i));
+                      return d;
+                    }).map(date => {
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const monthSales = (sales || []).filter(s => s.saleDate.startsWith(monthKey))
+                        .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: date.toLocaleString('default', { month: 'short' }), value: monthSales };
+                    });
+                  }
+                  return dataPoints;
+                })()}
+              >
+                <defs>
+                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={10} />
+                <Tooltip
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Sales']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#3B82F6" fillOpacity={1} fill="url(#colorSales)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+            <span className="text-gray-600 font-medium">Total Sales Revenue</span>
+            <span className="text-xl font-bold text-blue-600">{formatCurrency(stats?.sales.totalRevenue || 0)}</span>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Orders</span>
-              <span className="font-bold text-gray-900">{stats?.orders.total || 0}</span>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Order Summary</h3>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {['weekly', 'monthly', 'yearly'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setOrderFilter(period)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${orderFilter === period
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Completed</span>
-              <span className="font-bold text-green-600">{stats?.orders.completed || 0}</span>
+          </div>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={(() => {
+                  let dataPoints = [];
+
+                  if (orderFilter === 'weekly') {
+                    // Last 7 days
+                    dataPoints = Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - (6 - i));
+                      return d;
+                    }).map(date => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      const daySpend = orders.filter(o => o.createdAt.startsWith(dateStr))
+                        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: date.toLocaleString('default', { weekday: 'short' }), spend: daySpend };
+                    });
+                  } else if (orderFilter === 'monthly') {
+                    // Last 4 weeks
+                    dataPoints = Array.from({ length: 4 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - ((3 - i) * 7));
+                      return d;
+                    }).map((date, i) => {
+                      const weekStart = new Date(date);
+                      weekStart.setDate(weekStart.getDate() - 6);
+                      const weekSpend = orders.filter(o => {
+                        const oDate = new Date(o.createdAt);
+                        return oDate <= date && oDate > weekStart;
+                      }).reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: `Week ${i + 1}`, spend: weekSpend };
+                    });
+                  } else {
+                    // Yearly - Last 12 months
+                    dataPoints = Array.from({ length: 12 }, (_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - (11 - i));
+                      return d;
+                    }).map(date => {
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const monthSpend = orders.filter(o => o.createdAt.startsWith(monthKey))
+                        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: date.toLocaleString('default', { month: 'short' }), spend: monthSpend };
+                    });
+                  }
+                  return dataPoints;
+                })()}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorOrderSpend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  dy={10}
+                />
+                <YAxis
+                  hide={true}
+                />
+                <Tooltip
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Spent']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="spend"
+                  stroke="#8884d8"
+                  fillOpacity={1}
+                  fill="url(#colorOrderSpend)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex justify-between items-end">
+            <div>
+              <p className="text-sm text-gray-500">Total Spent</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.orders.totalSpent || 0)}</p>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Spent</span>
-              <span className="font-bold text-blue-600">{formatCurrency(stats?.orders.totalSpent || 0)}</span>
+            <div className="text-right">
+              <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                <TrendingUp size={14} />
+                Shopping Trend
+              </p>
             </div>
           </div>
         </div>
