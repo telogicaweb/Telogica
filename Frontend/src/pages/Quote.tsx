@@ -7,10 +7,11 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, AlertCircle, FileText, ShoppingCart } from 'lucide-react';
 
 const Quote = () => {
-  const { cart, quoteItems, removeFromQuote, clearQuote, clearCart } = useContext(CartContext)!;
+  const { cart, quoteItems, removeFromQuote, clearQuote, clearCart, updateQuoteItemQuantity } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
   const { success, error: toastError } = useToast();
   const [message, setMessage] = useState('');
+  const [quoteType, setQuoteType] = useState<'standard' | 'bulk_order'>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -21,8 +22,7 @@ const Quote = () => {
   // Auto-populate quote items from cart if user has more than 3 items
   useEffect(() => {
     if (user?.role === 'user' && cart.length > 3 && quoteItems.length === 0) {
-      // Items are already in cart, no need to duplicate them
-      // The UI will show cart items if quote items are empty 
+      // Items are already in cart
     }
   }, [cart, user, quoteItems]);
 
@@ -44,10 +44,19 @@ const Quote = () => {
     const hasTelecom = telecomItems.length > 0;
     const totalTelecomQuantity = telecomItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    // If has telecom items, must have quantity >= 3 OR total items >= 3
-    if (hasTelecom) {
+    // Standard Quote Validation (Telecom specific)
+    if (quoteType === 'standard' && hasTelecom) {
       if (totalTelecomQuantity < 3 && telecomItems.length < 3) {
-        toastError(`For Telecom products, you need either a total quantity of 3+ or 3+ different items. Currently: ${totalTelecomQuantity} total quantity, ${telecomItems.length} items.`);
+        toastError(`For Telecom products, you need either a total quantity of 3+ or 3+ different items.`);
+        return;
+      }
+    }
+
+    // Bulk Order Validation
+    if (quoteType === 'bulk_order') {
+      const invalidBulkItems = itemsToQuote.filter(item => item.quantity < 3);
+      if (invalidBulkItems.length > 0) {
+        toastError('For Bulk Order Quotation, each product must have a minimum quantity of 3.');
         return;
       }
     }
@@ -59,7 +68,8 @@ const Quote = () => {
           product: item.product._id,
           quantity: item.quantity
         })),
-        message
+        message,
+        type: quoteType
       });
 
       success('Quote Submitted Successfully! You will receive an email once admin responds.');
@@ -82,8 +92,12 @@ const Quote = () => {
   const telecomItems = displayItems.filter(item => item.product.isTelecom || item.product.category === 'Telecom');
   const hasTelecom = telecomItems.length > 0;
   const totalTelecomQuantity = telecomItems.reduce((sum, item) => sum + item.quantity, 0);
-  const isTelecomValid = !hasTelecom || (totalTelecomQuantity >= 3 || telecomItems.length >= 3);
-  const isMinimumMet = displayItems.length > 0 && isTelecomValid;
+
+  // Validation Checks
+  const isStandardValid = !hasTelecom || (totalTelecomQuantity >= 3 || telecomItems.length >= 3);
+  const isBulkValid = displayItems.every(item => item.quantity >= 3);
+
+  const isMinimumMet = displayItems.length > 0 && (quoteType === 'standard' ? isStandardValid : isBulkValid);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
@@ -96,6 +110,42 @@ const Quote = () => {
               : 'Request a quote for bulk orders and get special pricing.'}
           </p>
         </div>
+
+        {/* Quote Type Selection for Retailers */}
+        {user?.role === 'retailer' && (
+          <div className="bg-white p-6 rounded-lg shadow-sm mb-6 border border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Quotation Type</h2>
+            <div className="flex gap-4">
+              <div
+                onClick={() => setQuoteType('standard')}
+                className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'standard' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-4 h-4 rounded-full border ${quoteType === 'standard' ? 'border-4 border-indigo-600' : 'border-gray-400'}`}></div>
+                  <span className="font-medium text-gray-900">Price Request Quotation</span>
+                </div>
+                <p className="text-sm text-gray-600 ml-6">Request special pricing for various products. Accepted items will be added to your Quoted Products tab for future orders. (Min 3 quantity or 3 items for Telecom products)</p>
+              </div>
+
+              <div
+                onClick={() => setQuoteType('bulk_order')}
+                className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'bulk_order' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-4 h-4 rounded-full border ${quoteType === 'bulk_order' ? 'border-4 border-indigo-600' : 'border-gray-400'}`}></div>
+                  <span className="font-medium text-gray-900">Bulk Quantity Quotation</span>
+                </div>
+                <p className="text-sm text-gray-600 ml-6">One-time bulk purchase. Upon acceptance, you proceed directly to checkout. (Min 3 quantity per product)</p>
+              </div>
+            </div>
+            {quoteType === 'bulk_order' && !isBulkValid && displayItems.length > 0 && (
+              <div className="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200 flex items-center gap-2">
+                <AlertCircle size={16} />
+                For Bulk Orders, every product must have a quantity of at least 3.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Minimum requirement notice */}
         <div className={`mb-6 border-l-4 p-4 ${isMinimumMet ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'}`}>
@@ -142,8 +192,8 @@ const Quote = () => {
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-gray-900">Items for Quote</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${isMinimumMet
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
                   }`}>
                   {displayItems.length} items
                 </span>
@@ -168,9 +218,27 @@ const Quote = () => {
                     )}
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">{item.product.name}</h3>
-                      <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                      <div className="flex items-center mt-1">
+                        <span className="text-sm text-gray-500 mr-2">Quantity:</span>
+                        <div className="flex items-center border border-gray-300 rounded-md">
+                          <button
+                            onClick={() => updateQuoteItemQuantity(item.product._id, item.quantity - 1)}
+                            className="px-2 py-1 text-gray-600 hover:bg-gray-100 border-r border-gray-300"
+                            disabled={item.quantity <= 1}
+                          >
+                            -
+                          </button>
+                          <span className="px-3 py-1 text-gray-900 font-medium">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuoteItemQuantity(item.product._id, item.quantity + 1)}
+                            className="px-2 py-1 text-gray-600 hover:bg-gray-100 border-l border-gray-300"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                       {item.product.price && (
-                        <p className="text-sm text-gray-600">Regular Price: ₹{item.product.price} each</p>
+                        <p className="text-sm text-gray-600 mt-1">Regular Price: ₹{item.product.price} each</p>
                       )}
                     </div>
                   </div>
@@ -204,8 +272,8 @@ const Quote = () => {
                   onClick={handleSubmitQuote}
                   disabled={!isMinimumMet || isSubmitting}
                   className={`flex-1 inline-flex justify-center items-center gap-2 py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white transition-colors ${isMinimumMet && !isSubmitting
-                      ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                      : 'bg-gray-400 cursor-not-allowed'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                    : 'bg-gray-400 cursor-not-allowed'
                     }`}
                 >
                   {isSubmitting ? (

@@ -33,6 +33,7 @@ interface CartContextType {
   removeFromCart: (productId: string, quotedProductId?: string) => void;
   removeFromQuote: (productId: string) => void;
   updateQuantity: (productId: string, newQuantity: number, quotedProductId?: string) => void;
+  updateQuoteItemQuantity: (productId: string, newQuantity: number) => void;
   clearCart: () => void;
   clearQuote: () => void;
   setUserId: (userId: string | null) => void;
@@ -186,11 +187,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     ));
   };
 
+  const updateQuoteItemQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setQuoteItems(prev => prev.map(item =>
+      item.product._id === productId
+        ? { ...item, quantity: newQuantity }
+        : item
+    ));
+  };
+
   const clearCart = () => setCart([]);
   const clearQuote = () => setQuoteItems([]);
 
   return (
-    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, removeFromQuote, updateQuantity, clearCart, clearQuote, setUserId }}>
+    <CartContext.Provider value={{ cart, quoteItems, addToCart, addToQuote, removeFromCart, removeFromQuote, updateQuantity, updateQuoteItemQuantity, clearCart, clearQuote, setUserId }}>
       {children}
     </CartContext.Provider>
   );

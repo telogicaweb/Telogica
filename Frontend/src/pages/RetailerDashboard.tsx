@@ -88,6 +88,7 @@ interface Quote {
   adminResponse?: any;
   createdAt: string;
   orderId?: string;
+  type?: 'standard' | 'bulk_order';
 }
 
 interface Order {
@@ -313,21 +314,35 @@ const RetailerDashboard = () => {
     }
   };
 
-  const acceptQuote = (quoteId: string) => {
+  const acceptQuote = (quote: Quote) => {
     setConfirmationModal({
       isOpen: true,
       title: 'Accept Quote',
-      message: 'Are you sure you want to accept this quote?',
-      confirmText: 'Accept Quote',
+      message: quote.type === 'bulk_order'
+        ? 'Accepting this bulk quote will proceed directly to checkout. Continue?'
+        : 'Are you sure you want to accept this quote?',
+      confirmText: quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept Quote',
       cancelText: 'Cancel',
       isDestructive: false,
       onConfirm: async () => {
         setLoading(true);
         try {
-          await api.put(`/api/quotes/${quoteId}/accept`, {});
-          success('Quote accepted! Proceed to checkout. Products have been added to your Quoted Products.');
-          loadQuotes();
-          loadQuotedProducts();
+          await api.put(`/api/quotes/${quote._id}/accept`, {});
+
+          if (quote.type === 'bulk_order') {
+            success('Quote accepted! Proceeding to checkout...');
+            loadQuotes();
+            // Important: For bulk orders, launch checkout immediately
+            // We need to wait slightly for state to update or just pass the current quote object
+            // But we need the updated status if proceedToCheckout checks it? 
+            // proceedToCheckout implementation uses the passed quote object. 
+            // We should act on the quote object we have, assuming acceptance was successful.
+            proceedToCheckout(quote);
+          } else {
+            success('Quote accepted! Products have been added to your Quoted Products.');
+            loadQuotes();
+            loadQuotedProducts();
+          }
         } catch (err: any) {
           error(err.response?.data?.message || 'Failed to accept quote');
         } finally {
@@ -1103,7 +1118,10 @@ const RetailerDashboard = () => {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
                     {quote.status}
                   </span>
-                  <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ml-2 ${quote.type === 'bulk_order' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
+                  </span>
+                  <span className="text-xs text-gray-500 ml-auto">{new Date(quote.createdAt).toLocaleDateString()}</span>
                 </div>
 
                 <div className="mb-4">
@@ -1167,12 +1185,12 @@ const RetailerDashboard = () => {
                 {quote.status === 'responded' && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => acceptQuote(quote._id)}
+                      onClick={() => acceptQuote(quote)}
                       disabled={loading}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
                     >
                       <ThumbsUp size={16} />
-                      Accept
+                      {quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept'}
                     </button>
                     <button
                       onClick={() => rejectQuote(quote._id)}

@@ -14,6 +14,11 @@ const quoteSchema = new mongoose.Schema({
     enum: ['pending', 'responded', 'accepted', 'rejected', 'completed'],
     default: 'pending'
   },
+  type: {
+    type: String,
+    enum: ['standard', 'bulk_order'],
+    default: 'standard'
+  },
   adminResponse: {
     totalPrice: { type: Number }, // Total discounted price for all products
     discountPercentage: { type: Number }, // Discount percentage offered
@@ -23,7 +28,7 @@ const quoteSchema = new mongoose.Schema({
   acceptedAt: { type: Date }, // When user accepted the quote
   rejectionReason: { type: String }, // Reason for rejection (by admin or user)
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' }, // Link to order if quote is converted
-  
+
   // Delivery Tracking
   deliveryTrackingLink: { type: String } // Tracking link provided by admin for delivery status
 }, { timestamps: true });

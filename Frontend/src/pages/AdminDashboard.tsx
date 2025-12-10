@@ -139,6 +139,7 @@ interface Quote {
   quotedPrice?: number;
   createdAt?: string;
   deliveryTrackingLink?: string;
+  type?: 'standard' | 'bulk_order';
 }
 
 interface Order {
@@ -1544,25 +1545,25 @@ const AdminDashboard: React.FC = () => {
                           const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
                           return `${percent}%`;
                         }}
-                        labelLine={{stroke: '#64748b', strokeWidth: 2}}
+                        labelLine={{ stroke: '#64748b', strokeWidth: 2 }}
                       >
                         {userSalesData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={USER_COLORS[index]} stroke="#fff" strokeWidth={3} />
                         ))}
                       </Pie>
-                      <RechartsTooltip 
+                      <RechartsTooltip
                         formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                          borderRadius: '12px', 
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                          borderRadius: '12px',
                           border: '2px solid #3b82f6',
                           boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
                           padding: '12px'
                         }}
                         labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
                       />
-                      <Legend 
-                        verticalAlign="bottom" 
+                      <Legend
+                        verticalAlign="bottom"
                         height={40}
                         iconType="circle"
                         wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
@@ -1617,7 +1618,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-right">
                     <p className="text-xs text-blue-700 font-semibold mb-0.5">Average Order Value</p>
                     <p className="text-xl font-black text-blue-900">
-                      {analytics.orders.byUserType.user > 0 
+                      {analytics.orders.byUserType.user > 0
                         ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
                         : formatCurrency(0)
                       }
@@ -1675,7 +1676,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                     <BarChart3 className="w-6 h-6 text-emerald-500" />
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <p className="text-5xl font-black text-emerald-900 mb-2">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
@@ -1722,25 +1723,25 @@ const AdminDashboard: React.FC = () => {
                         paddingAngle={0}
                         dataKey="value"
                         label={() => '100%'}
-                        labelLine={{stroke: '#10b981', strokeWidth: 2}}
+                        labelLine={{ stroke: '#10b981', strokeWidth: 2 }}
                       >
                         {retailerSalesData.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} stroke="#fff" strokeWidth={3} />
                         ))}
                       </Pie>
-                      <RechartsTooltip 
+                      <RechartsTooltip
                         formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(255, 255, 255, 0.98)', 
-                          borderRadius: '12px', 
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                          borderRadius: '12px',
                           border: '2px solid #10b981',
                           boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
                           padding: '12px'
                         }}
                         labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
                       />
-                      <Legend 
-                        verticalAlign="bottom" 
+                      <Legend
+                        verticalAlign="bottom"
                         height={40}
                         iconType="circle"
                         wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
@@ -1795,7 +1796,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-right">
                     <p className="text-xs text-emerald-700 font-semibold mb-0.5">Average Order Value</p>
                     <p className="text-xl font-black text-emerald-900">
-                      {analytics.orders.byUserType.retailer > 0 
+                      {analytics.orders.byUserType.retailer > 0
                         ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
                         : formatCurrency(0)
                       }
@@ -3278,18 +3279,26 @@ const AdminDashboard: React.FC = () => {
                       {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
                     </p>
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : quote.status === 'responded'
-                        ? 'bg-blue-100 text-blue-800'
-                        : quote.status === 'accepted' || quote.status === 'approved'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                  >
-                    {quote.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${quote.type === 'bulk_order'
+                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}>
+                      {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
+                    </span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : quote.status === 'responded'
+                          ? 'bg-blue-100 text-blue-800'
+                          : quote.status === 'accepted' || quote.status === 'approved'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                    >
+                      {quote.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mb-4">

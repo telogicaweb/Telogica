@@ -8,7 +8,7 @@ const { getQuoteRequestAdminEmail, getQuoteResponseEmail, getDeliveryTrackingEma
 // @route   POST /api/quotes
 // @access  Private
 const createQuote = async (req, res) => {
-  const { products, message } = req.body;
+  const { products, message, type } = req.body;
 
   if (products && products.length === 0) {
     return res.status(400).json({ message: 'No products in quote' });
@@ -30,7 +30,8 @@ const createQuote = async (req, res) => {
     const quote = new Quote({
       user: req.user._id,
       products: enrichedProducts,
-      message
+      message,
+      type: type || 'standard'
     });
 
     const createdQuote = await quote.save();
@@ -42,7 +43,7 @@ const createQuote = async (req, res) => {
       req.user.email,
       products.length
     );
-    
+
     sendEmail(
       adminEmail,
       'New Quote Request - Telogica',
@@ -71,13 +72,13 @@ const getQuotes = async (req, res) => {
 
     const { userId, startDate, endDate } = req.query;
     let quotes;
-    
+
     if (req.user.role === 'admin') {
       const filter = {};
       if (userId) {
         filter.user = userId;
       }
-      
+
       // Date filtering
       if (startDate || endDate) {
         filter.createdAt = {};
@@ -91,7 +92,7 @@ const getQuotes = async (req, res) => {
           filter.createdAt.$lte = end;
         }
       }
-      
+
       quotes = await Quote.find(filter)
         .populate('user', 'name email role')
         .populate('products.product')
@@ -160,13 +161,13 @@ const respondToQuote = async (req, res) => {
 
       // Notify User with email
       const emailText = `Your quote request has been reviewed. Discount: ${discountPercentage}%, Total Price: ₹${calculatedTotal}. Message: ${message}`;
-      
+
       const quoteResponseEmailHtml = getQuoteResponseEmail(
         quote.user.name,
         calculatedTotal,
         message
       );
-      
+
       sendEmail(
         quote.user.email,
         'Your Quote Response is Ready! - Telogica',
@@ -210,8 +211,8 @@ const acceptQuote = async (req, res) => {
 
     const updatedQuote = await quote.save();
 
-    // Save quoted products for retailer
-    if (req.user.role === 'retailer') {
+    // Save quoted products for retailer ONLY if it's a standard quote (not bulk order)
+    if (req.user.role === 'retailer' && quote.type !== 'bulk_order') {
       for (const item of quote.products) {
         if (item.product && item.offeredPrice) {
           try {
