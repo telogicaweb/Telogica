@@ -23,7 +23,8 @@ import {
   Store,
   Tag,
   Loader,
-  Truck
+  Truck,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -776,6 +777,7 @@ const RetailerDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tracking Details</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -825,6 +827,30 @@ const RetailerDashboard = () => {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             {order.paymentStatus.toUpperCase()}
                           </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          {order.trackingId ? (
+                            <div className="space-y-1">
+                              <p className="font-medium text-gray-900">ID: <span className="font-mono text-gray-600">{order.trackingId}</span></p>
+                              {order.deliveryTrackingLink ? (
+                                <a
+                                  href={order.deliveryTrackingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                >
+                                  Track Shipment
+                                  <ArrowUpRight size={12} />
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 text-xs">No link available</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">Pending</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
