@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
@@ -23,7 +24,8 @@ import {
   Store,
   Tag,
   Loader,
-  Truck
+  Truck,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -88,6 +90,7 @@ interface Quote {
   adminResponse?: any;
   createdAt: string;
   orderId?: string;
+  type?: 'standard' | 'bulk_order';
 }
 
 interface Order {
@@ -98,6 +101,13 @@ interface Order {
   orderStatus: string;
   paymentStatus: string;
   createdAt: string;
+  isDropship?: boolean;
+  customerDetails?: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
 }
 
 interface Sale {
@@ -169,22 +179,27 @@ const RetailerDashboard = () => {
 
   // Products
   const [products, setProducts] = useState<Product[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [productCategory, setProductCategory] = useState('');
 
   // Inventory
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [inventoryFilter, setInventoryFilter] = useState('all');
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategory, setInventoryCategory] = useState('');
 
   // Quotes
   const [quotes, setQuotes] = useState<Quote[]>([]);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderFilter, setOrderFilter] = useState('monthly');
   const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
 
   // Sales
   const [sales, setSales] = useState<Sale[]>([]);
+  const [salesFilter, setSalesFilter] = useState('monthly');
 
   // Quoted Products
   const [quotedProducts, setQuotedProducts] = useState<QuotedProduct[]>([]);
@@ -203,13 +218,7 @@ const RetailerDashboard = () => {
     soldDate: new Date().toISOString().split('T')[0]
   });
 
-  // Customer Invoice Modal (Dropship)
-  const [showCustomerInvoiceModal, setShowCustomerInvoiceModal] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [customerInvoiceData, setCustomerInvoiceData] = useState({
-    sellingPrice: '',
-    invoiceNumber: ''
-  });
+
 
   useEffect(() => {
     if (authContext?.loading) {
@@ -311,21 +320,35 @@ const RetailerDashboard = () => {
     }
   };
 
-  const acceptQuote = (quoteId: string) => {
+  const acceptQuote = (quote: Quote) => {
     setConfirmationModal({
       isOpen: true,
       title: 'Accept Quote',
-      message: 'Are you sure you want to accept this quote?',
-      confirmText: 'Accept Quote',
+      message: quote.type === 'bulk_order'
+        ? 'Accepting this bulk quote will proceed directly to checkout. Continue?'
+        : 'Are you sure you want to accept this quote?',
+      confirmText: quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept Quote',
       cancelText: 'Cancel',
       isDestructive: false,
       onConfirm: async () => {
         setLoading(true);
         try {
-          await api.put(`/api/quotes/${quoteId}/accept`, {});
-          success('Quote accepted! Proceed to checkout. Products have been added to your Quoted Products.');
-          loadQuotes();
-          loadQuotedProducts();
+          await api.put(`/api/quotes/${quote._id}/accept`, {});
+
+          if (quote.type === 'bulk_order') {
+            success('Quote accepted! Proceeding to checkout...');
+            loadQuotes();
+            // Important: For bulk orders, launch checkout immediately
+            // We need to wait slightly for state to update or just pass the current quote object
+            // But we need the updated status if proceedToCheckout checks it? 
+            // proceedToCheckout implementation uses the passed quote object. 
+            // We should act on the quote object we have, assuming acceptance was successful.
+            proceedToCheckout(quote);
+          } else {
+            success('Quote accepted! Products have been added to your Quoted Products.');
+            loadQuotes();
+            loadQuotedProducts();
+          }
         } catch (err: any) {
           error(err.response?.data?.message || 'Failed to accept quote');
         } finally {
@@ -533,42 +556,6 @@ const RetailerDashboard = () => {
     }
   };
 
-  const openCustomerInvoiceModal = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setCustomerInvoiceData({
-      sellingPrice: '',
-      invoiceNumber: ''
-    });
-    setShowCustomerInvoiceModal(true);
-  };
-
-  const handleGenerateCustomerInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrderId || !customerInvoiceData.sellingPrice) return;
-
-    setLoading(true);
-    try {
-      const response = await api.post(`/api/orders/${selectedOrderId}/customer-invoice`, customerInvoiceData, {
-        responseType: 'blob'
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `customer-invoice-${customerInvoiceData.invoiceNumber || selectedOrderId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      setShowCustomerInvoiceModal(false);
-      success('Invoice generated successfully!');
-    } catch (err: any) {
-      error('Failed to generate invoice: ' + (err.response?.data?.message || 'Server error'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter products
   const filteredProducts = products.filter(p => {
@@ -582,9 +569,27 @@ const RetailerDashboard = () => {
 
   // Filter inventory
   const filteredInventory = inventory.filter(item => {
-    if (inventoryFilter === 'all') return true;
-    return item.status === inventoryFilter;
+    if (!item.product) return false;
+
+    // Status filter
+    if (inventoryFilter !== 'all' && item.status !== inventoryFilter) return false;
+
+    // Search filter
+    if (inventorySearch) {
+      const searchLower = inventorySearch.toLowerCase();
+      const nameMatch = item.product.name?.toLowerCase().includes(searchLower) || false;
+      const descMatch = item.product.description?.toLowerCase().includes(searchLower) || false;
+      if (!nameMatch && !descMatch) return false;
+    }
+
+    // Category filter
+    if (inventoryCategory && item.product.category !== inventoryCategory) return false;
+
+    return true;
   });
+
+  // Get unique categories from all products for dropdown
+  const inventoryCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
 
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -648,37 +653,210 @@ const RetailerDashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Inventory Summary</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">In Stock</span>
-              <span className="font-bold text-green-600">{stats?.inventory.inStock || 0}</span>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Sales Summary</h3>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {['weekly', 'monthly', 'yearly'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSalesFilter(period)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${salesFilter === period
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Sold</span>
-              <span className="font-bold text-blue-600">{stats?.inventory.sold || 0}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Inventory Value</span>
-              <span className="font-bold text-purple-600">{formatCurrency(stats?.inventory.totalValue || 0)}</span>
-            </div>
+          </div>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={(() => {
+                  let dataPoints = [];
+
+                  if (salesFilter === 'weekly') {
+                    // Last 7 days
+                    dataPoints = Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - (6 - i));
+                      return d;
+                    }).map(date => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      const daySales = (sales || []).filter(s => s.saleDate.startsWith(dateStr))
+                        .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: date.toLocaleString('default', { weekday: 'short' }), value: daySales };
+                    });
+                  } else if (salesFilter === 'monthly') {
+                    // Last 30 days (grouped by 5-day intervals or weeks for cleaner chart? Let's do last 4 weeks)
+                    // Or just simply last 4 weeks.
+                    dataPoints = Array.from({ length: 4 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - ((3 - i) * 7));
+                      return d;
+                    }).map((date, i) => {
+                      // Week starting from 'date'
+                      const weekStart = new Date(date);
+                      weekStart.setDate(weekStart.getDate() - 6); // Look back 7 days
+                      // Approximation: Filter sales in this week window. 
+                      // Actually, simpler to just group by week number or something. 
+                      // Let's stick to simple "Last 4 Weeks" by aggregate
+                      const weekSales = (sales || []).filter(s => {
+                        const sDate = new Date(s.saleDate);
+                        return sDate <= date && sDate > weekStart;
+                      }).reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: `Week ${i + 1}`, value: weekSales };
+                    });
+                  } else {
+                    // Yearly - Last 12 months
+                    dataPoints = Array.from({ length: 12 }, (_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - (11 - i));
+                      return d;
+                    }).map(date => {
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const monthSales = (sales || []).filter(s => s.saleDate.startsWith(monthKey))
+                        .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
+                      return { name: date.toLocaleString('default', { month: 'short' }), value: monthSales };
+                    });
+                  }
+                  return dataPoints;
+                })()}
+              >
+                <defs>
+                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={10} />
+                <Tooltip
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Sales']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#3B82F6" fillOpacity={1} fill="url(#colorSales)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+            <span className="text-gray-600 font-medium">Total Sales Revenue</span>
+            <span className="text-xl font-bold text-blue-600">{formatCurrency(stats?.sales.totalRevenue || 0)}</span>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Orders</span>
-              <span className="font-bold text-gray-900">{stats?.orders.total || 0}</span>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Order Summary</h3>
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              {['weekly', 'monthly', 'yearly'].map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setOrderFilter(period)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${orderFilter === period
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Completed</span>
-              <span className="font-bold text-green-600">{stats?.orders.completed || 0}</span>
+          </div>
+
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={(() => {
+                  let dataPoints = [];
+
+                  if (orderFilter === 'weekly') {
+                    // Last 7 days
+                    dataPoints = Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - (6 - i));
+                      return d;
+                    }).map(date => {
+                      const dateStr = date.toISOString().split('T')[0];
+                      const daySpend = orders.filter(o => o.createdAt.startsWith(dateStr))
+                        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: date.toLocaleString('default', { weekday: 'short' }), spend: daySpend };
+                    });
+                  } else if (orderFilter === 'monthly') {
+                    // Last 4 weeks
+                    dataPoints = Array.from({ length: 4 }, (_, i) => {
+                      const d = new Date();
+                      d.setDate(d.getDate() - ((3 - i) * 7));
+                      return d;
+                    }).map((date, i) => {
+                      const weekStart = new Date(date);
+                      weekStart.setDate(weekStart.getDate() - 6);
+                      const weekSpend = orders.filter(o => {
+                        const oDate = new Date(o.createdAt);
+                        return oDate <= date && oDate > weekStart;
+                      }).reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: `Week ${i + 1}`, spend: weekSpend };
+                    });
+                  } else {
+                    // Yearly - Last 12 months
+                    dataPoints = Array.from({ length: 12 }, (_, i) => {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() - (11 - i));
+                      return d;
+                    }).map(date => {
+                      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                      const monthSpend = orders.filter(o => o.createdAt.startsWith(monthKey))
+                        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+                      return { name: date.toLocaleString('default', { month: 'short' }), spend: monthSpend };
+                    });
+                  }
+                  return dataPoints;
+                })()}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorOrderSpend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  dy={10}
+                />
+                <YAxis
+                  hide={true}
+                />
+                <Tooltip
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Spent']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="spend"
+                  stroke="#8884d8"
+                  fillOpacity={1}
+                  fill="url(#colorOrderSpend)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex justify-between items-end">
+            <div>
+              <p className="text-sm text-gray-500">Total Spent</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.orders.totalSpent || 0)}</p>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Spent</span>
-              <span className="font-bold text-blue-600">{formatCurrency(stats?.orders.totalSpent || 0)}</span>
+            <div className="text-right">
+              <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+                <TrendingUp size={14} />
+                Shopping Trend
+              </p>
             </div>
           </div>
         </div>
@@ -720,15 +898,37 @@ const RetailerDashboard = () => {
   const renderCustomerShipments = () => {
     // Filter for dropship orders
     const dropshipOrders = orders.filter(
-      (order: any) => order.isDropship && order.customerDetails
+      (order: any) => {
+        const isDropshipValid = order.isDropship && order.customerDetails;
+        if (!isDropshipValid) return false;
+
+        if (customerSearch) {
+          const searchLower = customerSearch.toLowerCase();
+          const nameMatch = order.customerDetails.name.toLowerCase().includes(searchLower);
+          const emailMatch = order.customerDetails.email.toLowerCase().includes(searchLower);
+          const orderMatch = (order.orderNumber || order._id).toLowerCase().includes(searchLower);
+          return nameMatch || emailMatch || orderMatch;
+        }
+        return true;
+      }
     );
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments ({dropshipOrders.length})</h2>
             <p className="text-sm text-gray-600 mt-1">Track your dropship orders and shipments to customers.</p>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search by customer name, email..."
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+            />
           </div>
         </div>
 
@@ -753,6 +953,7 @@ const RetailerDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tracking Details</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
@@ -805,6 +1006,30 @@ const RetailerDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
+                        <div className="text-sm">
+                          {order.trackingId ? (
+                            <div className="space-y-1">
+                              <p className="font-medium text-gray-900">ID: <span className="font-mono text-gray-600">{order.trackingId}</span></p>
+                              {order.deliveryTrackingLink ? (
+                                <a
+                                  href={order.deliveryTrackingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                >
+                                  Track Shipment
+                                  <ArrowUpRight size={12} />
+                                </a>
+                              ) : (
+                                <span className="text-gray-500 text-xs">No link available</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">Pending</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         {order.customerInvoiceUrl ? (
                           <a
                             href={order.customerInvoiceUrl}
@@ -813,7 +1038,7 @@ const RetailerDashboard = () => {
                             className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
                           >
                             <FileText size={16} />
-                            Delivery Note
+                            Customer Invoice
                           </a>
                         ) : (
                           <span className="text-xs text-gray-400">Processing...</span>
@@ -834,23 +1059,16 @@ const RetailerDashboard = () => {
                             )}
                             Get Tax Invoice
                           </button>
-                          <button
-                            onClick={() => openCustomerInvoiceModal(order._id)}
-                            className="flex items-center gap-2 text-green-600 hover:text-green-800 font-medium text-sm"
-                          >
-                            <FileText size={16} />
-                            Create Customer Invoice
-                          </button>
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
+            </div >
+          </div >
         )}
-      </div>
+      </div >
     );
   };
 
@@ -1014,69 +1232,72 @@ const RetailerDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quotedProducts.map(qp => (
-              <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
-                {qp.product.images && qp.product.images[0] && (
-                  <div className="relative">
-                    <img
-                      src={qp.product.images[0]}
-                      alt={qp.product.name}
-                      className="w-full h-48 object-cover"
-                    />
-                    <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                      Special Price
-                    </span>
-                    {qp.product.category && (
-                      <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
-                        {qp.product.category}
+            {quotedProducts.filter(qp => qp && qp.product).map(qp => {
+              const stock = qp.product.stock || 0;
+              return (
+                <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+                  {qp.product.images && qp.product.images[0] && (
+                    <div className="relative">
+                      <img
+                        src={qp.product.images[0]}
+                        alt={qp.product.name}
+                        className="w-full h-48 object-cover"
+                      />
+                      <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                        Special Price
                       </span>
-                    )}
-                  </div>
-                )}
-                <div className="p-4">
-                  <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
-                  {qp.product.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
-                  )}
-
-                  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-gray-600">Your Quoted Price:</span>
-                      <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
+                      {qp.product.category && (
+                        <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                          {qp.product.category}
+                        </span>
+                      )}
                     </div>
-                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">Original Price:</span>
-                        <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
-                      </div>
+                  )}
+                  <div className="p-4">
+                    <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
+                    {qp.product.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
                     )}
-                    {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                      <div className="mt-2 text-xs text-green-600 font-medium">
-                        Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm text-gray-600">Your Quoted Price:</span>
+                        <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
                       </div>
-                    )}
-                  </div>
+                      {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-500">Original Price:</span>
+                          <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
+                        <div className="mt-2 text-xs text-green-600 font-medium">
+                          Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${qp.product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {qp.product.stock > 0 ? `${qp.product.stock} in stock` : 'Out of stock'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      Updated: {new Date(qp.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`px-2 py-1 rounded-full text-xs ${stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {stock > 0 ? `${stock} in stock` : 'Out of stock'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Updated: {new Date(qp.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
 
-                  <button
-                    onClick={() => handleAddToCart(qp)}
-                    disabled={qp.product.stock <= 0}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart size={16} />
-                    Add to Cart
-                  </button>
+                    <button
+                      onClick={() => handleAddToCart(qp)}
+                      disabled={stock <= 0}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart size={16} />
+                      Add to Cart
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1119,7 +1340,10 @@ const RetailerDashboard = () => {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
                     {quote.status}
                   </span>
-                  <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ml-2 ${quote.type === 'bulk_order' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
+                  </span>
+                  <span className="text-xs text-gray-500 ml-auto">{new Date(quote.createdAt).toLocaleDateString()}</span>
                 </div>
 
                 <div className="mb-4">
@@ -1183,12 +1407,12 @@ const RetailerDashboard = () => {
                 {quote.status === 'responded' && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => acceptQuote(quote._id)}
+                      onClick={() => acceptQuote(quote)}
                       disabled={loading}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
                     >
                       <ThumbsUp size={16} />
-                      Accept
+                      {quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept'}
                     </button>
                     <button
                       onClick={() => rejectQuote(quote._id)}
@@ -1322,7 +1546,19 @@ const RetailerDashboard = () => {
               <div className="bg-gray-50 px-6 py-4 border-b flex flex-wrap justify-between items-center gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Order ID</p>
-                  <p className="font-medium">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</p>
+                  <p className="font-medium">
+                    #{order.orderNumber || order._id.slice(-8).toUpperCase()}
+                    {order.isDropship && (
+                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
+                        Dropship
+                      </span>
+                    )}
+                  </p>
+                  {order.isDropship && order.customerDetails && (
+                    <p className="text-xs text-blue-600 font-medium mt-0.5">
+                      Ship to: {order.customerDetails.name}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Date</p>
@@ -1395,21 +1631,46 @@ const RetailerDashboard = () => {
   // Render Inventory Tab
   const renderInventory = () => (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+      <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">My Inventory</h2>
-        <div className="flex gap-2">
-          {['all', 'in_stock', 'sold'].map(filter => (
-            <button
-              key={filter}
-              onClick={() => setInventoryFilter(filter)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
-            </button>
-          ))}
+
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search inventory..."
+              value={inventorySearch}
+              onChange={(e) => setInventorySearch(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
+            />
+          </div>
+
+          <select
+            value={inventoryCategory}
+            onChange={(e) => setInventoryCategory(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Categories</option>
+            {inventoryCategories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
+          <div className="flex gap-2">
+            {['all', 'in_stock', 'sold'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => setInventoryFilter(filter)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1872,63 +2133,7 @@ const RetailerDashboard = () => {
 
 
       {/* Customer Invoice Modal */}
-      {showCustomerInvoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Generate Customer Invoice</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Enter the details for the invoice you want to provide to your customer. You are listed as the seller.
-            </p>
 
-            <form onSubmit={handleGenerateCustomerInvoice} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Selling Price (to Customer) *</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={customerInvoiceData.sellingPrice}
-                    onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, sellingPrice: e.target.value })}
-                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number (Optional)</label>
-                <input
-                  type="text"
-                  value={customerInvoiceData.invoiceNumber}
-                  onChange={(e) => setCustomerInvoiceData({ ...customerInvoiceData, invoiceNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., INV-001"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCustomerInvoiceModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading || !customerInvoiceData.sellingPrice}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {loading ? 'Generating...' : 'Generate PDF'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* Generic Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}

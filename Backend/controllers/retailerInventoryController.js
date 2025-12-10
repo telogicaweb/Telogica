@@ -13,7 +13,7 @@ exports.getRetailerInventory = async (req, res) => {
     if (status) filter.status = status;
 
     const inventory = await RetailerInventory.find(filter)
-      .populate('product', 'name images')
+      .populate('product', 'name images category description')
       .populate('productUnit')
       .populate('purchaseOrder')
       .sort({ purchaseDate: -1 });
