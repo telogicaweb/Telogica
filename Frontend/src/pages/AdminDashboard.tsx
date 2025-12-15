@@ -493,7 +493,6 @@ const AdminDashboard: React.FC = () => {
         loadWarranties(),
         loadInvestorDocuments(),
         loadEmailLogs(),
-        loadEmailLogs(),
         loadContacts(),
         loadDropshipOrders(),
       ]);
@@ -4914,10 +4913,10 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5 text-sm text-gray-900">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          {new Date(log.sentAt).toLocaleDateString()}
+                          {log.sentAt ? new Date(log.sentAt).toLocaleDateString() : 'Not sent'}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {new Date(log.sentAt).toLocaleTimeString()}
+                          {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : 'Pending'}
                         </div>
                       </td>
                       <td className="px-6 py-4">

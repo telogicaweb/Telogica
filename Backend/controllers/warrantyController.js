@@ -380,7 +380,13 @@ exports.checkSerialNumber = async (req, res) => {
       valid: true,
       productUnit,
       alreadyRegistered: !!existingWarranty,
-      warranty: existingWarranty || null
+      warranty: existingWarranty ? {
+        status: existingWarranty.status,
+        productName: existingWarranty.productName,
+        serialNumber: existingWarranty.serialNumber,
+        purchaseDate: existingWarranty.purchaseDate,
+        registeredOn: existingWarranty.createdAt
+      } : null
     });
   } catch (error) {
     console.error('Error checking serial number:', error);

@@ -19,6 +19,7 @@ const WarrantyRegistration = () => {
     invoice: ''
   });
   const [warranties, setWarranties] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [serialValid, setSerialValid] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
@@ -31,6 +32,7 @@ const WarrantyRegistration = () => {
       return;
     }
     fetchWarranties();
+    fetchProducts();
   }, [user]);
 
   const fetchWarranties = async () => {
@@ -47,14 +49,24 @@ const WarrantyRegistration = () => {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const res = await api.get('/api/products');
+      setProducts(res.data.products || res.data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+    }
+  };
+
   const checkSerialNumber = async (serialNumber: string) => {
-    if (!serialNumber) return;
+    if (!serialNumber || !formData.productId) return;
 
     try {
-      const res = await api.get(`/api/warranties/check-serial?serialNumber=${serialNumber}`);
+      const res = await api.get(`/api/warranties/check-serial?serialNumber=${serialNumber}&productId=${formData.productId}`);
       setSerialValid(res.data.valid && !res.data.alreadyRegistered);
       if (res.data.alreadyRegistered) {
-        setExistingWarrantyInfo(res.data.warrantyInfo);
+        setExistingWarrantyInfo(res.data.warranty);
         toast.warning('This serial number is already registered for warranty. Check details below.');
       } else {
         setExistingWarrantyInfo(null);
@@ -66,7 +78,7 @@ const WarrantyRegistration = () => {
   };
 
   const handleSerialBlur = () => {
-    if (formData.serialNumber) {
+    if (formData.serialNumber && formData.productId) {
       checkSerialNumber(formData.serialNumber);
     }
   };
@@ -311,16 +323,28 @@ const WarrantyRegistration = () => {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Name *
+                    Product *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    value={formData.productName}
-                    onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                    value={formData.productId}
+                    onChange={(e) => {
+                      const selectedProduct = products.find(p => p._id === e.target.value);
+                      setFormData({ 
+                        ...formData, 
+                        productId: e.target.value,
+                        productName: selectedProduct ? selectedProduct.name : ''
+                      });
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter product name"
-                  />
+                  >
+                    <option value="">Select a product</option>
+                    {products.map((product) => (
+                      <option key={product._id} value={product._id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
