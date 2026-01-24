@@ -1,118 +1,158 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const slides = [
+// Industry categories with their respective background images
+export const industries = [
   {
-    id: 1,
-    title: 'Manufacturing Excellence',
-    subtitle: 'Quality Innovation',
-    description: 'For Industrial Applications',
-    text: 'Providing nationwide services to industries and government organizations with precision manufacturing and engineering excellence.',
-    image: '../hero-slide-1.jpg',
+    id: 'defence',
+    name: 'Defence/Military',
+    image: '/hero-slide-1.jpg',
+    link: '/products?category=defence',
+    category: 'defence',
   },
   {
-    id: 2,
-    title: 'Defense Technology',
-    subtitle: 'Advanced Solutions',
-    description: 'For National Security',
-    text: 'Delivering cutting-edge electronics and communication solutions designed for mission-critical defense applications.',
-    image: '../hero-slide-2.jpg',
+    id: 'telecom',
+    name: 'Telecommunication',
+    image: '/hero-slide-2.jpg',
+    link: '/products?category=telecommunication',
+    category: 'telecommunication',
   },
   {
-    id: 3,
-    title: 'Precision Engineering',
-    subtitle: 'For Critical Systems',
-    description: '',
-    text: 'Empowering Defence and Telecom sectors with advanced Test & Measuring Equipment. Where innovation meets reliability and performance.',
-    image: '../hero-slide-3.jpg',
+    id: 'railway',
+    name: 'Railway',
+    image: '/hero-slide-3.jpg',
+    link: '/products?category=railway',
+    category: 'railway',
   },
 ];
 
-export default function Hero() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+interface HeroProps {
+  onIndustryChange?: (industryId: string) => void;
+}
 
+export default function Hero({ onIndustryChange }: HeroProps) {
+  const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+
+  // Auto-rotate background when no industry is hovered
   useEffect(() => {
+    if (activeIndustry) return;
+    
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
+      setCurrentBgIndex((prev) => (prev + 1) % industries.length);
+    }, 4000);
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [activeIndustry]);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  // Notify parent of industry change
+  useEffect(() => {
+    const currentIndustryId = activeIndustry || industries[currentBgIndex].id;
+    onIndustryChange?.(currentIndustryId);
+  }, [activeIndustry, currentBgIndex, onIndustryChange]);
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  // Get current background image
+  const getCurrentBgImage = () => {
+    if (activeIndustry) {
+      const industry = industries.find(i => i.id === activeIndustry);
+      return industry?.image || industries[0].image;
+    }
+    return industries[currentBgIndex].image;
   };
 
   return (
-    <div className="relative h-screen overflow-hidden">
-      {slides.map((slide, index) => (
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Background Images Layer */}
+      {industries.map((industry) => (
         <div
-          key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            index === currentSlide ? 'opacity-100' : 'opacity-0'
+          key={industry.id}
+          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+            getCurrentBgImage() === industry.image ? 'opacity-100' : 'opacity-0'
           }`}
         >
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${slide.image})` }}
-          >
-            <div className="absolute inset-0 bg-black bg-opacity-40" />
-          </div>
-
-          <div className="relative h-full flex flex-col items-center justify-center text-white px-4">
-            <h2 className="text-5xl md:text-7xl font-bold text-center mb-2 max-w-4xl">
-              {slide.title}
-            </h2>
-            <p className="text-2xl md:text-3xl text-center mb-3 max-w-2xl font-semibold">
-              {slide.subtitle}
-            </p>
-            {slide.description && (
-              <p className="text-lg md:text-xl text-center mb-4 max-w-2xl text-gray-200">
-                {slide.description}
-              </p>
-            )}
-            <p className="text-base md:text-lg text-center mb-12 max-w-3xl text-gray-100 leading-relaxed">
-              {slide.text}
-            </p>
-            <div className="flex gap-6">
-              <button className="px-8 py-4 bg-white text-gray-900 font-semibold rounded hover:bg-gray-100 transition-colors">
-                Explore Products
-              </button>
-              <button className="px-8 py-4 border-2 border-white text-white font-semibold rounded hover:bg-white hover:text-gray-900 transition-colors">
-                Contact Us
-              </button>
-            </div>
-          </div>
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${industry.image})` }}
+          />
         </div>
       ))}
 
-      <button
-        onClick={prevSlide}
-        className="absolute left-8 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all backdrop-blur-sm"
-      >
-        <ChevronLeft size={32} />
-      </button>
+      {/* Blue Overlay with Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628]/80 via-[#0a1628]/60 to-[#0a1628]/40" />
 
-      <button
-        onClick={nextSlide}
-        className="absolute right-8 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-all backdrop-blur-sm"
-      >
-        <ChevronRight size={32} />
-      </button>
+      {/* Content */}
+      <div className="relative z-10 min-h-screen flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-32">
+          <div>
+            {/* Left Content */}
+            <div className="max-w-2xl">
+              {/* Main Headline */}
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 leading-tight">
+                <span className="inline-block bg-amber-500 text-white px-3 py-1 mb-2">
+                  Superior
+                </span>
+                <span className="text-white block">
+                  Test & Measuring
+                </span>
+                <span className="text-white block">
+                  Equipment Solutions
+                </span>
+              </h1>
 
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
-              index === currentSlide ? 'bg-white w-8' : 'bg-white bg-opacity-50'
-            }`}
-          />
-        ))}
+              {/* Industry Links */}
+              <div className="space-y-1">
+                {industries.map((industry) => (
+                  <div
+                    key={industry.id}
+                    className="group"
+                    onMouseEnter={() => setActiveIndustry(industry.id)}
+                    onMouseLeave={() => setActiveIndustry(null)}
+                  >
+                    <Link
+                      to={industry.link}
+                      className="flex items-center gap-4 py-3 transition-all duration-300"
+                    >
+                      {/* "for" prefix - only shown on active */}
+                      <span 
+                        className={`text-white/60 text-lg transition-all duration-300 w-8 ${
+                          activeIndustry === industry.id ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      >
+                        for
+                      </span>
+
+                      {/* Industry Name */}
+                      <span 
+                        className={`text-xl md:text-2xl font-medium transition-all duration-300 ${
+                          activeIndustry === industry.id 
+                            ? 'text-amber-500' 
+                            : 'text-white/90 hover:text-white'
+                        }`}
+                      >
+                        {industry.name}
+                      </span>
+
+                      {/* Arrow/GO Button */}
+                      <div className="ml-auto flex items-center">
+                        {activeIndustry === industry.id ? (
+                          <span className="flex items-center gap-1 bg-amber-500 text-white px-4 py-2 rounded text-sm font-semibold transition-all duration-300">
+                            GO
+                            <ChevronRight className="w-4 h-4" />
+                          </span>
+                        ) : (
+                          <span className="w-10 h-10 rounded-full border-2 border-white/30 flex items-center justify-center text-white/60 group-hover:border-white/60 group-hover:text-white transition-all duration-300">
+                            <ChevronRight className="w-5 h-5" />
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
