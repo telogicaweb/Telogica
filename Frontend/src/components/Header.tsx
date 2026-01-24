@@ -18,60 +18,70 @@ export default function Header() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-      <div className="border-b border-gray-200 hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-end items-center h-10 text-sm">
-            <nav className="flex gap-8">
-              <Link to="/about" className="text-gray-700 hover:text-gray-900 transition-colors">About US</Link>
-              <Link to="/investors" className="text-gray-700 hover:text-gray-900 transition-colors">INVESTORS</Link>
-              <Link to="/blog" className="text-gray-700 hover:text-gray-900 transition-colors">BLOG</Link>
-            </nav>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+          <div className="flex justify-between items-center h-14">
             {/* Mobile Menu Button */}
             <div className="md:hidden">
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="text-gray-700 hover:text-gray-900 p-2"
                 aria-label="Toggle menu"
               >
-                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-8">
-              <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-2">
-                <Home size={20} />
-                <span className="font-medium">Home</span>
-              </Link>
-              <Link to="/products" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">PRODUCTS</Link>
-              <Link to="/contact" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">CONTACT</Link>
-            </nav>
-
             {/* Logo */}
-            <Link to="/" className="absolute left-1/2 transform -translate-x-1/2 cursor-pointer hover:opacity-80 transition-opacity">
-              <img src="../telogica_logo.png" alt="Telogica" className="h-20 md:h-16 w-auto" />
+            <Link
+              to="/"
+              className="relative flex items-center gap-2 group"
+              aria-label="Telogica"
+            >
+              <span className="relative h-10 w-[160px]">
+                <img
+                  src="../logohead.png"
+                  alt="Telogica"
+                  className="absolute inset-0 h-10 w-auto opacity-100 transition-all duration-500 ease-out group-hover:opacity-0 group-hover:-translate-y-1 group-hover:scale-95"
+                />
+                <img
+                  src="../telogica_logo.png"
+                  alt="Telogica"
+                  className="absolute inset-0 h-10 w-auto opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 drop-shadow-[0_6px_14px_rgba(37,99,235,0.35)]"
+                />
+                <span className="absolute -inset-2 rounded-md opacity-0 transition-opacity duration-500 group-hover:opacity-100" style={{ boxShadow: '0 0 20px rgba(37, 99, 235, 0.35)' }} />
+              </span>
             </Link>
 
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-6 text-sm">
+              <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-2">
+                <Home size={18} />
+                <span className="font-medium">Home</span>
+              </Link>
+              <Link to="/products" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">Products</Link>
+              <Link to="/contact" className="text-gray-700 hover:text-gray-900 transition-colors font-medium">Contact</Link>
+              <Link to="/about" className="text-gray-700 hover:text-gray-900 transition-colors">About Us</Link>
+              <Link to="/investors" className="text-gray-700 hover:text-gray-900 transition-colors">Investors</Link>
+              <Link to="/blog" className="text-gray-700 hover:text-gray-900 transition-colors">Blog</Link>
+            </nav>
+
             {/* Icons */}
-            <div className="flex items-center gap-4 md:gap-6">
+            <div className="flex items-center gap-4">
               <button className="text-gray-700 hover:text-gray-900 transition-colors hidden sm:block" aria-label="Search">
-                <Search size={22} />
+                <Search size={20} />
               </button>
-              
+
               {user ? (
-                <div className="flex items-center gap-2 md:gap-4">
-                  <Link to={user.role === 'admin' ? '/admin' : user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard'} className="text-gray-700 hover:text-gray-900 transition-colors" aria-label="Dashboard">
-                    <User size={22} />
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={user.role === 'admin' ? '/admin' : user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard'}
+                    className="text-gray-700 hover:text-gray-900 transition-colors"
+                    aria-label="Dashboard"
+                  >
+                    <User size={20} />
                   </Link>
                   <button onClick={handleLogout} className="text-gray-700 hover:text-gray-900 transition-colors" aria-label="Logout">
-                    <LogOut size={22} />
+                    <LogOut size={20} />
                   </button>
                 </div>
               ) : (
@@ -81,21 +91,20 @@ export default function Header() {
               )}
 
               <Link to="/cart" className="text-gray-700 hover:text-gray-900 transition-colors relative" aria-label="Cart">
-                <ShoppingCart size={22} />
+                <ShoppingCart size={20} />
                 {cart.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {cart.length}
                   </span>
                 )}
               </Link>
-              
-              <Link to="/quote" className="text-gray-700 hover:text-gray-900 transition-colors font-bold text-sm hidden sm:block">
+
+              <Link to="/quote" className="text-gray-700 hover:text-gray-900 transition-colors font-bold text-xs hidden sm:block">
                 QUOTE ({quoteItems.length})
               </Link>
             </div>
           </div>
         </div>
-      </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
@@ -104,6 +113,9 @@ export default function Header() {
             <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</Link>
             <Link to="/products" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Products</Link>
             <Link to="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Contact</Link>
+            <Link to="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">About Us</Link>
+            <Link to="/investors" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Investors</Link>
+            <Link to="/blog" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Blog</Link>
             <Link to="/quote" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
               Quote Request ({quoteItems.length})
             </Link>
@@ -113,10 +125,9 @@ export default function Header() {
       </header>
 
       {/* Spacer to offset the fixed header so page content does not sit underneath it.
-          Mobile: header height = h-20 (80px)
-          Desktop (md+): top strip (h-10) + main (h-20) = 120px -> md:h-[120px]
+          Mobile/Desktop: header height = h-14 (56px)
           Using a spacer here avoids adding <br/> to every page and centralizes the layout fix. */}
-      <div className="h-10 md:h-[60px] w-full" aria-hidden="true" />
+      <div className="h-14 w-full" aria-hidden="true" />
     </>
   );
 }

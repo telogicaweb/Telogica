@@ -3,8 +3,8 @@ import api from '../api';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import Hero from '../components/Hero';
-import { ShoppingCart, FileText, Eye, Package } from 'lucide-react';
+import Hero, { industries } from '../components/Hero';
+import { ShoppingCart, FileText, Eye, Package, ArrowRight } from 'lucide-react';
 
 interface Product {
   _id: string;
@@ -24,6 +24,7 @@ const Home = () => {
   }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [heroIndustry, setHeroIndustry] = useState('defence');
   const [categories, setCategories] = useState([{ value: 'all', label: 'ALL' }]);
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
@@ -66,189 +67,139 @@ const Home = () => {
     ? products.filter(p => p.isRecommended)
     : products.filter(p => p.category.toLowerCase() === activeCategory && p.isRecommended);
 
+  // Get products for the current hero industry
+  const heroProducts = products.filter(p => 
+    p.category.toLowerCase() === heroIndustry.toLowerCase() ||
+    (heroIndustry === 'telecom' && p.category.toLowerCase() === 'telecommunication') ||
+    (heroIndustry === 'defence' && p.category.toLowerCase() === 'defence')
+  ).slice(0, 6);
+
+  // Get current industry info
+  const currentIndustry = industries.find(i => i.id === heroIndustry) || industries[0];
+
+  // Industry filter buttons
+  const industryButtons = [
+    { id: 'defence', name: 'Defence/Military' },
+    { id: 'telecom', name: 'Telecommunication' },
+    { id: 'railway', name: 'Railway' },
+  ];
+
   return (
     <div className="bg-gray-50 min-h-screen">
-      <Hero />
-      {/* Products Section */}
-      <section id="products" className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Featured Products
+      <Hero onIndustryChange={setHeroIndustry} />
+      
+      {/* Industry Products Showcase - Synced with Hero */}
+      <section className="py-20 bg-white relative overflow-hidden">
+        {/* Decorative diagonal stripe */}
+        <div 
+          className="absolute inset-0 opacity-5 pointer-events-none"
+          style={{
+            background: 'linear-gradient(135deg, transparent 45%, #1e3a8a 45%, #1e3a8a 55%, transparent 55%)',
+          }}
+        />
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Section Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0a1628] mb-4">
+              Explore Our Products
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Our top picks for innovative solutions across Telecom, Defence, and Railway industries
+            <p className="text-lg text-gray-600 max-w-4xl">
+              Discover Telogica’s range of test and measuring equipment built for Defence, Telecommunication, and Railway applications. 
+              Browse featured products below and switch categories to view what’s available for each sector.
             </p>
           </div>
 
-          {/* Category Filter */}
-          <div className="flex justify-center gap-3 mb-12 flex-wrap">
-            {categories.map((category) => (
+          {/* Industry Filter Buttons */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            {industryButtons.map((industry) => (
               <button
-                key={category.value}
-                onClick={() => setActiveCategory(category.value)}
-                className={`px-6 py-2.5 rounded-lg font-semibold transition-all text-sm ${
-                  activeCategory === category.value
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300 hover:border-indigo-300'
+                key={industry.id}
+                onClick={() => setHeroIndustry(industry.id)}
+                className={`px-8 py-3 rounded-lg font-semibold text-lg transition-all duration-300 ${
+                  heroIndustry === industry.id
+                    ? 'bg-[#1e3a8a] text-white shadow-lg shadow-blue-200'
+                    : 'bg-gray-100 text-[#0a1628] hover:bg-gray-200 border border-gray-300'
                 }`}
               >
-                {category.label}
+                {industry.name}
               </button>
             ))}
           </div>
 
-          {/* Product Grid */}
-          {filteredProducts.length === 0 ? (
-            <div className="text-center py-20">
-              <Package className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 text-lg">No featured products found in this category.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map(product => (
-                <div 
-                  key={product._id} 
-                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col border border-gray-200"
+          {/* Dynamic Products Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+            {heroProducts.length > 0 ? (
+              heroProducts.map((product, index) => (
+                <Link 
+                  key={product._id}
+                  to={`/product/${product._id}`}
+                  className="group relative overflow-hidden rounded-lg bg-white shadow-lg hover:shadow-xl transition-all duration-500"
                 >
-                  {/* Product Image */}
-                  <div className="relative h-56 overflow-hidden bg-gray-100">
-                    <img 
-                      src={product.images[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                  {/* Image Container with Blue Overlay */}
+                  <div className="relative h-72 overflow-hidden">
+                    {/* Diagonal Blue Accent */}
+                    <div 
+                      className="absolute inset-0 z-10 opacity-60"
+                      style={{
+                        background: 'linear-gradient(135deg, transparent 30%, rgba(30, 58, 138, 0.8) 30%, rgba(30, 58, 138, 0.8) 70%, transparent 70%)',
+                      }}
                     />
+                    
+                    {/* Product Image */}
+                    <img 
+                      src={product.images[0] || '/hero-slide-1.jpg'} 
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    
+                    {/* Blue Bottom Section */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-[#1e3a8a] py-4 px-6 z-20">
+                      <h3 className="text-white text-xl font-bold text-center">
+                        {product.name}
+                      </h3>
+                    </div>
                   </div>
-
-                  {/* Product Info */}
-                  <div className="p-5 flex-grow flex flex-col">
-                    <div className="mb-2">
-                      <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-                        {product.category}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-3">
-                      {product.description}
-                    </p>
-                    
-                    {/* Price */}
-                    <div className="mb-4">
-                      {user?.role === 'retailer' ? (
-                        // Retailer-specific pricing
-                        product.retailerPrice ? (
-                          <div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold text-gray-900">₹{product.retailerPrice.toLocaleString()}</span>
-                              <span className="text-sm text-gray-500">+ GST</span>
-                            </div>
-                            <p className="text-xs text-indigo-600 mt-1">Retailer Price</p>
-                          </div>
-                        ) : (
-                          <p className="text-lg font-semibold text-blue-600">Request Quote</p>
-                        )
-                      ) : (
-                        // Regular user pricing - Only show price for Telecommunication products without quote requirement
-                        (product.category?.toLowerCase() === 'telecommunication') && product.price && !product.requiresQuote ? (
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
-                            <span className="text-sm text-gray-500">+ GST</span>
-                          </div>
-                        ) : (
-                          <p className="text-lg font-semibold text-blue-600">Request Quote</p>
-                        )
-                      )}
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-2 mt-auto">
-                      <Link 
-                        to={`/product/${product._id}`} 
-                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Details
-                      </Link>
-                      <div className="grid grid-cols-2 gap-2">
-                        {user?.role === 'retailer' ? (
-                          // Retailers must request quote for all purchases
-                          <button 
-                            onClick={() => handleAddToQuote(product)} 
-                            className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Request Quote
-                          </button>
-                        ) : (
-                          <>
-                            {product.category.toLowerCase() === 'telecom' && product.price && !product.requiresQuote && (
-                              <button 
-                                onClick={() => handleAddToCart(product)} 
-                                className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
-                              >
-                                <ShoppingCart className="w-4 h-4" />
-                                Cart
-                              </button>
-                            )}
-                            <button 
-                              onClick={() => handleAddToQuote(product)} 
-                              className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${(product.category.toLowerCase() !== 'telecom' || !product.price || product.requiresQuote) ? 'col-span-2' : ''}`}
-                            >
-                              <FileText className="w-4 h-4" />
-                              Quote
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                  
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-[#0a1628]/90 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-6 z-30">
+                    <h3 className="text-white text-xl font-bold mb-3 text-center">{product.name}</h3>
+                    <p className="text-white/80 text-sm text-center mb-4 line-clamp-3">{product.description}</p>
+                    <span className="flex items-center gap-2 text-amber-500 font-semibold">
+                      View Details <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              // Placeholder cards when no products
+              [1, 2, 3, 4, 5, 6].map((i) => (
+                <div 
+                  key={i}
+                  className="relative overflow-hidden rounded-lg bg-gray-100 h-72 flex items-center justify-center"
+                >
+                  <div className="text-center p-6">
+                    <Package className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500">Products coming soon</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
-          {/* View All Products Button */}
-          <div className="mt-16 text-center">
-            <Link
-              to="/products"
-              className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-all hover:shadow-lg hover:-translate-y-0.5"
+          {/* View More Link */}
+          <div className="mt-10 text-center">
+            <Link 
+              to={currentIndustry.link}
+              className="inline-flex items-center gap-2 text-[#1e3a8a] font-semibold text-lg hover:text-amber-500 transition-colors"
             >
-              View All Products
-              <span className="ml-2">→</span>
+              View all {currentIndustry.name} products
+              <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-indigo-600 to-indigo-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Need a Custom Solution?
-          </h2>
-          <p className="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
-            Our team is ready to help you find the perfect products for your needs
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/quote"
-              className="inline-flex items-center justify-center gap-2 bg-white text-indigo-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold"
-            >
-              <FileText className="w-5 h-5" />
-              Request a Quote
-            </Link>
-            <a
-              href="#products"
-              className="inline-flex items-center justify-center gap-2 bg-indigo-700 text-white px-8 py-3 rounded-lg hover:bg-indigo-800 transition-colors font-semibold border-2 border-white"
-            >
-              <Package className="w-5 h-5" />
-              Browse Products
-            </a>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };
