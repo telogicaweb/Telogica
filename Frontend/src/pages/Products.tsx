@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext, useCallback } from 'react';
 import api from '../api';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { ShoppingCart, FileText, Eye, Package, Search, Filter } from 'lucide-react';
@@ -20,16 +20,28 @@ interface Product {
 }
 
 const Products = () => {
+  const [searchParams] = useSearchParams();
+  const categoryFromUrl = searchParams.get('category');
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(categoryFromUrl || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
+
+  // Update category when URL changes
+  useEffect(() => {
+    console.log('Category from URL:', categoryFromUrl);
+    console.log('Current activeCategory:', activeCategory);
+    if (categoryFromUrl) {
+      setActiveCategory(categoryFromUrl);
+    }
+  }, [categoryFromUrl]);
 
   useEffect(() => {
     fetchProducts();
@@ -38,14 +50,16 @@ const Products = () => {
   const filterProducts = useCallback(() => {
     let filtered = products;
 
-    // Filter by category
+    // Filter by category (case-insensitive)
     if (activeCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === activeCategory);
+      filtered = filtered.filter(p =>
+        p.category?.toLowerCase() === activeCategory.toLowerCase()
+      );
     }
 
     // Filter by search query
     if (searchQuery) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -136,11 +150,10 @@ const Products = () => {
                   <button
                     key={category.value}
                     onClick={() => setActiveCategory(category.value)}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                      activeCategory === category.value
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${activeCategory.toLowerCase() === category.value.toLowerCase()
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                   >
                     {category.label}
                   </button>
@@ -181,16 +194,16 @@ const Products = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map(product => (
-              <div 
-                key={product._id} 
+              <div
+                key={product._id}
                 className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col border border-gray-200"
               >
                 {/* Product Image */}
                 <div className="relative h-56 overflow-hidden bg-gray-100">
-                  <img 
-                    src={product.images[0] || '/placeholder.jpg'} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                  <img
+                    src={product.images[0] || '/placeholder.jpg'}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                 </div>
 
@@ -202,14 +215,14 @@ const Products = () => {
                   <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-3">
                     {product.description}
                   </p>
-                  
+
                   {/* Warranty Info */}
                   {product.warrantyPeriodMonths && (
                     <div className="mb-3 text-xs text-gray-500">
                       <span className="font-medium">Warranty:</span> {product.warrantyPeriodMonths} months
                     </div>
                   )}
-                  
+
                   {/* Price */}
                   <div className="mb-4">
                     {user?.role === 'retailer' ? (
@@ -237,11 +250,11 @@ const Products = () => {
                       )
                     )}
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-2 mt-auto">
-                    <Link 
-                      to={`/product/${product._id}`} 
+                    <Link
+                      to={`/product/${product._id}`}
                       className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
                     >
                       <Eye className="w-4 h-4" />
@@ -252,15 +265,15 @@ const Products = () => {
                         // Retailers can buy with retailer price if available, or request quote
                         product.retailerPrice ? (
                           <>
-                            <button 
-                              onClick={() => handleAddToCart(product, true)} 
+                            <button
+                              onClick={() => handleAddToCart(product, true)}
                               className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
                             >
                               <ShoppingCart className="w-4 h-4" />
                               Buy Now
                             </button>
-                            <button 
-                              onClick={() => handleAddToQuote(product)} 
+                            <button
+                              onClick={() => handleAddToQuote(product)}
                               className="flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
                             >
                               <FileText className="w-4 h-4" />
@@ -268,8 +281,8 @@ const Products = () => {
                             </button>
                           </>
                         ) : (
-                          <button 
-                            onClick={() => handleAddToQuote(product)} 
+                          <button
+                            onClick={() => handleAddToQuote(product)}
                             className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
                           >
                             <FileText className="w-4 h-4" />
@@ -279,16 +292,16 @@ const Products = () => {
                       ) : (
                         <>
                           {product.isTelecom && (
-                            <button 
-                              onClick={() => handleAddToCart(product)} 
+                            <button
+                              onClick={() => handleAddToCart(product)}
                               className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
                             >
                               <ShoppingCart className="w-4 h-4" />
                               Cart
                             </button>
                           )}
-                          <button 
-                            onClick={() => handleAddToQuote(product)} 
+                          <button
+                            onClick={() => handleAddToQuote(product)}
                             className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${!product.isTelecom ? 'col-span-2' : ''}`}
                           >
                             <FileText className="w-4 h-4" />

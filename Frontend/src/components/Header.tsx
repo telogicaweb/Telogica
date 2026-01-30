@@ -19,7 +19,7 @@ export default function Header() {
     <>
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-14">
+          <div className="flex justify-between items-center h-20">
             {/* Mobile Menu Button */}
             <div className="md:hidden">
               <button
@@ -37,18 +37,17 @@ export default function Header() {
               className="relative flex items-center gap-2 group"
               aria-label="Telogica"
             >
-              <span className="relative h-10 w-[160px]">
+              <span className="relative h-14 w-[200px]">
                 <img
                   src="../logohead.png"
                   alt="Telogica"
-                  className="absolute inset-0 h-10 w-auto opacity-100 transition-all duration-500 ease-out group-hover:opacity-0 group-hover:-translate-y-1 group-hover:scale-95"
+                  className="absolute inset-0 h-14 w-auto opacity-100 transition-all duration-500 ease-out group-hover:opacity-0 group-hover:-translate-y-1 group-hover:scale-95"
                 />
                 <img
                   src="../telogica_logo.png"
                   alt="Telogica"
-                  className="absolute inset-0 h-10 w-auto opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105 drop-shadow-[0_6px_14px_rgba(37,99,235,0.35)]"
+                  className="absolute inset-0 h-14 w-auto opacity-0 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-105"
                 />
-                <span className="absolute -inset-2 rounded-md opacity-0 transition-opacity duration-500 group-hover:opacity-100" style={{ boxShadow: '0 0 20px rgba(37, 99, 235, 0.35)' }} />
               </span>
             </Link>
 
@@ -106,28 +105,28 @@ export default function Header() {
           </div>
         </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</Link>
-            <Link to="/products" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Products</Link>
-            <Link to="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Contact</Link>
-            <Link to="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">About Us</Link>
-            <Link to="/investors" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Investors</Link>
-            <Link to="/blog" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Blog</Link>
-            <Link to="/quote" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-              Quote Request ({quoteItems.length})
-            </Link>
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-200">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</Link>
+              <Link to="/products" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Products</Link>
+              <Link to="/contact" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Contact</Link>
+              <Link to="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">About Us</Link>
+              <Link to="/investors" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Investors</Link>
+              <Link to="/blog" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Blog</Link>
+              <Link to="/quote" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+                Quote Request ({quoteItems.length})
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </header>
 
       {/* Spacer to offset the fixed header so page content does not sit underneath it.
           Mobile/Desktop: header height = h-14 (56px)
           Using a spacer here avoids adding <br/> to every page and centralizes the layout fix. */}
-      <div className="h-14 w-full" aria-hidden="true" />
+      <div className="h-20 w-full" aria-hidden="true" />
     </>
   );
 }
