@@ -5,6 +5,7 @@ import { ToastProvider } from './context/ToastContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import ScrollToTop from './components/ScrollToTop';
 import About from './pages/About';
 import Investors from './pages/Investors';
 import Blog from './pages/Blog';
@@ -86,6 +87,7 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <Router>
+            <ScrollToTop />
             <AppContent />
           </Router>
         </CartProvider>
