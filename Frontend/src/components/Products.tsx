@@ -1,17 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const products = [
   {
     id: 1,
     name: '5G Network Infrastructure',
-    category: 'telecom',
+    category: 'telecommunication',
     image: 'https://images.pexels.com/photos/4458420/pexels-photo-4458420.jpeg?auto=compress&cs=tinysrgb&w=800',
     description: 'Next-generation telecommunications infrastructure',
   },
   {
     id: 2,
     name: 'Fiber Optic Solutions',
-    category: 'telecom',
+    category: 'telecommunication',
     image: 'https://images.pexels.com/photos/4508751/pexels-photo-4508751.jpeg?auto=compress&cs=tinysrgb&w=800',
     description: 'High-speed fiber optic network systems',
   },
@@ -46,7 +47,7 @@ const products = [
   {
     id: 7,
     name: 'Satellite Communication',
-    category: 'telecom',
+    category: 'telecommunication',
     image: 'https://images.pexels.com/photos/586056/pexels-photo-586056.jpeg?auto=compress&cs=tinysrgb&w=800',
     description: 'Global satellite communication solutions',
   },
@@ -59,10 +60,31 @@ const products = [
   },
 ];
 
-type Category = 'all' | 'telecom' | 'defence' | 'railway';
+type Category = 'all' | 'telecommunication' | 'defence' | 'railway';
 
 export default function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeCategory, setActiveCategory] = useState<Category>('all');
+
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      // Normalize to lowercase to match category types
+      let normalizedCategory = categoryParam.toLowerCase();
+
+      // Handle spelling variations
+      if (normalizedCategory === 'defense') {
+        normalizedCategory = 'defence';
+      }
+      if (normalizedCategory === 'telecom') {
+        normalizedCategory = 'telecommunication';
+      }
+
+      if (['telecommunication', 'defence', 'railway'].includes(normalizedCategory)) {
+        setActiveCategory(normalizedCategory as Category);
+      }
+    }
+  }, [searchParams]);
 
   const filteredProducts = activeCategory === 'all'
     ? products
@@ -70,7 +92,7 @@ export default function Products() {
 
   const categories: { value: Category; label: string }[] = [
     { value: 'all', label: 'ALL' },
-    { value: 'telecom', label: 'TELECOM' },
+    { value: 'telecommunication', label: 'TELECOMMUNICATION' },
     { value: 'defence', label: 'DEFENCE' },
     { value: 'railway', label: 'RAILWAY' },
   ];
@@ -89,12 +111,19 @@ export default function Products() {
           {categories.map((category) => (
             <button
               key={category.value}
-              onClick={() => setActiveCategory(category.value)}
-              className={`px-8 py-3 rounded font-semibold transition-all ${
-                activeCategory === category.value
-                  ? 'bg-gray-900 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-              }`}
+              onClick={() => {
+                const newParams = new URLSearchParams(searchParams);
+                if (category.value === 'all') {
+                  newParams.delete('category');
+                } else {
+                  newParams.set('category', category.value);
+                }
+                setSearchParams(newParams);
+              }}
+              className={`px-8 py-3 rounded font-semibold transition-all ${activeCategory === category.value
+                ? 'bg-gray-900 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                }`}
             >
               {category.label}
             </button>
