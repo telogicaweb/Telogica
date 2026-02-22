@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import Hero from '../components/Hero';
+import FeaturedProducts from '../components/FeaturedProducts';
 
 const Home = () => {
   useEffect(() => {
@@ -9,6 +10,7 @@ const Home = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <Hero />
+      <FeaturedProducts />
     </div>
   );
 };
