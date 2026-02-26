@@ -1,5 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { AuthContext } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import Header from './components/Header';
@@ -36,6 +38,44 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import SiteMap from './pages/SiteMap';
 
+function getDashboardPath(role?: string) {
+  if (role === 'admin') return '/admin';
+  if (role === 'retailer') return '/retailer-dashboard';
+  return '/user-dashboard';
+}
+
+function ProtectedRoute({ children, role }: { children: JSX.Element; role?: 'admin' | 'retailer' | 'user' }) {
+  const auth = useContext(AuthContext);
+
+  if (auth?.loading) {
+    return null;
+  }
+
+  if (!auth?.user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (role && auth.user.role !== role) {
+    return <Navigate to={getDashboardPath(auth.user.role)} replace />;
+  }
+
+  return children;
+}
+
+function GuestOnlyRoute({ children }: { children: JSX.Element }) {
+  const auth = useContext(AuthContext);
+
+  if (auth?.loading) {
+    return null;
+  }
+
+  if (auth?.user) {
+    return <Navigate to={getDashboardPath(auth.user.role)} replace />;
+  }
+
+  return children;
+}
+
 function AppContent() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -49,26 +89,26 @@ function AppContent() {
         <Route path="/investors" element={<Investors />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
+        <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/products" element={<Products />} />
         <Route path="/product/:id" element={<ProductDetails />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/quote" element={<Quote />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/add-product" element={<AddProduct />} />
-        <Route path="/admin/edit-product/:id" element={<EditProduct />} />
-        <Route path="/admin/blog-management" element={<BlogManagement />} />
-        <Route path="/admin/team-management" element={<TeamManagement />} />
-        <Route path="/admin/event-management" element={<EventManagement />} />
-        <Route path="/admin/report-management" element={<ReportManagement />} />
-        <Route path="/admin/page-content" element={<PageContent />} />
-        <Route path="/admin/stats-management" element={<StatsManagement />} />
-        <Route path="/admin/retailer-management" element={<RetailerManagement />} />
-        <Route path="/admin/home-page-products" element={<HomePageProducts />} />
-        <Route path="/user-dashboard" element={<UserDashboard />} />
-        <Route path="/retailer-dashboard" element={<RetailerDashboard />} />
+        <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/add-product" element={<ProtectedRoute role="admin"><AddProduct /></ProtectedRoute>} />
+        <Route path="/admin/edit-product/:id" element={<ProtectedRoute role="admin"><EditProduct /></ProtectedRoute>} />
+        <Route path="/admin/blog-management" element={<ProtectedRoute role="admin"><BlogManagement /></ProtectedRoute>} />
+        <Route path="/admin/team-management" element={<ProtectedRoute role="admin"><TeamManagement /></ProtectedRoute>} />
+        <Route path="/admin/event-management" element={<ProtectedRoute role="admin"><EventManagement /></ProtectedRoute>} />
+        <Route path="/admin/report-management" element={<ProtectedRoute role="admin"><ReportManagement /></ProtectedRoute>} />
+        <Route path="/admin/page-content" element={<ProtectedRoute role="admin"><PageContent /></ProtectedRoute>} />
+        <Route path="/admin/stats-management" element={<ProtectedRoute role="admin"><StatsManagement /></ProtectedRoute>} />
+        <Route path="/admin/retailer-management" element={<ProtectedRoute role="admin"><RetailerManagement /></ProtectedRoute>} />
+        <Route path="/admin/home-page-products" element={<ProtectedRoute role="admin"><HomePageProducts /></ProtectedRoute>} />
+        <Route path="/user-dashboard" element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
+        <Route path="/retailer-dashboard" element={<ProtectedRoute role="retailer"><RetailerDashboard /></ProtectedRoute>} />
         <Route path="/warranty" element={<WarrantyRegistration />} />
         <Route path="/warranty-registration" element={<WarrantyRegistration />} />
         <Route path="/retailer-inventory" element={<RetailerInventory />} />

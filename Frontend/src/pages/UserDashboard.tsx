@@ -55,7 +55,7 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
 
@@ -133,7 +133,7 @@ const UserDashboard = () => {
   const proceedToCheckout = async (quote: any) => {
     if (!user) {
       alert('Please login again to continue.');
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
 

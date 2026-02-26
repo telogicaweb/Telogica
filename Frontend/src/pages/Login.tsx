@@ -27,9 +27,13 @@ const Login = () => {
       const { data } = await api.post('/api/auth/login', { email, password });
       login(data);
       if (data.role === 'admin') {
-        navigate('/admin');
+        navigate('/admin', { replace: true });
+      } else if (data.role === 'retailer') {
+        navigate('/retailer-dashboard', { replace: true });
+      } else if (data.role === 'user') {
+        navigate('/user-dashboard', { replace: true });
       } else {
-        navigate('/');
+        navigate('/', { replace: true });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');

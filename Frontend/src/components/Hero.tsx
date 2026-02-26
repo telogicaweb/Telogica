@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
 export const industries = [
   {
     id: 'defence',
@@ -27,9 +26,10 @@ export const industries = [
 
 interface HeroProps {
   onIndustryChange?: (industryId: string) => void;
+  onIndustrySelect?: (industryId: string) => void;
 }
 
-export default function Hero({ onIndustryChange }: HeroProps) {
+export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) {
   const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
 
@@ -63,6 +63,10 @@ export default function Hero({ onIndustryChange }: HeroProps) {
 
   const handleIndustryLeave = () => {
     setActiveIndustry(null);
+  };
+
+  const handleIndustryClick = (industryId: string) => {
+    onIndustrySelect?.(industryId);
   };
 
   return (
@@ -115,8 +119,9 @@ export default function Hero({ onIndustryChange }: HeroProps) {
                   onMouseEnter={() => handleIndustryHover(industry.id)}
                   onMouseLeave={handleIndustryLeave}
                 >
-                  <Link
-                    to={industry.link}
+                  <button
+                    type="button"
+                    onClick={() => handleIndustryClick(industry.id)}
                     className="flex items-center gap-4 py-4 transition-all duration-300"
                   >
                     {/* "for" text that appears on hover */}
@@ -162,7 +167,7 @@ export default function Hero({ onIndustryChange }: HeroProps) {
                         </span>
                       )}
                     </div>
-                  </Link>
+                  </button>
                 </div>
               ))}
             </div>
