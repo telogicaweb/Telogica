@@ -243,7 +243,10 @@ function CategorySection({
           <div className="lg:w-[38%] w-full relative">
             <div className="sticky top-24">
               <div className="relative h-[600px] rounded-3xl overflow-hidden shadow-2xl group">
-                <VerticalMarquee products={products} />
+                <VerticalMarquee
+                  products={products}
+                  showPricingActions={catKey === 'telecommunication'}
+                />
               </div>
             </div>
           </div>
@@ -299,7 +302,13 @@ function CategorySection({
   );
 }
 
-function VerticalMarquee({ products }: { products: Product[] }) {
+function VerticalMarquee({
+  products,
+  showPricingActions,
+}: {
+  products: Product[];
+  showPricingActions: boolean;
+}) {
   const { addToCart } = useContext(CartContext)!;
   const scrollItems = products.length > 0 ? [...products, ...products] : [];
 
@@ -339,18 +348,20 @@ function VerticalMarquee({ products }: { products: Product[] }) {
               <Link to={`/product/${product._id}`} className="text-sm font-semibold text-gray-900 hover:underline line-clamp-1 block">
                 {product.name}
               </Link>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-xs text-gray-600">
-                  {product.price ? `Rs ${product.price.toLocaleString('en-IN')}` : 'Quote'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => addToCart(product, 1)}
-                  className="text-xs px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-800"
-                >
-                  Add to Cart
-                </button>
-              </div>
+              {showPricingActions && (
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-600">
+                    {product.price ? `Rs ${product.price.toLocaleString('en-IN')}` : 'Quote'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => addToCart(product, 1)}
+                    className="text-xs px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-800"
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
