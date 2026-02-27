@@ -6,6 +6,7 @@ import {
   Satellite,
   Shield,
   Train,
+  X,
 } from 'lucide-react';
 import api from '../api';
 import { CartContext } from '../context/CartContext';
@@ -66,7 +67,7 @@ const categoryMeta: Record<
       'radial-gradient(circle at 30% 40%, rgba(37, 99, 235, 0.03) 0%, transparent 40%)',
   },
   railway: {
-    label: 'Manufacturing',
+    label: 'Railway',
     color: 'text-emerald-600',
     gradient: 'from-emerald-600 to-emerald-500',
     gradientLight: 'from-emerald-50 to-emerald-100',
@@ -89,6 +90,7 @@ interface FeaturedProductsProps {
   focusCategory?: string | null;
   scrollTrigger?: number;
   isVisible?: boolean;
+  onClose?: () => void;
 }
 
 const normalizeCategory = (category: string) => {
@@ -102,6 +104,7 @@ export default function FeaturedProducts({
   focusCategory = null,
   scrollTrigger = 0,
   isVisible = true,
+  onClose,
 }: FeaturedProductsProps) {
   const [groupedProducts, setGroupedProducts] = useState<Record<string, Product[]>>({});
   const [loading, setLoading] = useState(true);
@@ -161,16 +164,6 @@ export default function FeaturedProducts({
 
   if (!isVisible) return null;
 
-  if (loading) {
-    return (
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-600">Loading products...</p>
-        </div>
-      </section>
-    );
-  }
-
   if (!selectedCategory) {
     return (
       <section className="py-16 bg-gray-50">
@@ -204,6 +197,7 @@ export default function FeaturedProducts({
         activeHover={activeHover}
         setActiveHover={setActiveHover}
         onRef={(el) => (sectionRefs.current[selectedCategory] = el)}
+        onClose={onClose}
       />
     </div>
   );
@@ -216,6 +210,7 @@ function CategorySection({
   activeHover,
   setActiveHover,
   onRef,
+  onClose,
 }: {
   catKey: string;
   index: number;
@@ -223,6 +218,7 @@ function CategorySection({
   activeHover: string | null;
   setActiveHover: (key: string | null) => void;
   onRef: (el: HTMLElement | null) => void;
+  onClose?: () => void;
 }) {
   const products = groupedProducts[catKey] || [];
   const meta = categoryMeta[catKey];
@@ -238,6 +234,16 @@ function CategorySection({
       onMouseEnter={() => setActiveHover(catKey)}
       onMouseLeave={() => setActiveHover(null)}
     >
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 bg-white border border-gray-300 rounded-full p-2 hover:bg-gray-100"
+          aria-label="Close featured products"
+        >
+          <X className="w-4 h-4 text-gray-700" />
+        </button>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className={`flex flex-col lg:flex-row gap-12 lg:gap-16 items-start ${isEven ? '' : 'lg:flex-row-reverse'}`}>
           <div className="lg:w-[38%] w-full relative">
@@ -327,19 +333,19 @@ function VerticalMarquee({
     <div className="marquee-container h-full overflow-hidden bg-gray-50">
       <div
         className="marquee-track flex flex-col gap-3 p-4 will-change-transform"
-        style={{ ['--marquee-duration' as string]: `${Math.max(18, products.length * 4)}s` }}
+        style={{ ['--marquee-duration' as string]: `${Math.max(28, products.length * 5)}s` }}
       >
         {scrollItems.map((product, index) => (
           <div
             key={`${product._id}-${index}`}
-            className="group relative rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-500 flex-shrink-0 bg-white"
+            className="group relative rounded-xl overflow-hidden flex-shrink-0 bg-white"
           >
             <Link to={`/product/${product._id}`} className="block">
               <div className="aspect-[4/3] bg-gray-100">
                 <img
                   src={product.images?.[0] || '/placeholder.jpg'}
                   alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="w-full h-full object-cover"
                   loading="lazy"
                 />
               </div>
@@ -373,6 +379,8 @@ function VerticalMarquee({
         }
         .marquee-track {
           animation: marqueeY var(--marquee-duration) linear infinite;
+          backface-visibility: hidden;
+          transform: translateZ(0);
         }
         .marquee-container:hover .marquee-track {
           animation-play-state: paused;

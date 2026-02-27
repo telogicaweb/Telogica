@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 export const industries = [
   {
-    id: 'defence',
-    name: 'Defence/Military',
-    image: '/hero-slide-1.jpg',
-    link: '/products?category=defence',
-    category: 'defense',
+    id: 'telecommunication',
+    name: 'Telecommunication',
+    image: '/hero-slide-3.jpg',
+    link: '/products?category=telecommunication',
+    category: 'telecommunication',
   },
   {
     id: 'railway',
@@ -16,11 +16,11 @@ export const industries = [
     category: 'railway',
   },
   {
-    id: 'telecommunication',
-    name: 'Telecommunication',
-    image: '/hero-slide-3.jpg',
-    link: '/products?category=telecommunication',
-    category: 'telecommunication',
+    id: 'defence',
+    name: 'Defence/Military',
+    image: '/hero-slide-1.jpg',
+    link: '/products?category=defence',
+    category: 'defense',
   },
 ];
 
