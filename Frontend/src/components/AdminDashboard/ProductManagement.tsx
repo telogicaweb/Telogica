@@ -27,6 +27,7 @@ import api from '../../api';
 import { Product, ProductFormState } from './types';
 import ProductEditor from './ProductEditor';
 import DateFilter from './DateFilter';
+import ConfirmationModal from '../ui/ConfirmationModal';
 
 interface ProductManagementProps {
   products: Product[];
@@ -71,6 +72,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
   
   const [uploadingImages, setUploadingImages] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const resolveStock = (p: Product) => p.stockQuantity ?? p.stock ?? 0;
   const resolvePrice = (p: Product) => {
@@ -525,14 +527,19 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
 
   
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!window.confirm('Are you sure? This will permanently delete the product.')) return;
+  const handleDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
     try {
-      await api.delete(`/api/products/${productId}`);
+      await api.delete(`/api/products/${productToDelete._id}`);
       onProductsUpdated();
       alert('Product deleted successfully!');
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete product');
+      throw error;
     }
   };
 
@@ -663,7 +670,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
               </span>
             </div>
             <button
-              onClick={() => handleDeleteProduct(product._id)}
+              onClick={() => handleDeleteProduct(product)}
               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -1297,7 +1304,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteProduct(product._id)}
+                              onClick={() => handleDeleteProduct(product)}
                               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1462,6 +1469,17 @@ const ProductManagement: React.FC<ProductManagementProps> = ({
           }}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmDeleteProduct}
+        title="Delete product?"
+        message={productToDelete ? `This will permanently delete "${productToDelete.name}". This action cannot be undone.` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive
+      />
     </div>
   );
 };

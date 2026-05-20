@@ -3,7 +3,7 @@ import api from '../api';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import { ShoppingCart, FileText, Eye, Package, Search, Filter } from 'lucide-react';
+import { ShoppingCart, FileText, Eye, Package, Search, Filter, Download } from 'lucide-react';
 
 interface Product {
   _id: string;
@@ -14,9 +14,11 @@ interface Product {
   images: string[];
   isRecommended: boolean;
   category: string;
+  subcategory?: string;
   requiresQuote: boolean;
   warrantyPeriodMonths?: number;
   isTelecom?: boolean;
+  brochureUrl?: string;
 }
 
 const Products = () => {
@@ -100,6 +102,23 @@ const Products = () => {
     addToQuote(product, 1);
     alert('Added to Quote');
   };
+
+  const handleDownloadDatasheet = (product: Product) => {
+    if (!product.brochureUrl) {
+      alert('Datasheet not available for this product');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = product.brochureUrl;
+    link.download = `${product.name}-datasheet.pdf`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const isDefenceCategory = (cat?: string) => cat?.toLowerCase() === 'defence';
 
   // Generate dynamic categories from products
   const categories = [
@@ -192,129 +211,193 @@ const Products = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map(product => (
-              <div
-                key={product._id}
-                className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col border border-gray-200"
-              >
-                {/* Product Image */}
-                <div className="relative h-56 overflow-hidden bg-gray-100">
-                  <img
-                    src={product.images[0] || '/placeholder.jpg'}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-
-                {/* Product Info */}
-                <div className="p-5 flex-grow flex flex-col">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-3">
-                    {product.description}
-                  </p>
-
-                  {/* Warranty Info */}
-                  {product.warrantyPeriodMonths && (
-                    <div className="mb-3 text-xs text-gray-500">
-                      <span className="font-medium">Warranty:</span> {product.warrantyPeriodMonths} months
-                    </div>
-                  )}
-
-                  {/* Price */}
-                  <div className="mb-4">
-                    {user?.role === 'retailer' ? (
-                      // Retailer-specific pricing
-                      product.retailerPrice ? (
-                        <div>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-gray-900">₹{product.retailerPrice.toLocaleString()}</span>
-                            <span className="text-sm text-gray-500">+ GST</span>
-                          </div>
-                          <p className="text-xs text-indigo-600 mt-1">Retailer Price</p>
-                        </div>
-                      ) : (
-                        <p className="text-lg font-semibold text-blue-600">Request Quote</p>
-                      )
-                    ) : (
-                      // Regular user pricing - Only show price for Telecom products without quote requirement
-                      product.isTelecom && product.price && !product.requiresQuote ? (
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
-                          <span className="text-sm text-gray-500">+ GST</span>
-                        </div>
-                      ) : (
-                        <p className="text-lg font-semibold text-blue-600">Request Quote</p>
-                      )
-                    )}
+          (() => {
+            const renderCard = (product: Product) => {
+              const isDefence = isDefenceCategory(product.category);
+              return (
+                <div
+                  key={product._id}
+                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col border border-gray-200"
+                >
+                  {/* Product Image */}
+                  <div className="relative h-56 overflow-hidden bg-gray-100">
+                    <img
+                      src={product.images[0] || '/placeholder.jpg'}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 mt-auto">
-                    <Link
-                      to={`/product/${product._id}`}
-                      className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Details
-                    </Link>
-                    <div className="grid grid-cols-2 gap-2">
-                      {user?.role === 'retailer' ? (
-                        // Retailers can buy with retailer price if available, or request quote
+                  {/* Product Info */}
+                  <div className="p-5 flex-grow flex flex-col">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    {product.subcategory && (
+                      <span className="self-start mb-2 px-2 py-0.5 text-[10px] font-semibold text-purple-700 bg-purple-50 rounded-full uppercase tracking-wide">
+                        {product.subcategory}
+                      </span>
+                    )}
+                    <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-3">
+                      {product.description}
+                    </p>
+
+                    {/* Warranty Info */}
+                    {product.warrantyPeriodMonths && (
+                      <div className="mb-3 text-xs text-gray-500">
+                        <span className="font-medium">Warranty:</span> {product.warrantyPeriodMonths} months
+                      </div>
+                    )}
+
+                    {/* Price */}
+                    <div className="mb-4">
+                      {isDefence ? (
+                        <p className="text-lg font-semibold text-indigo-600">Datasheet Available</p>
+                      ) : user?.role === 'retailer' ? (
+                        // Retailer-specific pricing
                         product.retailerPrice ? (
-                          <>
-                            <button
-                              onClick={() => handleAddToCart(product, true)}
-                              className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
-                            >
-                              <ShoppingCart className="w-4 h-4" />
-                              Buy Now
-                            </button>
-                            <button
-                              onClick={() => handleAddToQuote(product)}
-                              className="flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Bulk Quote
-                            </button>
-                          </>
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl font-bold text-gray-900">₹{product.retailerPrice.toLocaleString()}</span>
+                              <span className="text-sm text-gray-500">+ GST</span>
+                            </div>
+                            <p className="text-xs text-indigo-600 mt-1">Retailer Price</p>
+                          </div>
                         ) : (
-                          <button
-                            onClick={() => handleAddToQuote(product)}
-                            className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Request Quote
-                          </button>
+                          <p className="text-lg font-semibold text-blue-600">Request Quote</p>
                         )
                       ) : (
-                        <>
-                          {product.isTelecom && (
-                            <button
-                              onClick={() => handleAddToCart(product)}
-                              className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
-                            >
-                              <ShoppingCart className="w-4 h-4" />
-                              Cart
-                            </button>
+                        // Regular user pricing - Only show price for Telecom products without quote requirement
+                        product.isTelecom && product.price && !product.requiresQuote ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</span>
+                            <span className="text-sm text-gray-500">+ GST</span>
+                          </div>
+                        ) : (
+                          <p className="text-lg font-semibold text-blue-600">Request Quote</p>
+                        )
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <Link
+                        to={`/product/${product._id}`}
+                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                      </Link>
+                      {isDefence ? (
+                        <button
+                          onClick={() => handleDownloadDatasheet(product)}
+                          disabled={!product.brochureUrl}
+                          className={`flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            product.brochureUrl
+                              ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
+                              : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                          }`}
+                          title={product.brochureUrl ? 'Download datasheet (PDF)' : 'Datasheet not uploaded yet'}
+                        >
+                          <Download className="w-4 h-4" />
+                          {product.brochureUrl ? 'Download Datasheet' : 'Datasheet Unavailable'}
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {user?.role === 'retailer' ? (
+                            product.retailerPrice ? (
+                              <>
+                                <button
+                                  onClick={() => handleAddToCart(product, true)}
+                                  className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
+                                >
+                                  <ShoppingCart className="w-4 h-4" />
+                                  Buy Now
+                                </button>
+                                <button
+                                  onClick={() => handleAddToQuote(product)}
+                                  className="flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Bulk Quote
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => handleAddToQuote(product)}
+                                className="col-span-2 flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Request Quote
+                              </button>
+                            )
+                          ) : (
+                            <>
+                              {product.isTelecom && (
+                                <button
+                                  onClick={() => handleAddToCart(product)}
+                                  className="flex items-center justify-center gap-1 bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium border border-green-200"
+                                >
+                                  <ShoppingCart className="w-4 h-4" />
+                                  Cart
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleAddToQuote(product)}
+                                className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${!product.isTelecom ? 'col-span-2' : ''}`}
+                              >
+                                <FileText className="w-4 h-4" />
+                                Quote
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={() => handleAddToQuote(product)}
-                            className={`flex items-center justify-center gap-1 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium border border-blue-200 ${!product.isTelecom ? 'col-span-2' : ''}`}
-                          >
-                            <FileText className="w-4 h-4" />
-                            Quote
-                          </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
+              );
+            };
+
+            // Group Defence products by subcategory when viewing Defence
+            if (activeCategory.toLowerCase() === 'defence') {
+              const defenceProducts = filteredProducts.filter(p => isDefenceCategory(p.category));
+              const groups = new Map<string, Product[]>();
+              defenceProducts.forEach(p => {
+                const key = (p.subcategory && p.subcategory.trim()) || 'General';
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(p);
+              });
+              const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+                if (a === 'General') return 1;
+                if (b === 'General') return -1;
+                return a.localeCompare(b);
+              });
+
+              return (
+                <div className="space-y-10">
+                  {sortedKeys.map(key => (
+                    <section key={key}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <h2 className="text-xl font-bold text-gray-900">{key}</h2>
+                        <span className="text-sm text-gray-500">({groups.get(key)!.length})</span>
+                        <div className="flex-grow h-px bg-gray-200" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {groups.get(key)!.map(renderCard)}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map(renderCard)}
               </div>
-            ))}
-          </div>
+            );
+          })()
         )}
       </div>
     </div>

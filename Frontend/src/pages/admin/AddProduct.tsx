@@ -1,23 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, X, Package } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Package,
+  Sparkles,
+  Tag,
+  DollarSign,
+  ImagePlus,
+  Shield,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import api from '../../api';
 import ProductSelector from '../../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../../components/AdminDashboard/CategoryInput';
+import SubcategoryPicker from '../../components/AdminDashboard/SubcategoryPicker';
+import ImageUploader from '../../components/AdminDashboard/ImageUploader';
 
-const MAX_PRODUCT_IMAGES = 4;
+const MAX_PRODUCT_IMAGES = 10;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const DEFAULT_WARRANTY_MONTHS = 12;
 
 interface Product {
   _id: string;
   name: string;
   category: string;
+  subcategory?: string;
 }
 
 interface ProductFormState {
   name: string;
   description: string;
   category: string;
+  subcategory: string;
   normalPrice: string;
   retailerPrice: string;
   warrantyPeriodMonths: number;
@@ -30,13 +48,34 @@ interface ProductFormState {
   brochureUrl: string;
 }
 
+type StepKey = 'basics' | 'pricing' | 'images' | 'warranty';
+
+const STEPS: { key: StepKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'basics', label: 'Basics', icon: Tag },
+  { key: 'pricing', label: 'Pricing & Brochure', icon: DollarSign },
+  { key: 'images', label: 'Images', icon: ImagePlus },
+  { key: 'warranty', label: 'Warranty & Extras', icon: Shield },
+];
+
+const DEFAULT_CATEGORIES = ['Telecommunication', 'Defence', 'Railway', 'Industrial'];
+
 export default function AddProduct() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [touchedSteps, setTouchedSteps] = useState<Record<StepKey, boolean>>({
+    basics: false,
+    pricing: false,
+    images: false,
+    warranty: false,
+  });
+
   const [productForm, setProductForm] = useState<ProductFormState>({
     name: '',
     description: '',
     category: '',
+    subcategory: '',
     normalPrice: '',
     retailerPrice: '',
     warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
@@ -48,8 +87,6 @@ export default function AddProduct() {
     recommendedProductIds: [],
     brochureUrl: '',
   });
-
-  const uniqueCategories = ['Telecommunication', 'Defence', 'Railway', 'Industrial'];
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -69,19 +106,106 @@ export default function AddProduct() {
     }
   };
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (productForm.images.length === 0) {
-      alert('Please upload at least one product image');
-      return;
+  const isDefence = productForm.category.trim().toLowerCase() === 'defence';
+
+  const allCategoryOptions = useMemo(() => {
+    const fromProducts = products.map((p) => p.category).filter(Boolean);
+    return Array.from(new Set([...DEFAULT_CATEGORIES, ...fromProducts]));
+  }, [products]);
+
+  const defenceSubcategories = useMemo(() => {
+    return products
+      .filter((p) => p.category?.toLowerCase() === 'defence' && p.subcategory)
+      .map((p) => p.subcategory as string);
+  }, [products]);
+
+  // ---------- Validation per step ----------
+  const stepErrors: Record<StepKey, string[]> = useMemo(() => {
+    const basics: string[] = [];
+    if (!productForm.name.trim()) basics.push('Product name is required');
+    if (!productForm.category.trim()) basics.push('Pick or create a category');
+
+    const pricing: string[] = [];
+    if (productForm.normalPrice && Number.isNaN(parseFloat(productForm.normalPrice))) {
+      pricing.push('Normal price must be a number');
+    }
+    if (productForm.retailerPrice && Number.isNaN(parseFloat(productForm.retailerPrice))) {
+      pricing.push('Retailer price must be a number');
+    }
+    if (
+      productForm.normalPrice &&
+      productForm.retailerPrice &&
+      parseFloat(productForm.retailerPrice) > parseFloat(productForm.normalPrice)
+    ) {
+      pricing.push('Retailer price should not exceed the normal price');
     }
 
+    const images: string[] = [];
+    if (productForm.images.length === 0) {
+      images.push('Add at least one product image');
+    }
+
+    const warranty: string[] = [];
+    if (productForm.warrantyPeriodMonths < 0) {
+      warranty.push('Warranty months cannot be negative');
+    }
+    if (productForm.extendedWarrantyAvailable) {
+      if (productForm.extendedWarrantyMonths <= 0) {
+        warranty.push('Extended warranty months must be greater than 0');
+      }
+      if (
+        productForm.extendedWarrantyPrice &&
+        Number.isNaN(parseFloat(productForm.extendedWarrantyPrice))
+      ) {
+        warranty.push('Extended warranty price must be a number');
+      }
+    }
+
+    return { basics, pricing, images, warranty };
+  }, [productForm]);
+
+  const stepIsValid = (key: StepKey) => stepErrors[key].length === 0;
+  const allValid = (Object.keys(stepErrors) as StepKey[]).every((k) => stepIsValid(k));
+  const currentStep = STEPS[stepIdx];
+
+  const markTouched = (key: StepKey) =>
+    setTouchedSteps((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+
+  const goNext = () => {
+    markTouched(currentStep.key);
+    if (!stepIsValid(currentStep.key)) return;
+    if (stepIdx < STEPS.length - 1) setStepIdx(stepIdx + 1);
+  };
+
+  const goBack = () => {
+    if (stepIdx > 0) setStepIdx(stepIdx - 1);
+  };
+
+  const jumpTo = (idx: number) => {
+    if (idx === stepIdx) return;
+    // Allow jumping back freely; allow forward only if earlier steps valid.
+    if (idx < stepIdx) {
+      setStepIdx(idx);
+      return;
+    }
+    for (let i = stepIdx; i < idx; i++) {
+      markTouched(STEPS[i].key);
+      if (!stepIsValid(STEPS[i].key)) return;
+    }
+    setStepIdx(idx);
+  };
+
+  const handleSubmit = async () => {
+    (Object.keys(stepErrors) as StepKey[]).forEach(markTouched);
+    if (!allValid || submitting) return;
+
+    setSubmitting(true);
     try {
       const payload: any = {
-        name: productForm.name,
-        description: productForm.description,
-        category: productForm.category,
+        name: productForm.name.trim(),
+        description: productForm.description.trim(),
+        category: productForm.category.trim(),
+        subcategory: isDefence && productForm.subcategory.trim() ? productForm.subcategory.trim() : '',
         images: productForm.images,
         isRecommended: productForm.isRecommended,
         warrantyPeriodMonths: productForm.warrantyPeriodMonths,
@@ -90,7 +214,6 @@ export default function AddProduct() {
       };
 
       if (productForm.brochureUrl) payload.brochureUrl = productForm.brochureUrl;
-
       if (productForm.normalPrice) payload.price = parseFloat(productForm.normalPrice);
       if (productForm.retailerPrice) payload.retailerPrice = parseFloat(productForm.retailerPrice);
       if (productForm.extendedWarrantyAvailable) {
@@ -101,132 +224,161 @@ export default function AddProduct() {
       }
 
       await api.post('/api/products', payload);
-      alert('Product created successfully!');
       navigate('/admin');
     } catch (error: any) {
       console.error('Error creating product:', error);
       alert(error.response?.data?.message || 'Failed to create product');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const showErrors = (key: StepKey) => touchedSteps[key] && !stepIsValid(key);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-32">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/admin')}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to admin"
               >
-                <ArrowLeft className="w-6 h-6 text-gray-600" />
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Add New Product</h1>
-                <p className="text-sm text-gray-600">Create a new product in your catalog</p>
+                <h1 className="text-xl font-bold text-gray-900">Add New Product</h1>
+                <p className="text-xs text-gray-500">{currentStep.label} — step {stepIdx + 1} of {STEPS.length}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-indigo-600">
-              <Package className="w-5 h-5" />
-              <Sparkles className="w-5 h-5" />
-            </div>
+            <Sparkles className="w-5 h-5 text-indigo-500" />
+          </div>
+
+          {/* Step indicator */}
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto">
+            {STEPS.map((s, i) => {
+              const active = i === stepIdx;
+              const done = i < stepIdx && stepIsValid(s.key);
+              const Icon = s.icon;
+              const hasErr = touchedSteps[s.key] && !stepIsValid(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => jumpTo(i)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : done
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : hasErr
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    active ? 'bg-white text-indigo-600' : done ? 'bg-emerald-600 text-white' : hasErr ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {done ? <Check className="w-3 h-3" /> : i + 1}
+                  </span>
+                  <Icon className="w-3.5 h-3.5" />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Form */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 md:p-8">
-          <form onSubmit={handleCreateProduct} className="space-y-6">
-            {/* Basic Information */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">1</span>
-                Basic Information
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={productForm.name}
-                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                    required
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Enter product name"
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 space-y-6">
+          {/* STEP: BASICS */}
+          {currentStep.key === 'basics' && (
+            <div className="space-y-5">
+              <SectionHeader icon={Tag} title="Tell us the basics" subtitle="Name, category, and a quick description." />
+
+              <Field label="Product name" required>
+                <input
+                  type="text"
+                  value={productForm.name}
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                  onBlur={() => markTouched('basics')}
+                  placeholder="e.g. TWR-450 VHF Tower Repeater"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </Field>
+
+              <Field label="Category" required>
+                <CategoryInput
+                  value={productForm.category}
+                  onChange={(v) => {
+                    setProductForm({ ...productForm, category: v, subcategory: v.toLowerCase() === 'defence' ? productForm.subcategory : '' });
+                    markTouched('basics');
+                  }}
+                  categories={allCategoryOptions}
+                />
+              </Field>
+
+              {isDefence && (
+                <Field label="Defence sub-category" hint="Leave empty to keep it directly under Defence.">
+                  <SubcategoryPicker
+                    value={productForm.subcategory}
+                    onChange={(v) => setProductForm({ ...productForm, subcategory: v })}
+                    suggestions={defenceSubcategories}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category <span className="text-red-500">*</span>
-                  </label>
-                  <CategoryInput
-                    value={productForm.category}
-                    onChange={(value) => setProductForm({ ...productForm, category: value })}
-                    categories={uniqueCategories}
-                  />
-                </div>
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                </Field>
+              )}
+
+              <Field label="Description" hint="Markdown not supported — keep it plain and clear.">
                 <textarea
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   rows={4}
+                  placeholder="Highlight key use-cases, target customers, and notable specs."
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Enter detailed product description"
                 />
-              </div>
-            </div>
+              </Field>
 
-            {/* Pricing */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">2</span>
-                Pricing
-              </h2>
+              {showErrors('basics') && <ErrorList items={stepErrors.basics} />}
+            </div>
+          )}
+
+          {/* STEP: PRICING */}
+          {currentStep.key === 'pricing' && (
+            <div className="space-y-5">
+              <SectionHeader icon={DollarSign} title="Pricing & brochure" subtitle="Leave price empty if this product needs a quote." />
+
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Normal Price (₹)</label>
+                <Field label="Normal price (₹)" hint="Empty = customers must request a quote.">
                   <input
                     type="number"
                     value={productForm.normalPrice}
                     onChange={(e) => setProductForm({ ...productForm, normalPrice: e.target.value })}
+                    onBlur={() => markTouched('pricing')}
+                    placeholder="e.g. 24999"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Enter price for regular customers"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty if quote is required</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Retailer Price (₹)</label>
+                </Field>
+                <Field label="Retailer price (₹)" hint="Special pricing for verified retailers.">
                   <input
                     type="number"
                     value={productForm.retailerPrice}
                     onChange={(e) => setProductForm({ ...productForm, retailerPrice: e.target.value })}
+                    onBlur={() => markTouched('pricing')}
+                    placeholder="e.g. 21999"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Enter special price for retailers"
                   />
-                </div>
+                </Field>
               </div>
-            </div>
 
-            {/* Product Brochure */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">3</span>
-                Product Brochure (PDF)
-              </h2>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                <label className="cursor-pointer">
-                  <div className="flex flex-col items-center gap-2">
-                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Click to upload PDF brochure</span>
-                    <span className="text-xs text-gray-500">or drag and drop</span>
+              <Field label="Product brochure (PDF)" hint="Visible to buyers after purchase only.">
+                <label className="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center hover:border-indigo-400 transition-colors cursor-pointer block">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <FileText className="w-4 h-4" />
+                    {productForm.brochureUrl ? 'Replace brochure PDF' : 'Click to upload PDF brochure'}
                   </div>
                   <input
                     type="file"
@@ -236,222 +388,235 @@ export default function AddProduct() {
                       if (!file) return;
                       const reader = new FileReader();
                       reader.onloadend = () => {
-                        setProductForm((prev) => ({
-                          ...prev,
-                          brochureUrl: reader.result as string
-                        }));
+                        setProductForm((prev) => ({ ...prev, brochureUrl: reader.result as string }));
                       };
                       reader.readAsDataURL(file);
                     }}
                     className="hidden"
                   />
                 </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">Upload product brochure (PDF only). Will be visible to buyers in their dashboard after purchase.</p>
-              
-              {productForm.brochureUrl && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-sm font-medium text-green-800">Brochure uploaded successfully</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setProductForm((prev) => ({ ...prev, brochureUrl: '' }))}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Product Images */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">4</span>
-                Product Images <span className="text-red-500">*</span>
-              </h2>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (!files?.length) return;
-                  const remainingSlots = MAX_PRODUCT_IMAGES - productForm.images.length;
-                  const filesToUpload = Array.from(files).slice(0, remainingSlots);
-                  filesToUpload.forEach((file) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setProductForm((prev) => ({
-                        ...prev,
-                        images: [...prev.images, reader.result as string]
-                      }));
-                    };
-                    reader.readAsDataURL(file);
-                  });
-                  e.target.value = '';
-                }}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-              />
-              <p className="text-xs text-gray-500 mt-1">Upload up to {MAX_PRODUCT_IMAGES} images (JPEG, PNG, WebP)</p>
-              
-              {productForm.images.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                  {productForm.images.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img 
-                        src={img} 
-                        alt={`Preview ${idx + 1}`} 
-                        className="w-full h-32 rounded-lg object-cover border-2 border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProductForm((prev) => ({
-                            ...prev,
-                            images: prev.images.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg"
-                      >
-                        <X size={16} />
-                      </button>
-                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                        Image {idx + 1}
-                      </div>
+                {productForm.brochureUrl && (
+                  <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4" /> Brochure attached
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => setProductForm((prev) => ({ ...prev, brochureUrl: '' }))}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </Field>
 
-            {/* Warranty Configuration */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">5</span>
-                Warranty Options
-              </h2>
+              {showErrors('pricing') && <ErrorList items={stepErrors.pricing} />}
+            </div>
+          )}
+
+          {/* STEP: IMAGES */}
+          {currentStep.key === 'images' && (
+            <div className="space-y-5">
+              <SectionHeader icon={ImagePlus} title="Product images" subtitle="First image becomes the cover. Drag to reorder." />
+              <ImageUploader
+                images={productForm.images}
+                onChange={(imgs) => {
+                  setProductForm({ ...productForm, images: imgs });
+                  markTouched('images');
+                }}
+                maxImages={MAX_PRODUCT_IMAGES}
+                maxBytes={MAX_IMAGE_BYTES}
+              />
+              {showErrors('images') && <ErrorList items={stepErrors.images} />}
+            </div>
+          )}
+
+          {/* STEP: WARRANTY & EXTRAS */}
+          {currentStep.key === 'warranty' && (
+            <div className="space-y-5">
+              <SectionHeader icon={Shield} title="Warranty & extras" subtitle="Cover period, optional extended warranty, and recommendations." />
+
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Standard Warranty (months) <span className="text-red-500">*</span>
-                  </label>
+                <Field label="Standard warranty (months)" required>
                   <input
                     type="number"
-                    min="0"
+                    min={0}
                     value={productForm.warrantyPeriodMonths}
-                    onChange={(e) => setProductForm({ ...productForm, warrantyPeriodMonths: parseInt(e.target.value) || 12 })}
+                    onChange={(e) =>
+                      setProductForm({ ...productForm, warrantyPeriodMonths: parseInt(e.target.value, 10) || 0 })
+                    }
+                    onBlur={() => markTouched('warranty')}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="12"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Free warranty period (default: 12 months)</p>
-                </div>
-                <div>
-                  <label className="flex items-center gap-2 mb-2">
+                </Field>
+                <Field label="Extended warranty">
+                  <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer hover:border-indigo-400">
                     <input
                       type="checkbox"
                       checked={productForm.extendedWarrantyAvailable}
-                      onChange={(e) => setProductForm({ ...productForm, extendedWarrantyAvailable: e.target.checked })}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, extendedWarrantyAvailable: e.target.checked })
+                      }
                       className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">Offer Extended Warranty</span>
+                    <span className="text-sm text-gray-700">Offer extended warranty</span>
                   </label>
-                </div>
+                </Field>
               </div>
 
               {productForm.extendedWarrantyAvailable && (
-                <div className="grid md:grid-cols-2 gap-4 mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Extended Warranty (months) <span className="text-red-500">*</span>
-                    </label>
+                <div className="grid md:grid-cols-2 gap-4 p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl">
+                  <Field label="Extended period (months)" required>
                     <input
                       type="number"
-                      min="0"
+                      min={1}
                       value={productForm.extendedWarrantyMonths}
-                      onChange={(e) => setProductForm({ ...productForm, extendedWarrantyMonths: parseInt(e.target.value) || 24 })}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, extendedWarrantyMonths: parseInt(e.target.value, 10) || 0 })
+                      }
+                      onBlur={() => markTouched('warranty')}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="24"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Extended warranty period (default: 24 months)</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Extended Warranty Price (₹) <span className="text-red-500">*</span>
-                    </label>
+                  </Field>
+                  <Field label="Extended price (₹)">
                     <input
                       type="number"
-                      min="0"
+                      min={0}
                       step="0.01"
                       value={productForm.extendedWarrantyPrice}
-                      onChange={(e) => setProductForm({ ...productForm, extendedWarrantyPrice: e.target.value })}
+                      onChange={(e) =>
+                        setProductForm({ ...productForm, extendedWarrantyPrice: e.target.value })
+                      }
+                      onBlur={() => markTouched('warranty')}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Enter additional price"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Additional cost for extended warranty</p>
-                  </div>
+                  </Field>
                 </div>
               )}
+
+              <Field label="Recommended products" hint="Shown alongside this product on the storefront.">
+                <ProductSelector
+                  products={products}
+                  selectedIds={productForm.recommendedProductIds}
+                  onChange={(ids) => setProductForm({ ...productForm, recommendedProductIds: ids })}
+                />
+              </Field>
+
+              <label className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={productForm.isRecommended}
+                  onChange={(e) => setProductForm({ ...productForm, isRecommended: e.target.checked })}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-gray-700">Feature on homepage</span>
+              </label>
+
+              {showErrors('warranty') && <ErrorList items={stepErrors.warranty} />}
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Recommended Products */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">6</span>
-                Additional Options
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Recommended Products
-                  </label>
-                  <ProductSelector
-                    products={products}
-                    selectedIds={productForm.recommendedProductIds}
-                    onChange={(ids) => setProductForm({ ...productForm, recommendedProductIds: ids })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Select products to recommend alongside this one</p>
-                </div>
+      {/* Sticky action bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 z-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/admin')}
+            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2"
+          >
+            Cancel
+          </button>
 
-                <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <input
-                    type="checkbox"
-                    id="isRecommended"
-                    checked={productForm.isRecommended}
-                    onChange={(e) => setProductForm({ ...productForm, isRecommended: e.target.checked })}
-                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                  />
-                  <label htmlFor="isRecommended" className="text-sm font-medium text-gray-700 cursor-pointer">
-                    Mark as Recommended Product (Featured on homepage)
-                  </label>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={stepIdx === 0 || submitting}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
 
-            {/* Action Buttons */}
-            <div className="flex gap-4 pt-6 border-t border-gray-200">
-              <button
-                type="submit"
-                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-semibold transition-colors flex items-center justify-center gap-2"
-              >
-                <Package className="w-5 h-5" />
-                Create Product
-              </button>
+            {stepIdx < STEPS.length - 1 ? (
               <button
                 type="button"
-                onClick={() => navigate('/admin')}
-                className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                onClick={goNext}
+                disabled={submitting}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60"
               >
-                Cancel
+                Next <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
-          </form>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!allValid || submitting}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Package className="w-4 h-4" /> Create product
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+// ---------- Small helpers ----------
+
+const SectionHeader: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+}> = ({ icon: Icon, title, subtitle }) => (
+  <div className="flex items-start gap-3 pb-3 border-b border-gray-100">
+    <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+      <Icon className="w-5 h-5" />
+    </div>
+    <div>
+      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+    </div>
+  </div>
+);
+
+const Field: React.FC<{
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}> = ({ label, required, hint, children }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-800 mb-1.5">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {children}
+    {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+  </div>
+);
+
+const ErrorList: React.FC<{ items: string[] }> = ({ items }) => (
+  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+    <div className="flex items-center gap-2 text-sm font-semibold text-red-700 mb-1">
+      <AlertCircle className="w-4 h-4" /> Please fix these to continue
+    </div>
+    <ul className="text-sm text-red-700 list-disc list-inside space-y-0.5">
+      {items.map((m, i) => (
+        <li key={i}>{m}</li>
+      ))}
+    </ul>
+  </div>
+);

@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Sparkles, X, Package, Save } from 'lucide-react';
+import { ArrowLeft, Sparkles, Package, Save } from 'lucide-react';
 import api from '../../api';
 import ProductSelector from '../../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../../components/AdminDashboard/CategoryInput';
+import SubcategoryPicker from '../../components/AdminDashboard/SubcategoryPicker';
+import ImageUploader from '../../components/AdminDashboard/ImageUploader';
+import { compressImage } from '../../utils/compressImage';
 
-const MAX_PRODUCT_IMAGES = 4;
+const MAX_PRODUCT_IMAGES = 10;
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const DEFAULT_WARRANTY_MONTHS = 12;
 
 interface Product {
   _id: string;
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   normalPrice?: number;
   retailerPrice?: number;
@@ -29,6 +34,7 @@ interface ProductFormState {
   name: string;
   description: string;
   category: string;
+  subcategory: string;
   normalPrice: string;
   retailerPrice: string;
   warrantyPeriodMonths: number;
@@ -46,10 +52,12 @@ export default function EditProduct() {
   const { id } = useParams<{ id: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [productForm, setProductForm] = useState<ProductFormState>({
     name: '',
     description: '',
     category: '',
+    subcategory: '',
     normalPrice: '',
     retailerPrice: '',
     warrantyPeriodMonths: DEFAULT_WARRANTY_MONTHS,
@@ -83,6 +91,7 @@ export default function EditProduct() {
         name: product.name,
         description: product.description,
         category: product.category,
+        subcategory: product.subcategory || '',
         normalPrice: product.normalPrice?.toString() || '',
         retailerPrice: product.retailerPrice?.toString() || '',
         warrantyPeriodMonths: product.warrantyPeriodMonths || DEFAULT_WARRANTY_MONTHS,
@@ -117,18 +126,47 @@ export default function EditProduct() {
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (submitting) return;
+
     if (productForm.images.length === 0) {
       alert('Please upload at least one product image');
       return;
     }
 
+    setSubmitting(true);
     try {
+      let images = productForm.images;
+      if (images.some((i) => i.startsWith('data:image'))) {
+        const migrated: string[] = [];
+        for (const img of images) {
+          if (!img.startsWith('data:image')) {
+            migrated.push(img);
+            continue;
+          }
+          const blob = await fetch(img).then((r) => r.blob());
+          let upload: File | Blob = blob;
+          if (blob.size > MAX_IMAGE_BYTES) {
+            upload = await compressImage(new File([blob], 'legacy.jpg', { type: blob.type }), { maxBytes: MAX_IMAGE_BYTES });
+          }
+          const formData = new FormData();
+          formData.append('image', upload, 'legacy.jpg');
+          const res = await api.post('/api/products/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          if (res.data?.url) migrated.push(res.data.url);
+        }
+        images = migrated;
+        setProductForm((prev) => ({ ...prev, images: migrated }));
+      }
+
+      const isDefence = productForm.category.trim().toLowerCase() === 'defence';
       const payload: any = {
         name: productForm.name,
         description: productForm.description,
         category: productForm.category,
-        images: productForm.images,
+        subcategory: isDefence && productForm.subcategory.trim() ? productForm.subcategory.trim() : '',
+        images,
         isRecommended: productForm.isRecommended,
         warrantyPeriodMonths: productForm.warrantyPeriodMonths,
         extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
@@ -152,6 +190,8 @@ export default function EditProduct() {
     } catch (error: any) {
       console.error('Error updating product:', error);
       alert(error.response?.data?.message || 'Failed to update product');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -227,6 +267,20 @@ export default function EditProduct() {
                   />
                 </div>
               </div>
+              {productForm.category.trim().toLowerCase() === 'defence' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub-category <span className="text-gray-400 text-xs">(optional)</span>
+                  </label>
+                  <SubcategoryPicker
+                    value={productForm.subcategory}
+                    onChange={(v) => setProductForm({ ...productForm, subcategory: v })}
+                    suggestions={products
+                      .filter((p) => p.category?.toLowerCase() === 'defence' && p.subcategory)
+                      .map((p) => p.subcategory as string)}
+                  />
+                </div>
+              )}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
@@ -331,59 +385,12 @@ export default function EditProduct() {
                 <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">4</span>
                 Product Images <span className="text-red-500">*</span>
               </h2>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (!files?.length) return;
-                  const remainingSlots = MAX_PRODUCT_IMAGES - productForm.images.length;
-                  const filesToUpload = Array.from(files).slice(0, remainingSlots);
-                  filesToUpload.forEach((file) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setProductForm((prev) => ({
-                        ...prev,
-                        images: [...prev.images, reader.result as string]
-                      }));
-                    };
-                    reader.readAsDataURL(file);
-                  });
-                  e.target.value = '';
-                }}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
+              <ImageUploader
+                images={productForm.images}
+                onChange={(imgs) => setProductForm({ ...productForm, images: imgs })}
+                maxImages={MAX_PRODUCT_IMAGES}
+                maxBytes={MAX_IMAGE_BYTES}
               />
-              <p className="text-xs text-gray-500 mt-1">Upload up to {MAX_PRODUCT_IMAGES} images (JPEG, PNG, WebP)</p>
-              
-              {productForm.images.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                  {productForm.images.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img 
-                        src={img} 
-                        alt={`Preview ${idx + 1}`} 
-                        className="w-full h-32 rounded-lg object-cover border-2 border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProductForm((prev) => ({
-                            ...prev,
-                            images: prev.images.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-lg"
-                      >
-                        <X size={16} />
-                      </button>
-                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                        Image {idx + 1}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Warranty Configuration */}
@@ -493,15 +500,26 @@ export default function EditProduct() {
             <div className="flex gap-4 pt-6 border-t border-gray-200">
               <button
                 type="submit"
-                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Save className="w-5 h-5" />
-                Update Product
+                {submitting ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Update Product
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/admin')}
-                className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                disabled={submitting}
+                className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

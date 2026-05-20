@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
   price: { type: Number }, // Optional - if not set, product requires quote
   retailerPrice: { type: Number }, // Special pricing for retailers
   category: { type: String },
+  subcategory: { type: String }, // Optional sub-grouping (used by Defence)
   isTelecom: { type: Boolean, default: false }, // Explicitly mark Telecom products
   maxDirectPurchaseQty: { type: Number, default: null }, // Max quantity for direct purchase (null = unlimited, for Telecom = 2)
   stock: { type: Number, default: 0 }, // Total stock (calculated from ProductUnits)

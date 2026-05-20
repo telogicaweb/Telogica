@@ -4,7 +4,7 @@ import api from '../api';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ShoppingCart, FileText, ZoomIn, X, Plus, Minus, Shield, Share2, Check, Copy, Facebook, Twitter, Linkedin, Mail } from 'lucide-react';
+import { ShoppingCart, FileText, ZoomIn, X, Plus, Minus, Shield, Share2, Check, Copy, Facebook, Twitter, Linkedin, Mail, Download } from 'lucide-react';
 
 const FALLBACK_PRODUCT_IMAGE = 'https://via.placeholder.com/400x300?text=Telogica+Product';
 
@@ -12,6 +12,7 @@ interface RecommendedProductSummary {
   _id: string;
   name: string;
   category: string;
+  subcategory?: string;
   images: string[];
   price?: number;
   retailerPrice?: number;
@@ -29,6 +30,7 @@ interface Product extends RecommendedProductSummary {
   extendedWarrantyAvailable?: boolean;
   extendedWarrantyMonths?: number;
   extendedWarrantyPrice?: number;
+  brochureUrl?: string;
 }
 
 const ProductDetails = () => {
@@ -59,6 +61,7 @@ const ProductDetails = () => {
           _id: productData._id,
           name: productData.name,
           category: productData.category,
+          subcategory: productData.subcategory,
           images: Array.isArray(productData.images) ? productData.images : [],
           price: productData.price,
           retailerPrice: productData.retailerPrice,
@@ -67,6 +70,7 @@ const ProductDetails = () => {
           description: productData.description,
           recommendedProductIds: productData.recommendedProductIds,
           isTelecom: productData.isTelecom,
+          brochureUrl: productData.brochureUrl,
         };
 
         setProduct(normalizedProduct);
@@ -170,6 +174,23 @@ const ProductDetails = () => {
     toast.success('Added to quote request');
   };
 
+  const isDefence = product.category?.toLowerCase() === 'defence';
+
+  const handleDownloadDatasheet = () => {
+    if (!product.brochureUrl) {
+      toast.error('Datasheet not available for this product');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = product.brochureUrl;
+    link.download = `${product.name}-datasheet.pdf`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleShare = async (platform: string) => {
     const productUrl = window.location.href;
     const shareText = `Check out ${product.name} - Telogica`;
@@ -266,6 +287,11 @@ const ProductDetails = () => {
                     <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-full uppercase tracking-wide">
                       {product.category}
                     </span>
+                    {product.subcategory && (
+                      <span className="ml-2 inline-block px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-50 rounded-full uppercase tracking-wide">
+                        {product.subcategory}
+                      </span>
+                    )}
                     <div className="flex items-start justify-between mt-2">
                       <h1 className="text-2xl font-bold text-gray-900 pr-4">{product.name}</h1>
                       <button
@@ -381,7 +407,21 @@ const ProductDetails = () => {
 
                     {/* Action Buttons */}
                     <div className="space-y-3">
-                      {isRetailer && hasRetailerPrice ? (
+                      {isDefence ? (
+                        <button
+                          onClick={handleDownloadDatasheet}
+                          disabled={!product.brochureUrl}
+                          className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
+                            product.brochureUrl
+                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                          title={product.brochureUrl ? 'Download product datasheet (PDF)' : 'Datasheet not uploaded yet'}
+                        >
+                          <Download className="w-5 h-5" />
+                          {product.brochureUrl ? 'Download Datasheet' : 'Datasheet Unavailable'}
+                        </button>
+                      ) : isRetailer && hasRetailerPrice ? (
                         <div className="flex gap-3">
                           <button
                             onClick={() => handleAddToCart(true)}

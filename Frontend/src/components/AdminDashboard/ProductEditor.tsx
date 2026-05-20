@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import api from '../../api';
 import { Product, ProductUnit } from './types';
+import { compressImage } from '../../utils/compressImage';
+
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 interface ProductEditorProps {
   product: Product;
@@ -126,15 +129,43 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     }
   };
 
+  const migrateLegacyImages = async (images: string[]): Promise<string[]> => {
+    const result: string[] = [];
+    for (const img of images) {
+      if (!img.startsWith('data:image')) {
+        result.push(img);
+        continue;
+      }
+      const blob = await fetch(img).then((r) => r.blob());
+      let upload: File | Blob = blob;
+      if (blob.size > MAX_IMAGE_BYTES) {
+        upload = await compressImage(new File([blob], 'legacy.jpg', { type: blob.type }), { maxBytes: MAX_IMAGE_BYTES });
+      }
+      const formData = new FormData();
+      formData.append('image', upload, 'legacy.jpg');
+      const res = await api.post('/api/products/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data?.url) result.push(res.data.url);
+    }
+    return result;
+  };
+
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setDetailsSaving(true);
     try {
+      const normalizedImages = form.images.some((i) => i.startsWith('data:image'))
+        ? await migrateLegacyImages(form.images)
+        : form.images;
+      if (normalizedImages !== form.images) {
+        setForm((prev) => ({ ...prev, images: normalizedImages }));
+      }
       const payload: Record<string, unknown> = {
         name: form.name,
         category: form.category,
         description: form.description,
-        images: form.images,
+        images: normalizedImages,
         requiresQuote: form.requiresQuote,
         isRecommended: form.isRecommended,
         warrantyPeriodMonths: form.warrantyPeriodMonths,
@@ -182,42 +213,46 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
   };
 
   const handleImageUpload: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const files = event.target.files;
+    const input = event.target;
+    const files = input.files;
     if (!files?.length) return;
 
     setUploadingImages(true);
     try {
       const uploaded: string[] = [];
-      for (const file of Array.from(files)) {
-        const reader = await new Promise<string>((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.onerror = reject;
-          fr.readAsDataURL(file);
-        });
-
-        if (reader.startsWith('data:image')) {
-          const formData = new FormData();
-          const blob = await fetch(reader).then((res) => res.blob());
-          formData.append('image', blob, file.name);
-          const uploadResponse = await api.post('/api/products/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          uploaded.push(uploadResponse.data.url);
-        } else {
-          uploaded.push(reader);
+      const stillTooLarge: string[] = [];
+      for (const original of Array.from(files)) {
+        let toUpload = original;
+        if (original.size > MAX_IMAGE_BYTES) {
+          toUpload = await compressImage(original, { maxBytes: MAX_IMAGE_BYTES });
         }
+        if (toUpload.size > MAX_IMAGE_BYTES) {
+          stillTooLarge.push(original.name);
+          continue;
+        }
+        const formData = new FormData();
+        formData.append('image', toUpload, toUpload.name);
+        const uploadResponse = await api.post('/api/products/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (uploadResponse.data?.url) uploaded.push(uploadResponse.data.url);
       }
 
-      setForm((prev) => ({
-        ...prev,
-        images: [...prev.images, ...uploaded]
-      }));
+      if (uploaded.length) {
+        setForm((prev) => ({
+          ...prev,
+          images: [...prev.images, ...uploaded]
+        }));
+      }
+      if (stillTooLarge.length) {
+        alert(`Could not compress below ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))}MB: ${stillTooLarge.join(', ')}`);
+      }
     } catch (error: any) {
       console.error('Error uploading images', error);
       alert(error.response?.data?.message || 'Failed to upload image');
     } finally {
       setUploadingImages(false);
+      input.value = '';
     }
   };
 

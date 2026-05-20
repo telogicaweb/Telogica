@@ -92,6 +92,7 @@ const createProduct = async (req, res) => {
     price,
     retailerPrice,
     category,
+    subcategory,
     stock,
     offlineStock,
     isRecommended,
@@ -115,6 +116,7 @@ const createProduct = async (req, res) => {
       price,
       retailerPrice,
       category,
+      subcategory: subcategory ? subcategory.trim() : undefined,
       stock: stock || 0,
       offlineStock: offlineStock || 0,
       isRecommended,
@@ -153,6 +155,7 @@ const updateProduct = async (req, res) => {
     price,
     retailerPrice,
     category,
+    subcategory,
     stock,
     offlineStock,
     isRecommended,
@@ -180,6 +183,10 @@ const updateProduct = async (req, res) => {
       product.price = price !== undefined ? price : product.price;
       product.retailerPrice = retailerPrice !== undefined ? retailerPrice : product.retailerPrice;
       product.category = category || product.category;
+      if (subcategory !== undefined) {
+        const trimmed = typeof subcategory === 'string' ? subcategory.trim() : '';
+        product.subcategory = trimmed || undefined;
+      }
       product.stock = stock !== undefined ? stock : product.stock;
       product.offlineStock = offlineStock !== undefined ? offlineStock : product.offlineStock;
       product.isRecommended = isRecommended !== undefined ? isRecommended : product.isRecommended;

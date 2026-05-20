@@ -51,6 +51,8 @@ import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
 import WarrantyValidator from '../components/AdminDashboard/WarrantyValidator';
 import ProductUnitManager from '../components/AdminDashboard/ProductUnitManager';
+import ConfirmationModal from '../components/ui/ConfirmationModal';
+import ProductEditor from '../components/AdminDashboard/ProductEditor';
 
 interface User {
   _id: string;
@@ -330,6 +332,8 @@ const AdminDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<Analytics>(getDefaultAnalytics());
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -341,6 +345,10 @@ const AdminDashboard: React.FC = () => {
   const [productViewMode, setProductViewMode] = useState<'grid' | 'table'>('table');
   const [productFilterCategory, setProductFilterCategory] = useState<string>('all');
   const [productFilterStatus, setProductFilterStatus] = useState<string>('all');
+  const [productSortBy, setProductSortBy] = useState<'recent' | 'name' | 'priceAsc' | 'priceDesc' | 'stock'>('recent');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // User management filters
   const [userSearch, setUserSearch] = useState('');
@@ -1009,19 +1017,46 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+  const handleDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
     try {
-      await api.delete(`/api/products/${productId}`);
+      await api.delete(`/api/products/${productToDelete._id}`);
       alert('Product deleted successfully');
       loadProducts();
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete product');
+      throw error;
     }
   };
 
   const handleEditProduct = (product: Product) => {
-    navigate(`/admin/edit-product/${product._id}`);
+    setProductToEdit(product);
+  };
+
+  const toggleProductSelected = (id: string) => {
+    setSelectedProductIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const clearSelection = () => setSelectedProductIds([]);
+
+  const handleBulkDelete = async () => {
+    if (!selectedProductIds.length) return;
+    setBulkDeleting(true);
+    try {
+      await Promise.all(selectedProductIds.map((id) => api.delete(`/api/products/${id}`)));
+      alert(`Deleted ${selectedProductIds.length} product${selectedProductIds.length === 1 ? '' : 's'}.`);
+      clearSelection();
+      loadProducts();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete some products');
+      throw error;
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleUpdateProduct = async (e: React.FormEvent) => {
@@ -1981,7 +2016,7 @@ const AdminDashboard: React.FC = () => {
   const renderProducts = () => {
     const searchTerm = productSearch.trim().toLowerCase();
     const validProducts = products.filter(product => product && product.name);
-    const filteredProducts = validProducts.filter((product) => {
+    const filteredProductsUnsorted = validProducts.filter((product) => {
       // Search filter
       if (searchTerm) {
         const combined = `${product.name} ${product.category || ''}`.toLowerCase();
@@ -2017,6 +2052,45 @@ const AdminDashboard: React.FC = () => {
 
       return true;
     });
+
+    const filteredProducts = [...filteredProductsUnsorted].sort((a, b) => {
+      const aPrice = (a.normalPrice ?? a.price ?? 0) as number;
+      const bPrice = (b.normalPrice ?? b.price ?? 0) as number;
+      const aStock = (a.stockQuantity ?? a.stock ?? 0) as number;
+      const bStock = (b.stockQuantity ?? b.stock ?? 0) as number;
+      switch (productSortBy) {
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '');
+        case 'priceAsc':
+          return aPrice - bPrice;
+        case 'priceDesc':
+          return bPrice - aPrice;
+        case 'stock':
+          return bStock - aStock;
+        case 'recent':
+        default: {
+          const aT = (a as any).createdAt ? new Date((a as any).createdAt).getTime() : 0;
+          const bT = (b as any).createdAt ? new Date((b as any).createdAt).getTime() : 0;
+          return bT - aT;
+        }
+      }
+    });
+
+    const visibleSelectedCount = filteredProducts.reduce(
+      (n, p) => (selectedProductIds.includes(p._id) ? n + 1 : n),
+      0
+    );
+    const allFilteredSelected =
+      filteredProducts.length > 0 && visibleSelectedCount === filteredProducts.length;
+    const toggleSelectAllFiltered = () => {
+      if (allFilteredSelected) {
+        setSelectedProductIds((prev) => prev.filter((id) => !filteredProducts.some((p) => p._id === id)));
+      } else {
+        const ids = new Set(selectedProductIds);
+        filteredProducts.forEach((p) => ids.add(p._id));
+        setSelectedProductIds(Array.from(ids));
+      }
+    };
 
     const totalStock = validProducts.reduce(
       (acc, product) => acc + (product.stockQuantity ?? 0) + (product.stock ?? 0),
@@ -2098,8 +2172,8 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Filters and Controls */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+          <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
             <div className="flex flex-wrap items-center gap-3 flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -2113,27 +2187,16 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               <select
-                value={productFilterCategory}
-                onChange={(e) => setProductFilterCategory(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={productSortBy}
+                onChange={(e) => setProductSortBy(e.target.value as any)}
+                className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                title="Sort by"
               >
-                <option value="all">All Categories</option>
-                {uniqueCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-
-              <select
-                value={productFilterStatus}
-                onChange={(e) => setProductFilterStatus(e.target.value)}
-                className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="all">All Status</option>
-                <option value="in_stock">In Stock</option>
-                <option value="low_stock">Low Stock</option>
-                <option value="out_of_stock">Out of Stock</option>
-                <option value="quote_only">Quote Only</option>
-                <option value="recommended">Recommended</option>
+                <option value="recent">Sort: Most recent</option>
+                <option value="name">Sort: Name (A-Z)</option>
+                <option value="priceAsc">Sort: Price (low → high)</option>
+                <option value="priceDesc">Sort: Price (high → low)</option>
+                <option value="stock">Sort: Stock (high → low)</option>
               </select>
 
               {(productSearch || productFilterCategory !== 'all' || productFilterStatus !== 'all') && (
@@ -2143,9 +2206,9 @@ const AdminDashboard: React.FC = () => {
                     setProductFilterCategory('all');
                     setProductFilterStatus('all');
                   }}
-                  className="px-4 py-2.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  Clear Filters
+                  Clear filters
                 </button>
               )}
             </div>
@@ -2181,7 +2244,84 @@ const AdminDashboard: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Category chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold mr-1">Category</span>
+            {['all', ...uniqueCategories].map((cat) => {
+              const active = productFilterCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setProductFilterCategory(cat)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-700'
+                  }`}
+                >
+                  {cat === 'all' ? 'All' : cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold mr-1">Status</span>
+            {[
+              { v: 'all', label: 'All' },
+              { v: 'in_stock', label: 'In stock' },
+              { v: 'low_stock', label: 'Low stock' },
+              { v: 'out_of_stock', label: 'Out of stock' },
+              { v: 'quote_only', label: 'Quote only' },
+              { v: 'recommended', label: 'Recommended' },
+            ].map(({ v, label }) => {
+              const active = productFilterStatus === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setProductFilterStatus(v)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Bulk action bar */}
+        {selectedProductIds.length > 0 && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+            <div className="text-sm text-indigo-900 font-medium">
+              {selectedProductIds.length} product{selectedProductIds.length === 1 ? '' : 's'} selected
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 rounded-lg"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkDeleteOpen(true)}
+                disabled={bulkDeleting}
+                className="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-1.5 disabled:opacity-60"
+              >
+                <Trash2 className="w-4 h-4" /> Delete selected
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Export Section */}
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -2547,6 +2687,15 @@ const AdminDashboard: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAllFiltered}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      title="Select all on this view"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Product
                   </th>
@@ -2570,8 +2719,17 @@ const AdminDashboard: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredProducts.map((product) => {
                   const thumbnail = product.images?.[0] || product.imageUrl;
+                  const isSelected = selectedProductIds.includes(product._id);
                   return (
-                    <tr key={product._id} className="hover:bg-gray-50">
+                    <tr key={product._id} className={`hover:bg-gray-50 ${isSelected ? 'bg-indigo-50/40' : ''}`}>
+                      <td className="px-4 py-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleProductSelected(product._id)}
+                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           {thumbnail && (
@@ -2644,7 +2802,7 @@ const AdminDashboard: React.FC = () => {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteProduct(product._id)}
+                            onClick={() => handleDeleteProduct(product)}
                             className="text-red-600 hover:text-red-800"
                             title="Delete"
                           >
@@ -6761,6 +6919,39 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmDeleteProduct}
+        title="Delete product?"
+        message={productToDelete ? `This will permanently delete "${productToDelete.name}". This action cannot be undone.` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive
+      />
+
+      <ConfirmationModal
+        isOpen={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={handleBulkDelete}
+        title={`Delete ${selectedProductIds.length} product${selectedProductIds.length === 1 ? '' : 's'}?`}
+        message="This will permanently delete the selected products. This action cannot be undone."
+        confirmText="Delete all"
+        cancelText="Cancel"
+        isDestructive
+      />
+
+      {productToEdit && (
+        <ProductEditor
+          product={productToEdit as any}
+          products={products as any}
+          onClose={() => setProductToEdit(null)}
+          onUpdated={() => {
+            loadProducts();
+          }}
+        />
       )}
     </div>
   );
