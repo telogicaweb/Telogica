@@ -3,8 +3,8 @@ import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
-import { Trash2, AlertCircle, FileText, ShoppingCart } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Trash2, AlertCircle, FileText, ShoppingCart, ChevronRight, Plus, Minus } from 'lucide-react';
 
 const Quote = () => {
   const { cart, quoteItems, removeFromQuote, clearQuote, clearCart, updateQuoteItemQuantity } = useContext(CartContext)!;
@@ -75,12 +75,10 @@ const Quote = () => {
       success('Quote Submitted Successfully! You will receive an email once admin responds.');
       clearQuote();
       clearCart();
-      // Redirect to appropriate dashboard based on user role
       navigate(user.role === 'retailer' ? '/retailer-dashboard' : '/user-dashboard');
     } catch (error: any) {
       console.error('Quote submission error:', error);
       toastError(error.response?.data?.message || 'Failed to submit quote');
-      alert(error.response?.data?.message || 'Failed to submit quote');
     } finally {
       setIsSubmitting(false);
     }
@@ -100,73 +98,89 @@ const Quote = () => {
   const isMinimumMet = displayItems.length > 0 && (quoteType === 'standard' ? isStandardValid : isBulkValid);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-gray-900">Request a Quote</h1>
-          <p className="text-gray-600">
-            {user?.role === 'retailer'
-              ? 'As a retailer, you can request quotes for bulk orders with special discounts.'
-              : 'Request a quote for bulk orders and get special pricing.'}
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      {/* Combined Header (Breadcrumbs + Hero Banner) */}
+      <section className="bg-slate-900 text-white pt-24 pb-6 border-b border-slate-800">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col">
+          {/* Integrated Breadcrumbs */}
+          <div className="flex items-center gap-2 text-[11px] mb-2">
+            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
+            <ChevronRight className="w-3 h-3 text-gray-600" />
+            <span className="text-white font-medium">Request a Quote</span>
+          </div>
 
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight">
+            Request a Quote
+          </h1>
+        </div>
+      </section>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Quote Type Selection for Retailers */}
         {user?.role === 'retailer' && (
-          <div className="bg-white p-6 rounded-lg shadow-sm mb-6 border border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Quotation Type</h2>
-            <div className="flex gap-4">
+          <div className="bg-white p-6 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] mb-8 border border-gray-100 animate-in fade-in duration-300">
+            <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider mb-4 pb-2 border-b border-gray-50">
+              Quotation Method
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div
                 onClick={() => setQuoteType('standard')}
-                className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'standard' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'standard' ? 'border-indigo-600 bg-indigo-50/50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-4 h-4 rounded-full border ${quoteType === 'standard' ? 'border-4 border-indigo-600' : 'border-gray-400'}`}></div>
-                  <span className="font-medium text-gray-900">Price Request Quotation</span>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${quoteType === 'standard' ? 'border-indigo-650' : 'border-gray-400'}`}>
+                    {quoteType === 'standard' && <div className="w-1.5 h-1.5 rounded-full bg-indigo-650" />}
+                  </div>
+                  <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Price Request</span>
                 </div>
-                <p className="text-sm text-gray-600 ml-6">Request special pricing for various products. Accepted items will be added to your Quoted Products tab for future orders. (Min 3 quantity or 3 items for Telecom products)</p>
+                <p className="text-[10px] text-gray-500 ml-5 leading-relaxed font-semibold">Request special pricing. Accepted items will be added to your Quoted Products catalog for future checkout (Min 3 qty or 3 items for Telecom products).</p>
               </div>
 
               <div
                 onClick={() => setQuoteType('bulk_order')}
-                className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'bulk_order' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
+                className={`p-5 rounded-lg border-2 cursor-pointer transition-all ${quoteType === 'bulk_order' ? 'border-indigo-600 bg-indigo-50/50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-4 h-4 rounded-full border ${quoteType === 'bulk_order' ? 'border-4 border-indigo-600' : 'border-gray-400'}`}></div>
-                  <span className="font-medium text-gray-900">Bulk Quantity Quotation</span>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${quoteType === 'bulk_order' ? 'border-indigo-655' : 'border-gray-400'}`}>
+                    {quoteType === 'bulk_order' && <div className="w-1.5 h-1.5 rounded-full bg-indigo-655" />}
+                  </div>
+                  <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Bulk Order</span>
                 </div>
-                <p className="text-sm text-gray-600 ml-6">One-time bulk purchase. Upon acceptance, you proceed directly to checkout. (Min 3 quantity per product)</p>
+                <p className="text-[10px] text-gray-500 ml-5 leading-relaxed font-semibold">One-time bulk purchase order. Upon acceptance, you can proceed directly to complete the payment (Min 3 qty per product).</p>
               </div>
             </div>
             {quoteType === 'bulk_order' && !isBulkValid && displayItems.length > 0 && (
-              <div className="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-200 flex items-center gap-2">
-                <AlertCircle size={16} />
-                For Bulk Orders, every product must have a quantity of at least 3.
+              <div className="mt-4 p-3 bg-red-50 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded border border-red-205 flex items-center gap-2">
+                <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+                <span>For Bulk Orders, every product must have a quantity of at least 3.</span>
               </div>
             )}
           </div>
         )}
 
         {/* Minimum requirement notice */}
-        <div className={`mb-6 border-l-4 p-4 ${isMinimumMet ? 'bg-green-50 border-green-400' : 'bg-yellow-50 border-yellow-400'}`}>
-          <div className="flex">
-            <div className="flex-shrink-0">
+        <div className={`mb-8 border-l-4 p-4 rounded-r-lg shadow-sm border ${isMinimumMet ? 'bg-green-50 border-green-500 border-y border-r border-green-100' : 'bg-amber-50 border-amber-500 border-y border-r border-amber-100'}`}>
+          <div className="flex gap-3 items-start">
+            <div className="flex-shrink-0 mt-0.5">
               {isMinimumMet ? (
-                <FileText className="h-5 w-5 text-green-400" />
+                <FileText className="h-5 w-5 text-green-600 animate-pulse" />
               ) : (
-                <AlertCircle className="h-5 w-5 text-yellow-400" />
+                <AlertCircle className="h-5 w-5 text-amber-600" />
               )}
             </div>
-            <div className="ml-3">
-              <p className={`text-sm ${isMinimumMet ? 'text-green-700' : 'text-yellow-700'}`}>
+            <div>
+              <p className={`text-xs font-bold uppercase tracking-wider ${isMinimumMet ? 'text-green-800' : 'text-amber-800'}`}>
+                {isMinimumMet ? 'Ready for submission' : 'Minimum constraints check'}
+              </p>
+              <p className={`text-xs mt-1 leading-relaxed ${isMinimumMet ? 'text-green-700' : 'text-amber-700'}`}>
                 {isMinimumMet
                   ? `✓ You have ${displayItems.length} items (${hasTelecom ? `${totalTelecomQuantity} telecom quantity` : 'no telecom'}). Ready to submit quote request.`
                   : hasTelecom
-                    ? `You have ${telecomItems.length} Telecom items with total quantity ${totalTelecomQuantity}. Need either 3+ quantity OR 3+ different items.`
+                    ? `You have ${telecomItems.length} Telecom items with total quantity ${totalTelecomQuantity}. Need either 3+ total quantity OR 3+ different items.`
                     : `You have ${displayItems.length} items. Add items to request a quote.`}
               </p>
               {hasTelecom && (
-                <p className="text-xs mt-1 text-gray-500">
+                <p className="text-[10px] mt-1.5 text-gray-500 font-semibold uppercase tracking-wider">
                   * Telecom products require either total quantity of 3+ OR 3+ different items.
                 </p>
               )}
@@ -175,93 +189,92 @@ const Quote = () => {
         </div>
 
         {displayItems.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-lg shadow-sm">
-            <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600 text-lg mb-2">Your quote list is empty.</p>
-            <p className="text-gray-500 text-sm mb-6">Add items to request a quote.</p>
+          <div className="text-center py-16 bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] rounded-xl animate-in fade-in duration-300">
+            <ShoppingCart size={48} className="mx-auto text-gray-305 mb-4" />
+            <p className="text-gray-900 font-extrabold text-sm uppercase tracking-wider mb-1">Your quote list is empty</p>
+            <p className="text-gray-500 text-xs mb-6 font-medium">Add items to request a quote.</p>
             <button
-              onClick={() => navigate('/')}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => navigate('/products')}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-[10px] font-bold uppercase tracking-wider rounded text-white bg-gray-900 hover:bg-gray-800 shadow"
             >
               Browse Products
             </button>
           </div>
         ) : (
-          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">Items for Quote</h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${isMinimumMet
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                  {displayItems.length} items
-                </span>
-              </div>
+          <div className="bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] border border-gray-100 rounded-xl overflow-hidden animate-in fade-in duration-300">
+            <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-150 flex justify-between items-center">
+              <h2 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider">Items for Quote</h2>
+              <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${isMinimumMet
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                {displayItems.length} items
+              </span>
             </div>
 
-            <ul className="divide-y divide-gray-200">
+            <ul className="divide-y divide-gray-100">
               {displayItems.map(item => (
-                <li key={item.product._id} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50">
+                <li key={item.product._id} className="p-6 flex flex-col sm:flex-row justify-between sm:items-center hover:bg-gray-50/50 transition-colors gap-4">
                   <div className="flex items-center flex-1">
                     {item.product.images && item.product.images[0] && (
-                      <div className="relative">
+                      <div className="relative w-14 h-14 border border-gray-200/50 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
                         <img
                           src={item.product.images[0]}
                           alt={item.product.name}
-                          className="w-16 h-16 object-cover rounded-md border border-gray-200"
+                          className="w-full h-full object-cover"
                         />
-                        <span className="absolute -top-1 -right-1 bg-white/90 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shadow border border-gray-100">
+                        <span className="absolute -top-1 -right-1 bg-white/90 text-gray-900 px-1 py-0.2 rounded text-[7px] font-extrabold uppercase tracking-wider shadow border border-gray-100">
                           {item.product.category}
                         </span>
                       </div>
                     )}
                     <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">{item.product.name}</h3>
-                      <div className="flex items-center mt-1">
-                        <span className="text-sm text-gray-500 mr-2">Quantity:</span>
-                        <div className="flex items-center border border-gray-300 rounded-md">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-1">{item.product.name}</h3>
+                      <div className="flex items-center mt-2.5 gap-2 text-xs">
+                        <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wide">Quantity:</span>
+                        <div className="flex items-center bg-gray-50 border border-gray-300 rounded p-0.5">
                           <button
                             onClick={() => updateQuoteItemQuantity(item.product._id, item.quantity - 1)}
-                            className="px-2 py-1 text-gray-600 hover:bg-gray-100 border-r border-gray-300"
+                            className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                             disabled={item.quantity <= 1}
                           >
-                            -
+                            <Minus size={10} />
                           </button>
-                          <span className="px-3 py-1 text-gray-900 font-medium">{item.quantity}</span>
+                          <span className="w-6 text-center text-xs font-bold text-gray-900">{item.quantity}</span>
                           <button
                             onClick={() => updateQuoteItemQuantity(item.product._id, item.quantity + 1)}
-                            className="px-2 py-1 text-gray-600 hover:bg-gray-100 border-l border-gray-300"
+                            className="p-1 rounded hover:bg-white transition-colors"
                           >
-                            +
+                            <Plus size={10} />
                           </button>
                         </div>
                       </div>
                       {item.product.price && (
-                        <p className="text-sm text-gray-600 mt-1">Regular Price: ₹{item.product.price} each</p>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1.5">Regular Price: ₹{item.product.price} each</p>
                       )}
                     </div>
                   </div>
+                  
                   <button
                     onClick={() => removeFromQuote(item.product._id)}
-                    className="text-red-600 hover:text-red-800 font-medium flex items-center gap-1 ml-4"
+                    className="font-bold text-red-500 hover:text-red-650 flex items-center gap-1 text-[10px] uppercase tracking-wider bg-red-50 hover:bg-red-105 px-3 py-1.5 rounded transition-colors self-start sm:self-auto border border-red-100/35"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={12} />
                     <span>Remove</span>
                   </button>
                 </li>
               ))}
             </ul>
 
-            <div className="px-6 py-6 bg-gray-50 border-t border-gray-200">
-              <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="p-6 bg-gray-50/50 border-t border-gray-150">
+              <label htmlFor="message" className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
                 Additional Message or Requirements *
               </label>
               <textarea
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border"
+                className="shadow-inner border border-gray-250 rounded-lg block w-full text-xs font-semibold text-gray-700 bg-white p-3.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-semibold"
                 rows={4}
                 placeholder="Tell us about your requirements, expected delivery time, budget constraints, or any specific requests..."
                 required
@@ -271,38 +284,34 @@ const Quote = () => {
                 <button
                   onClick={handleSubmitQuote}
                   disabled={!isMinimumMet || isSubmitting}
-                  className={`flex-1 inline-flex justify-center items-center gap-2 py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white transition-colors ${isMinimumMet && !isSubmitting
-                    ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                    : 'bg-gray-400 cursor-not-allowed'
+                  className={`flex-grow inline-flex justify-center items-center gap-2 py-3.5 px-6 rounded-lg text-xs font-bold uppercase tracking-wider text-white shadow transition-all ${isMinimumMet && !isSubmitting
+                    ? 'bg-gray-900 hover:bg-gray-800 cursor-pointer transform hover:scale-[1.01]'
+                    : 'bg-gray-400 cursor-not-allowed opacity-50'
                     }`}
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Submitting...
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Submitting quote...
                     </>
                   ) : (
                     <>
-                      <FileText className="w-5 h-5" />
+                      <FileText className="w-4 h-4" />
                       Submit Quote Request
                     </>
                   )}
                 </button>
                 <button
                   onClick={() => navigate('/products')}
-                  className="px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  className="px-6 py-3.5 border border-gray-250 rounded-lg text-xs font-bold uppercase tracking-wider text-gray-750 bg-white hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   Continue Shopping
                 </button>
               </div>
 
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-gray-500 text-center">
-                  ✓ You will receive an email notification once the admin responds to your quote.
-                </p>
-                <p className="text-sm text-gray-500 text-center">
-                  ✓ Admin will provide custom pricing and discount information.
-                </p>
+              <div className="mt-4 space-y-1 text-center font-bold text-[9px] text-gray-400 uppercase tracking-wider">
+                <p>✓ You will receive an email notification once the admin responds to your quote.</p>
+                <p>✓ Admin will provide custom pricing and discount details.</p>
               </div>
             </div>
           </div>

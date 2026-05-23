@@ -1,5 +1,8 @@
+
 import { useState, useEffect } from 'react';
-import { Calendar, User, Tag, ArrowRight, Clock, TrendingUp, Sparkles, BookOpen, Search, Filter, Eye, Heart, Share2, Bookmark, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Calendar, User, ArrowRight, Clock, BookOpen, TrendingUp, Sparkles, Search, Filter, Bookmark, Share2, ChevronRight } from 'lucide-react';
 import api from '../api';
 
 interface BlogPost {
@@ -98,13 +101,14 @@ export default function Blog() {
   const categories = ['All', 'Telecom', 'Defence', 'Railway'];
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     loadBlogPosts();
   }, []);
 
   const loadBlogPosts = async () => {
     try {
       const response = await api.get('/api/blog');
-      if (response.data.length > 0) {
+      if (response.data && response.data.length > 0) {
         setBlogPosts(response.data);
       } else {
         setBlogPosts(mockPosts);
@@ -119,7 +123,7 @@ export default function Blog() {
 
   const filteredPosts = blogPosts.filter(post => {
     const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.author.toLowerCase().includes(searchQuery.toLowerCase());
@@ -136,71 +140,61 @@ export default function Blog() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-gray-50 pt-24 pb-16 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f7] pt-24 pb-16 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
-          <div className="text-xl text-gray-600 font-semibold">Loading amazing content...</div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mb-3"></div>
+          <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">Loading amazing insights...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/20 to-gray-50">
-      {/* Ultra Premium Hero Section */}
-      <section className="relative bg-gradient-to-br from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] text-white overflow-hidden pt-32 pb-32">
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-600/20 blur-[120px] animate-pulse"></div>
-          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-indigo-600/15 blur-[140px] animate-pulse" style={{animationDelay: '1s'}}></div>
-          <div className="absolute top-[40%] right-[30%] w-[400px] h-[400px] rounded-full bg-pink-600/10 blur-[100px] animate-pulse" style={{animationDelay: '2s'}}></div>
-          
-          {/* Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-          
-          {/* Floating Orbs */}
-          <div className="absolute top-[20%] left-[15%] w-3 h-3 bg-purple-300/40 rounded-full animate-ping"></div>
-          <div className="absolute top-[70%] right-[25%] w-2 h-2 bg-pink-300/30 rounded-full animate-ping" style={{animationDelay: '1s'}}></div>
-          <div className="absolute bottom-[30%] left-[40%] w-2.5 h-2.5 bg-indigo-300/30 rounded-full animate-ping" style={{animationDelay: '1.5s'}}></div>
-        </div>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      {/* Combined Header (Breadcrumbs + Hero Banner) */}
+      <section className="relative bg-gradient-to-br from-[#621180] via-[#220d57] to-[#9c125a] text-white pt-24 pb-12 border-b border-[#621180]/20">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col">
+          {/* Integrated Breadcrumbs */}
+          <div className="flex items-center gap-2 text-[11px] mb-8">
+            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
+            <ChevronRight className="w-3 h-3 text-gray-600" />
+            <span className="text-white font-medium">Blog</span>
+          </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Premium Badge */}
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-purple-900/50 to-indigo-900/50 border border-purple-700/50 text-purple-200 text-sm font-bold mb-8 backdrop-blur-md shadow-2xl">
-              <Sparkles size={18} className="text-purple-300 animate-pulse" />
-              <span>INDUSTRY INSIGHTS & INNOVATIONS</span>
-              <BookOpen size={16} className="text-purple-400" />
+          {/* Hero Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="text-center"
+          >
+            <div className="inline-flex items-center gap-1.2 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-white/10 text-blue-200 rounded-full border border-white/5 backdrop-blur-md">
+              <BookOpen className="w-3 h-3 text-blue-400 mr-1.5" />
+              <span>Industry Insights & Innovations</span>
             </div>
 
-            {/* Main Heading */}
-            <h1 className="text-6xl md:text-8xl font-black tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-pink-200 drop-shadow-2xl leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-4 leading-tight">
               Telogica Blog
             </h1>
-            
-            <p className="text-2xl md:text-3xl text-gray-300 mb-12 leading-relaxed font-light">
-              Discover cutting-edge <span className="font-bold text-white">insights</span>, innovations, and industry trends from our <span className="text-purple-300">world-class experts</span>
+            <p className="text-xs sm:text-sm lg:text-base text-indigo-200/80 mt-3 max-w-2xl mx-auto leading-relaxed font-light">
+              Discover cutting-edge insights, innovations, and industry trends from our world-class experts
             </p>
 
-            {/* Premium Search Bar */}
-            <div className="max-w-3xl mx-auto relative group mb-8">
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 rounded-3xl blur-lg opacity-40 group-hover:opacity-70 transition duration-1000 animate-pulse"></div>
-              <div className="relative flex items-center bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-2 shadow-2xl">
-                <div className="bg-gradient-to-r from-purple-500 to-pink-600 p-3.5 rounded-xl ml-2">
-                  <Search className="text-white w-5 h-5" />
-                </div>
-                <input 
+            {/* Minimal search box */}
+            <div className="max-w-xl mx-auto mt-6 relative">
+              <div className="flex items-center bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus-within:border-indigo-500/50 focus-within:bg-white/10 transition-all shadow-sm">
+                <Search className="text-gray-400 w-4 h-4 mr-2" />
+                <input
                   type="text"
                   placeholder="Search articles by title, author, or topic..."
-                  className="w-full bg-transparent border-none text-white placeholder-gray-300 focus:ring-0 text-lg px-6 py-4 font-medium"
+                  className="w-full bg-transparent border-none text-xs text-white placeholder-gray-400 focus:ring-0 p-1 outline-none"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 {searchQuery && (
-                  <button 
+                  <button
                     onClick={() => setSearchQuery('')}
-                    className="px-6 py-2 mr-2 text-gray-300 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-xl font-semibold"
+                    className="text-[10px] text-gray-400 hover:text-white px-2 py-1 bg-white/5 rounded transition-colors"
                   >
                     Clear
                   </button>
@@ -209,138 +203,138 @@ export default function Blog() {
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap items-center justify-center gap-8 text-sm">
-              <div className="flex items-center gap-2 text-gray-300">
-                <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse"></div>
-                <span><span className="text-white font-bold">{blogPosts.length}</span> Expert Articles</span>
+            <div className="flex items-center justify-center gap-6 text-[10px] text-gray-400 mt-6 flex-wrap font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>{blogPosts.length} Expert Articles</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-300">
-                <TrendingUp size={18} className="text-purple-400" />
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Updated Weekly</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-300">
-                <Sparkles size={18} className="text-yellow-400" />
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
                 <span>Industry Leaders</span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Premium Category Filter */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 -mt-20 relative z-20">
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 p-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-3 rounded-2xl shadow-lg">
-              <Filter className="text-white w-5 h-5" />
+      {/* Category Filter */}
+      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] p-5 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 text-indigo-600 p-2 rounded-lg">
+              <Filter className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-gray-900">Filter by Category</h3>
-              <p className="text-sm text-gray-600">Explore articles in your area of interest</p>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Filter by Category</h3>
+              <p className="text-[10px] text-gray-500 font-medium">Explore articles in your area of interest</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {categories.map(category => (
+
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`group relative px-8 py-3.5 rounded-2xl font-bold transition-all duration-300 transform hover:-translate-y-0.5 ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-xl scale-105'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-md'
-                }`}
+                className={`text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded transition-all duration-200 ${selectedCategory === category
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
               >
-                {selectedCategory === category && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                )}
-                <span className="relative z-10 flex items-center gap-2">
-                  {category}
-                  {selectedCategory === category && <ChevronRight size={18} />}
-                </span>
+                {category}
               </button>
             ))}
           </div>
-          {filteredPosts.length > 0 && (
-            <div className="mt-6 px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-              <p className="text-sm text-purple-900 font-semibold">
-                <span className="text-2xl font-black">{filteredPosts.length}</span> {filteredPosts.length === 1 ? 'article' : 'articles'} found
-                {searchQuery && <span className="ml-1">for "{searchQuery}"</span>}
-              </p>
-            </div>
-          )}
         </div>
+
       </section>
 
-      {/* Featured Post - Premium Design */}
+      {/* Featured Article */}
       {selectedCategory === 'All' && !searchQuery && blogPosts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
-          <div className="mb-8">
-            <h2 className="text-4xl font-black text-gray-900 mb-2">Featured Article</h2>
-            <p className="text-gray-600 text-lg">Our top pick this week</p>
+        <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-2 mb-6">
+            <span className="h-1 w-8 bg-indigo-600 rounded"></span>
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Featured Article</h3>
+            <span className="text-[9px] text-gray-500 font-mono bg-white shadow-sm border border-gray-100 py-0.5 px-2 rounded-full uppercase tracking-wider font-bold">
+              Our Pick
+            </span>
           </div>
-          <div className="group relative bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-gray-100 hover:shadow-purple-200/50 transition-all duration-500 hover:-translate-y-2">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-pink-600/0 to-purple-600/0 group-hover:from-purple-600/5 group-hover:via-pink-600/5 group-hover:to-purple-600/5 transition-all duration-500"></div>
-            <div className="grid lg:grid-cols-2 gap-0">
-              <div className="relative h-96 lg:h-full overflow-hidden">
-                <img 
-                  src={blogPosts[0].image} 
-                  alt={blogPosts[0].title}
-                  className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                <div className="absolute top-6 left-6 flex flex-wrap gap-3">
-                  <span className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full text-sm font-black shadow-lg flex items-center gap-2">
-                    <Sparkles size={16} />
-                    FEATURED
-                  </span>
-                  <span className="px-4 py-2 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-bold shadow-lg">
-                    {blogPosts[0].category}
-                  </span>
-                </div>
+
+          <div className="bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] border border-gray-100 lg:grid lg:grid-cols-12 rounded-xl group hover:shadow-xl hover:scale-[1.005] transition-all duration-300">
+            {/* Image Container */}
+            <div className="relative h-64 sm:h-80 lg:h-full lg:col-span-6 overflow-hidden bg-gray-100">
+              <img
+                src={blogPosts[0].image}
+                alt={blogPosts[0].title}
+                className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+              <div className="absolute top-4 left-4 flex gap-2">
+                <span className="px-2.5 py-1 bg-amber-500 text-white rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow">
+                  <Sparkles className="w-3 h-3" />
+                  Featured
+                </span>
+                <span className="px-2.5 py-1 bg-white text-gray-900 rounded text-[9px] font-bold uppercase tracking-wider shadow border border-gray-100">
+                  {blogPosts[0].category}
+                </span>
               </div>
-              <div className="relative p-10 lg:p-14 flex flex-col justify-center">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full font-semibold">
-                    <Clock size={16} />
-                    <span>{blogPosts[0].readTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Eye size={16} className="text-purple-600" />
-                    <span className="font-semibold">Trending</span>
-                  </div>
+            </div>
+
+            {/* Content Column */}
+            <div className="p-6 sm:p-8 lg:p-10 lg:col-span-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-500 mb-4 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {blogPosts[0].readTime}
+                  </span>
+                  <span className="text-gray-300">•</span>
+                  <span className="flex items-center gap-1 text-indigo-600 font-bold uppercase">
+                    <TrendingUp className="w-3.5 h-3.5 animate-bounce" />
+                    Trending
+                  </span>
                 </div>
-                <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 leading-tight group-hover:text-purple-900 transition-colors">
+
+                <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-gray-900 leading-tight mb-4 group-hover:text-indigo-600 transition-colors">
                   {blogPosts[0].title}
                 </h2>
-                <p className="text-gray-700 text-lg mb-8 leading-relaxed">
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6">
                   {blogPosts[0].excerpt}
                 </p>
-                <div className="flex items-center gap-6 mb-8 pb-8 border-b border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                      {blogPosts[0].author.charAt(0)}
+              </div>
+
+              <div>
+                {/* Author Info */}
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-100 mb-6">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs shadow-sm">
+                    {blogPosts[0].author.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 text-xs font-bold text-gray-900">
+                      <User className="w-3 h-3 text-gray-400" />
+                      <span>{blogPosts[0].author}</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <User size={14} className="text-gray-500" />
-                        <span className="font-bold text-gray-900">{blogPosts[0].author}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar size={14} />
-                        <span>{formatDate(blogPosts[0].publishDate)}</span>
-                      </div>
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                      <Calendar className="w-3 h-3 text-gray-400" />
+                      <span>{formatDate(blogPosts[0].publishDate)}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4">
-                  <button className="flex-1 flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-black text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1">
-                    Read Full Article <ArrowRight size={22} />
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button className="flex-grow flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-all rounded">
+                    <span>Read Full Article</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
-                  <button className="p-4 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors">
-                    <Bookmark size={22} className="text-gray-700" />
+                  <button className="p-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200 rounded transition-colors" title="Bookmark">
+                    <Bookmark className="w-4 h-4" />
                   </button>
-                  <button className="p-4 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors">
-                    <Share2 size={22} className="text-gray-700" />
+                  <button className="p-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200 rounded transition-colors" title="Share">
+                    <Share2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -349,124 +343,107 @@ export default function Blog() {
         </section>
       )}
 
-      {/* Premium Blog Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="mb-12">
-          <h2 className="text-4xl font-black text-gray-900 mb-3">
-            {selectedCategory === 'All' && !searchQuery ? 'Latest Articles' : 
-             searchQuery ? `Search Results` :
-             `${selectedCategory} Articles`}
+      {/* Blog Grid */}
+      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center gap-2 mb-8">
+          <span className="h-1 w-8 bg-indigo-600 rounded"></span>
+          <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+            {selectedCategory === 'All' && !searchQuery ? 'Latest Articles' :
+              searchQuery ? 'Search Results' :
+                `${selectedCategory} Articles`}
           </h2>
-          <p className="text-gray-600 text-lg">
-            {selectedCategory === 'All' && !searchQuery ? 'Stay updated with the latest industry insights' :
-             searchQuery ? `Articles matching your search` :
-             `Expert insights in ${selectedCategory}`}
-          </p>
+          <span className="text-[9px] text-gray-500 font-mono bg-white shadow-sm border border-gray-100 py-0.5 px-2 rounded-full font-bold uppercase tracking-wider">
+            {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}
+          </span>
         </div>
-        
+
         {filteredPosts.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredPosts.slice(selectedCategory === 'All' && !searchQuery ? 1 : 0).map((post, index) => (
-              <article 
-                key={post._id} 
-                className="group bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 cursor-pointer border-2 border-gray-100 hover:border-purple-200 flex flex-col hover:-translate-y-2"
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredPosts.slice(selectedCategory === 'All' && !searchQuery ? 1 : 0).map((post) => (
+              <article
+                key={post._id}
+                className="group bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-xl hover:scale-[1.01] transition-all duration-300 border border-gray-100 flex flex-col justify-between overflow-hidden"
               >
-                {/* Image Container */}
-                <div className="relative h-64 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
-                  <img 
-                    src={post.image} 
+                {/* Image & Badges */}
+                <div className="relative h-48 overflow-hidden bg-gray-50">
+                  <img
+                    src={post.image}
                     alt={post.title}
-                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+
                   {/* Floating Category Badge */}
-                  <div className="absolute top-4 right-4">
-                    <span className="px-4 py-2 bg-white/95 backdrop-blur-sm text-gray-900 rounded-full text-xs font-black shadow-xl border-2 border-white">
-                      {post.category}
-                    </span>
-                  </div>
-
-                  {/* Hover Actions */}
-                  <div className="absolute bottom-4 left-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                    <button className="flex-1 flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm text-gray-900 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-white transition-colors">
-                      <Eye size={16} />
-                      Read
-                    </button>
-                    <button className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors">
-                      <Heart size={16} className="text-red-500" />
-                    </button>
-                    <button className="p-2.5 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors">
-                      <Share2 size={16} className="text-gray-700" />
-                    </button>
-                  </div>
+                  <span className="absolute top-4 right-4 px-2 py-0.5 bg-white text-gray-900 text-[8px] font-extrabold uppercase rounded shadow tracking-wider border border-gray-100">
+                    {post.category}
+                  </span>
                 </div>
 
-                {/* Content */}
-                <div className="p-8 flex-1 flex flex-col">
-                  {/* Meta Info */}
-                  <div className="flex items-center gap-3 mb-4 flex-wrap">
-                    <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full font-semibold">
-                      <Clock size={14} />
-                      {post.readTime}
+                {/* Content Area */}
+                <div className="p-5 flex-grow flex flex-col justify-between">
+                  <div>
+                    {/* Read Time & Details */}
+                    <div className="flex items-center gap-3 text-[9px] text-gray-500 mb-3 flex-wrap font-semibold uppercase tracking-wider">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                        {post.readTime}
+                      </span>
+                      <span>•</span>
+                      <span className="text-gray-500">{post.category}</span>
                     </div>
-                    <Tag size={14} className="text-purple-600" />
-                    <span className="text-xs text-gray-600 font-medium">{post.category}</span>
+
+                    {/* Title */}
+                    <h3 className="text-sm font-bold text-gray-900 mb-2 leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2">
+                      {post.title}
+                    </h3>
+
+                    {/* Excerpt */}
+                    <p className="text-xs text-gray-500 leading-relaxed mb-4 line-clamp-3">
+                      {post.excerpt}
+                    </p>
                   </div>
 
-                  {/* Title */}
-                  <h3 className="text-2xl font-black text-gray-900 mb-4 leading-tight group-hover:text-purple-900 transition-colors line-clamp-2">
-                    {post.title}
-                  </h3>
-
-                  {/* Excerpt */}
-                  <p className="text-gray-700 mb-6 line-clamp-3 leading-relaxed flex-1">
-                    {post.excerpt}
-                  </p>
-
-                  {/* Author & Date */}
-                  <div className="pt-6 border-t border-gray-200 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                        {post.author.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <User size={12} className="text-gray-500" />
-                          <span className="text-sm font-bold text-gray-900">{post.author}</span>
+                  <div>
+                    {/* Author & Publish Date */}
+                    <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100/50 rounded-full flex items-center justify-center text-indigo-600 font-extrabold text-[10px] shadow-sm">
+                          {post.author.charAt(0)}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                          <Calendar size={12} />
-                          <span>{formatDate(post.publishDate)}</span>
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-900 flex items-center gap-1">
+                            <User className="w-3 h-3 text-gray-400" />
+                            {post.author}
+                          </span>
+                          <span className="text-[9px] text-gray-400 flex items-center gap-1 mt-0.5">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            {formatDate(post.publishDate)}
+                          </span>
                         </div>
                       </div>
+
+                      <button className="bg-gray-900 hover:bg-gray-800 text-white p-2 hover:scale-105 rounded transition-all" title="Read Article">
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button className="text-purple-600 hover:text-purple-800 transition-colors group/arrow">
-                      <ArrowRight size={24} className="transform group-hover/arrow:translate-x-1 transition-transform" />
-                    </button>
                   </div>
                 </div>
-
-                {/* Bottom Accent */}
-                <div className="h-1.5 w-full bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
               </article>
             ))}
           </div>
         ) : (
-          <div className="text-center py-24 bg-white rounded-3xl shadow-lg border-2 border-gray-100">
-            <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-              <Search className="text-gray-400 w-12 h-12" />
-            </div>
-            <h3 className="text-3xl font-black text-gray-900 mb-4">No Articles Found</h3>
-            <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-              We couldn't find any articles matching your criteria. Try adjusting your filters or search terms.
+          <div className="text-center py-16 bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] max-w-xl mx-auto p-8 rounded-xl">
+            <Search className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-sm font-bold text-gray-900 mb-1">No articles found</h3>
+            <p className="text-xs text-gray-500 leading-relaxed mb-6">
+              We couldn't find any articles matching your search criteria. Try adjusting your filters or search terms.
             </p>
-            <button 
+            <button
               onClick={() => {
                 setSelectedCategory('All');
                 setSearchQuery('');
               }}
-              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider py-2 px-6 rounded shadow"
             >
               Clear All Filters
             </button>
@@ -474,57 +451,47 @@ export default function Blog() {
         )}
       </section>
 
-      {/* Ultra Premium Newsletter Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="relative bg-gradient-to-br from-purple-900 via-pink-800 to-purple-900 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Background Effects */}
-          <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-white/10 to-transparent rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-pink-600/20 to-transparent rounded-full blur-3xl"></div>
-          </div>
-
-          <div className="relative z-10 p-12 md:p-20 text-center">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-bold mb-8 backdrop-blur-sm">
-              <Sparkles size={16} className="text-yellow-300" />
-              <span>STAY INFORMED</span>
+      {/* Newsletter Section */}
+      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="relative bg-gradient-to-br from-[#621180] via-[#220d57] to-[#9c125a] rounded-3xl overflow-hidden shadow-2xl p-10 sm:p-16 text-center">
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white/90 text-[10px] font-bold uppercase tracking-wider mb-6 backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+              <span>Stay Informed</span>
             </div>
-            
-            <h2 className="text-4xl md:text-6xl font-black mb-6 text-white leading-tight">
+
+            <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 text-white tracking-tight">
               Subscribe to Our Newsletter
             </h2>
-            <p className="text-xl text-purple-100 mb-12 max-w-3xl mx-auto leading-relaxed">
-              Get the latest <span className="font-bold text-white">cutting-edge insights</span>, industry trends, and technology updates delivered directly to your inbox every week
+            <p className="text-xs sm:text-sm text-indigo-100 max-w-2xl mx-auto leading-relaxed mb-8">
+              Get the latest <strong className="text-white">cutting-edge insights</strong>, industry trends, and technology updates delivered directly to your inbox every week
             </p>
-            
-            <div className="max-w-2xl mx-auto mb-10">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
-                  <input
-                    type="email"
-                    placeholder="Enter your email address"
-                    className="relative w-full px-6 py-5 rounded-2xl text-gray-900 font-medium focus:outline-none focus:ring-4 focus:ring-white/30 shadow-xl text-lg"
-                  />
-                </div>
-                <button className="bg-white text-purple-900 px-10 py-5 rounded-2xl font-black text-lg hover:bg-gray-100 transition-all duration-300 shadow-2xl hover:shadow-white/20 transform hover:-translate-y-1 hover:scale-105">
+
+            <div className="max-w-xl mx-auto mb-8">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  className="w-full sm:flex-grow px-5 py-3 rounded-xl text-gray-900 placeholder-gray-400 text-xs font-semibold focus:outline-none shadow"
+                />
+                <button className="bg-white text-[#4c1d95] hover:bg-gray-50 px-8 py-3 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all shadow hover:shadow-lg">
                   Subscribe Now
                 </button>
               </div>
             </div>
 
             {/* Benefits */}
-            <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-purple-100">
+            <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] text-indigo-100 font-semibold uppercase tracking-wider">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 <span>Weekly Updates</span>
               </div>
               <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-yellow-300" />
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                 <span>Exclusive Content</span>
               </div>
               <div className="flex items-center gap-2">
-                <User size={16} />
+                <User className="w-3.5 h-3.5" />
                 <span>10,000+ Subscribers</span>
               </div>
             </div>
