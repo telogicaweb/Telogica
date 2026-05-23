@@ -1,10 +1,10 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { ShoppingCart, FileText, ZoomIn, X, Plus, Minus, Shield, Share2, Check, Copy, Facebook, Twitter, Linkedin, Mail, Download } from 'lucide-react';
+import { ShoppingCart, FileText, ZoomIn, X, Plus, Minus, Shield, Share2, Check, Copy, Facebook, Twitter, Linkedin, Mail, Download, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const FALLBACK_PRODUCT_IMAGE = 'https://via.placeholder.com/400x300?text=Telogica+Product';
 
@@ -48,6 +48,8 @@ const ProductDetails = () => {
   const [selectedWarranty, setSelectedWarranty] = useState<'standard' | 'extended'>('standard');
   const [pendingRetailerPrice, setPendingRetailerPrice] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const thumbnailRef = useRef<HTMLDivElement>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
@@ -129,19 +131,52 @@ const ProductDetails = () => {
     window.scrollTo(0, 0);
   }, [id]);
 
+  const allImages = product?.images ?? [];
+  const selectedImage = activeImage || allImages[0] || '';
+  const activeIndex = allImages.indexOf(selectedImage);
+
+  // Auto-play slideshow
+  useEffect(() => {
+    if (!isPlaying || allImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveImage(prev => {
+        const currentIdx = prev ? allImages.indexOf(prev) : 0;
+        const nextIdx = (currentIdx + 1) % allImages.length;
+        return allImages[nextIdx];
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isPlaying, allImages]);
+
+  // Scroll active thumbnail into view
+  useEffect(() => {
+    if (thumbnailRef.current && activeIndex >= 0) {
+      const btn = thumbnailRef.current.children[activeIndex] as HTMLElement;
+      if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeIndex]);
+
+  const goToPrev = useCallback(() => {
+    const idx = activeIndex <= 0 ? allImages.length - 1 : activeIndex - 1;
+    setActiveImage(allImages[idx]);
+  }, [activeIndex, allImages]);
+
+  const goToNext = useCallback(() => {
+    const idx = (activeIndex + 1) % allImages.length;
+    setActiveImage(allImages[idx]);
+  }, [activeIndex, allImages]);
+
   if (!product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading product details...</p>
+          <div className="animate-spin h-10 w-10 border-2 border-gray-200 border-t-gray-900 rounded-full mx-auto"></div>
+          <p className="mt-3 text-sm text-gray-500">Loading product details...</p>
         </div>
       </div>
     );
   }
 
-  const displayedImages = product.images?.slice(0, 4) ?? [];
-  const selectedImage = activeImage || displayedImages[0] || '';
   const isRetailer = user?.role === 'retailer';
   const hasRetailerPrice = isRetailer && product.retailerPrice;
   const isTelecom = product.isTelecom || product.category?.toLowerCase() === 'telecommunication';
@@ -222,16 +257,29 @@ const ProductDetails = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
-      <div className="container mx-auto px-4 pt-24 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Product Section - 3/4 width */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2">
+    <div className="min-h-screen bg-[#f5f5f7]">
+      {/* Breadcrumb */}
+      <div className="bg-gray-900 pt-20">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2.5">
+          <div className="flex items-center gap-2 text-xs">
+            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
+            <span className="text-gray-600">/</span>
+            <Link to="/products" className="text-gray-400 hover:text-white transition-colors">Products</Link>
+            <span className="text-gray-600">/</span>
+            <span className="text-white font-medium truncate max-w-[300px]">{product.name}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main Product Section */}
+          <div className="lg:col-span-9">
+            <div className="bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] overflow-hidden">
+              <div className="flex flex-col md:flex-row">
                 {/* Product Images */}
-                <div className="p-4">
-                  <div className="relative aspect-square rounded-lg overflow-hidden border border-gray-100 bg-white shadow-sm group">
+                <div className="md:w-[40%] shrink-0 p-5 bg-white">
+                  <div className="relative aspect-[4/3] overflow-hidden border border-gray-100 bg-white group">
                     {selectedImage ? (
                       <>
                         <div 
@@ -241,163 +289,214 @@ const ProductDetails = () => {
                           <img
                             src={selectedImage}
                             alt={product.name}
-                            className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                           />
                           <button
-                            onClick={() => setIsZoomOpen(true)}
-                            className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:scale-105"
+                            onClick={(e) => { e.stopPropagation(); setIsZoomOpen(true); }}
+                            className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-2 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Zoom image"
                           >
                             <ZoomIn className="w-4 h-4 text-gray-700" />
                           </button>
                         </div>
+                        {/* Nav arrows */}
+                        {allImages.length > 1 && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); goToPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white">
+                              <ChevronLeft className="w-4 h-4 text-gray-700" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); goToNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white">
+                              <ChevronRight className="w-4 h-4 text-gray-700" />
+                            </button>
+                          </>
+                        )}
+                        {/* Image counter */}
+                        {allImages.length > 1 && (
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 backdrop-blur-sm">
+                            {activeIndex + 1} / {allImages.length}
+                          </div>
+                        )}
                       </>
                     ) : (
-                      <div className="flex h-full items-center justify-center text-gray-400">
+                      <div className="flex h-full items-center justify-center text-gray-400 text-sm">
                         No image available
                       </div>
                     )}
                   </div>
                   
-                  {displayedImages.length > 0 && (
-                    <div className="mt-4 grid grid-cols-4 gap-2">
-                      {displayedImages.map((img, idx) => {
-                        const isActive = activeImage ? activeImage === img : idx === 0;
-                        return (
+                  {/* Thumbnail strip + player controls */}
+                  {allImages.length > 0 && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2">
+                        {/* Play/Pause */}
+                        {allImages.length > 1 && (
                           <button
-                            key={`${img}-${idx}`}
-                            onClick={() => setActiveImage(img)}
-                            className={`h-20 rounded-lg border transition-all ${isActive ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200 hover:border-gray-300'}`}
+                            onClick={() => setIsPlaying(!isPlaying)}
+                            className="shrink-0 p-1.5 border border-gray-200 hover:bg-gray-50 transition-colors"
+                            title={isPlaying ? 'Pause slideshow' : 'Play slideshow'}
                           >
-                            <img
-                              src={img}
-                              alt={`Thumbnail ${idx + 1}`}
-                              className="w-full h-full object-cover rounded"
-                            />
+                            {isPlaying ? <Pause className="w-3.5 h-3.5 text-gray-600" /> : <Play className="w-3.5 h-3.5 text-gray-600" />}
                           </button>
-                        );
-                      })}
+                        )}
+                        {/* Scrollable thumbnails */}
+                        <div ref={thumbnailRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+                          {allImages.map((img, idx) => {
+                            const isActive = selectedImage === img;
+                            return (
+                              <button
+                                key={`${img}-${idx}`}
+                                onClick={() => { setActiveImage(img); setIsPlaying(false); }}
+                                className={`shrink-0 h-14 w-14 border-2 transition-all overflow-hidden ${isActive ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400'}`}
+                              >
+                                <img
+                                  src={img}
+                                  alt={`Thumbnail ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {/* Progress dots */}
+                      {allImages.length > 1 && (
+                        <div className="flex justify-center gap-1 mt-2">
+                          {allImages.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => { setActiveImage(allImages[idx]); setIsPlaying(false); }}
+                              className={`h-1 transition-all duration-300 ${idx === activeIndex ? 'w-4 bg-gray-900' : 'w-1 bg-gray-300 hover:bg-gray-400'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {/* Product Info */}
-                <div className="p-6 border-l border-gray-100">
-                  <div className="mb-4">
-                    <span className="inline-block px-3 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-full uppercase tracking-wide">
+                <div className="flex-1 p-6 border-l border-gray-100 flex flex-col">
+                  {/* Category badges */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gray-900 text-white">
                       {product.category}
                     </span>
                     {product.subcategory && (
-                      <span className="ml-2 inline-block px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-50 rounded-full uppercase tracking-wide">
+                      <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-600 text-white">
                         {product.subcategory}
                       </span>
                     )}
-                    <div className="flex items-start justify-between mt-2">
-                      <h1 className="text-2xl font-bold text-gray-900 pr-4">{product.name}</h1>
-                      <button
-                        onClick={() => setShowShareModal(true)}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-                        title="Share"
-                      >
-                        <Share2 className="w-5 h-5 text-gray-600" />
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <span className="px-2.5 py-1 text-xs bg-gray-100 text-gray-700 rounded-full">Premium</span>
-                      <span className="px-2.5 py-1 text-xs bg-indigo-50 text-indigo-700 rounded-full">Certified</span>
-                    </div>
                   </div>
 
-                  <p className="text-gray-600 mb-6">{product.description}</p>
+                  {/* Title + Share */}
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h1 className="text-xl font-bold text-gray-900 leading-tight">{product.name}</h1>
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className="p-2 hover:bg-gray-100 transition-colors shrink-0"
+                      title="Share"
+                    >
+                      <Share2 className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
 
-                  {/* Warranty Info */}
-                  {(product.warrantyPeriodMonths || product.extendedWarrantyAvailable) && (
-                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                      <div className="flex items-start gap-3">
-                        <Shield className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                        <div>
-                          <h3 className="text-sm font-semibold text-blue-900 mb-1">Warranty Options</h3>
-                          <div className="space-y-1">
-                            <p className="text-sm text-blue-800">
-                              <span className="font-medium">Standard:</span> {product.warrantyPeriodMonths || 12} months (included)
-                            </p>
-                            {product.extendedWarrantyAvailable && (
-                              <p className="text-sm text-blue-800">
-                                <span className="font-medium">Extended:</span> {product.extendedWarrantyMonths || 24} months
-                                {product.extendedWarrantyPrice && (
-                                  <span className="font-semibold"> (+₹{product.extendedWarrantyPrice.toLocaleString()})</span>
-                                )}
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600 uppercase tracking-wider">Premium</span>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-indigo-50 text-indigo-700 uppercase tracking-wider">Certified</span>
+                  </div>
+
+                  <div className="flex-grow">
+                    {/* Description */}
+                    <p className="text-[13px] text-gray-600 leading-relaxed mb-5">{product.description}</p>
+
+                    {/* Warranty Info */}
+                    {(product.warrantyPeriodMonths || product.extendedWarrantyAvailable) && (
+                      <div className="mb-5 p-3.5 bg-blue-50/80 border border-blue-100">
+                        <div className="flex items-start gap-2.5">
+                          <Shield className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                          <div>
+                            <h3 className="text-xs font-bold text-blue-900 mb-1 uppercase tracking-wide">Warranty</h3>
+                            <div className="space-y-0.5">
+                              <p className="text-xs text-blue-800">
+                                <span className="font-semibold">Standard:</span> {product.warrantyPeriodMonths || 12} months (included)
                               </p>
-                            )}
+                              {product.extendedWarrantyAvailable && (
+                                <p className="text-xs text-blue-800">
+                                  <span className="font-semibold">Extended:</span> {product.extendedWarrantyMonths || 24} months
+                                  {product.extendedWarrantyPrice && (
+                                    <span className="font-bold"> (+₹{product.extendedWarrantyPrice.toLocaleString()})</span>
+                                  )}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Pricing */}
-                  <div className="mb-6">
+                    {/* Pricing */}
+                    <div className="mb-5 pb-5 border-b border-gray-100">
                     {isRetailer ? (
                       hasRetailerPrice ? (
                         <div>
-                          <p className="text-3xl font-bold text-green-700">₹{product.retailerPrice?.toLocaleString()}</p>
-                          <p className="text-sm text-green-600">Retailer Price</p>
-                          {product.price && (
-                            <p className="text-sm text-gray-400 line-through">Standard: ₹{product.price.toLocaleString()}</p>
-                          )}
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
-                              {product.taxPercentage || 18}% GST
-                            </span>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-2xl font-bold text-gray-900">₹{product.retailerPrice?.toLocaleString()}</p>
+                            <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5">Retailer Price</span>
                           </div>
+                          {product.price && (
+                            <p className="text-sm text-gray-400 line-through mt-0.5">₹{product.price.toLocaleString()}</p>
+                          )}
+                          <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
+                            {product.taxPercentage || 18}% GST
+                          </span>
                         </div>
                       ) : (
-                        <p className="text-xl font-bold text-blue-600">Request Quote</p>
+                        <p className="text-xl font-bold text-gray-900">Request Quote</p>
                       )
                     ) : (
                       isTelecom && product.price && !product.requiresQuote ? (
                         <div>
-                          <p className="text-3xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
-                          <p className="text-sm text-green-600">Direct Purchase Available</p>
-                          <div className="mt-1">
-                            <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded">
-                              {product.taxPercentage || 18}% GST applicable
-                            </span>
-                          </div>
+                          <p className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                          <p className="text-xs text-green-600 font-medium mt-0.5">Direct Purchase Available</p>
+                          <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
+                            {product.taxPercentage || 18}% GST applicable
+                          </span>
                         </div>
                       ) : (
                         <div>
-                          <p className="text-xl font-bold text-blue-600">Request Quote</p>
+                          <p className="text-xl font-bold text-gray-900">Request Quote</p>
                           {!isTelecom && (
-                            <p className="text-sm text-gray-600">Custom pricing available</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Custom pricing available</p>
                           )}
                         </div>
                       )
                     )}
+                  </div>
                   </div>
 
                   {/* Quantity & Actions */}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
-                      <div className="flex items-center gap-3 w-fit">
+                      <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quantity</label>
+                      <div className="flex items-center gap-0 w-fit border border-gray-200">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
                           disabled={quantity <= 1}
-                          className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="p-2.5 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed border-r border-gray-200 transition-colors"
                         >
-                          <Minus className="w-4 h-4" />
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="text-xl font-bold text-gray-900 w-12 text-center">{quantity}</span>
+                        <span className="text-sm font-bold text-gray-900 w-12 text-center">{quantity}</span>
                         <button
                           onClick={() => setQuantity(quantity + 1)}
-                          className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50"
+                          className="p-2.5 hover:bg-gray-50 border-l border-gray-200 transition-colors"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       {isTelecom && !isRetailer && maxDirectPurchase !== null && (
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1.5 text-[11px] text-gray-500">
                           {quantity > maxDirectPurchase 
                             ? `Quote required for ${maxDirectPurchase + 1}+ units` 
                             : `Max ${maxDirectPurchase} for direct purchase`}
@@ -406,66 +505,66 @@ const ProductDetails = () => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {isDefence ? (
                         <button
                           onClick={handleDownloadDatasheet}
                           disabled={!product.brochureUrl}
-                          className={`w-full py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors ${
+                          className={`w-full py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
                             product.brochureUrl
-                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              ? 'bg-gray-900 text-white hover:bg-gray-800'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           }`}
                           title={product.brochureUrl ? 'Download product datasheet (PDF)' : 'Datasheet not uploaded yet'}
                         >
-                          <Download className="w-5 h-5" />
+                          <Download className="w-4 h-4" />
                           {product.brochureUrl ? 'Download Datasheet' : 'Datasheet Unavailable'}
                         </button>
                       ) : isRetailer && hasRetailerPrice ? (
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleAddToCart(true)}
-                            className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                           >
-                            <ShoppingCart className="w-5 h-5" />
+                            <ShoppingCart className="w-4 h-4" />
                             Add to Cart
                           </button>
                           <button
                             onClick={handleAddToQuote}
-                            className="flex-1 border border-indigo-600 text-indigo-600 py-3 rounded-lg font-medium hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                           >
-                            <FileText className="w-5 h-5" />
+                            <FileText className="w-4 h-4" />
                             Request Quote
                           </button>
                         </div>
                       ) : isTelecom && product.price && !product.requiresQuote ? (
-                        <div className="flex gap-3">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => handleAddToCart(false)}
                             disabled={maxDirectPurchase !== null && quantity > maxDirectPurchase}
-                            className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                            className={`flex-1 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
                               maxDirectPurchase !== null && quantity > maxDirectPurchase
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-900 text-white hover:bg-gray-800'
                             }`}
                           >
-                            <ShoppingCart className="w-5 h-5" />
+                            <ShoppingCart className="w-4 h-4" />
                             Add to Cart
                           </button>
                           <button
                             onClick={handleAddToQuote}
-                            className="flex-1 border border-indigo-600 text-indigo-600 py-3 rounded-lg font-medium hover:bg-indigo-50 flex items-center justify-center gap-2"
+                            className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 flex items-center justify-center gap-2"
                           >
-                            <FileText className="w-5 h-5" />
+                            <FileText className="w-4 h-4" />
                             Get Quote
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={handleAddToQuote}
-                          className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                          className="w-full bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                         >
-                          <FileText className="w-5 h-5" />
+                          <FileText className="w-4 h-4" />
                           Request Quote
                         </button>
                       )}
@@ -477,10 +576,13 @@ const ProductDetails = () => {
           </div>
 
           {/* Recommended Products Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-3">
             <div className="sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Recommended Products</h3>
-              <div className="space-y-4 max-h-[calc(100vh-150px)] overflow-y-auto pr-2">
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Recommended</h3>
+                <div className="flex-grow h-px bg-gray-200" />
+              </div>
+              <div className="space-y-3 max-h-[calc(100vh-150px)] overflow-y-auto">
                 {recommendedProducts.map((recProduct) => {
                   const thumbnail = recProduct.images[0] || FALLBACK_PRODUCT_IMAGE;
                   const recIsTelecom = recProduct.isTelecom || recProduct.category?.toLowerCase() === 'telecommunication';
@@ -490,22 +592,22 @@ const ProductDetails = () => {
                     <Link 
                       to={`/product/${recProduct._id}`} 
                       key={recProduct._id}
-                      className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden border border-gray-100"
+                      className="group flex gap-3 bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all"
                     >
-                      <div className="h-32 overflow-hidden">
+                      <div className="w-20 h-20 shrink-0 overflow-hidden bg-gray-50 border border-gray-100">
                         <img
                           src={thumbnail}
                           alt={recProduct.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-3">
-                        <h4 className="font-medium text-gray-800 text-sm line-clamp-2 h-10">{recProduct.name}</h4>
-                        <div className="mt-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 text-[13px] line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors">{recProduct.name}</h4>
+                        <div className="mt-1.5">
                           {canShowPrice ? (
                             <span className="text-sm font-bold text-gray-900">₹{recProduct.price!.toLocaleString()}</span>
                           ) : (
-                            <span className="text-xs font-semibold text-blue-600">Quote Required</span>
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Quote Required</span>
                           )}
                         </div>
                       </div>
@@ -513,7 +615,7 @@ const ProductDetails = () => {
                   );
                 })}
                 {recommendedProducts.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">No recommendations available</p>
+                  <p className="text-xs text-gray-400 text-center py-6">No recommendations available</p>
                 )}
               </div>
             </div>

@@ -28,6 +28,34 @@ const productSchema = new mongoose.Schema({
   brochureUrl: { type: String } // Product brochure PDF URL (visible only to buyers in their dashboard)
 }, { timestamps: true });
 
+// ============================================
+// Indexes for fast queries
+// ============================================
+
+// Category filter + sort by newest (covers Products page category pills)
+productSchema.index({ category: 1, createdAt: -1 });
+
+// Subcategory grouping for Defence products
+productSchema.index({ category: 1, subcategory: 1 });
+
+// Stock-based queries (admin dashboard stock filters)
+productSchema.index({ stock: 1 });
+
+// Text search on name + description (Products page search bar)
+productSchema.index({ name: 'text', description: 'text' }, {
+  weights: { name: 10, description: 3 },
+  name: 'product_text_search'
+});
+
+// Compound index for admin product management (sort + filter)
+productSchema.index({ isRecommended: 1, category: 1 });
+
+// requiresQuote filter (admin dashboard "Quote Required" count)
+productSchema.index({ requiresQuote: 1 });
+
+// isTelecom filter (used in product cards for cart logic)
+productSchema.index({ isTelecom: 1, category: 1 });
+
 // Auto-set requiresQuote if price is not provided
 productSchema.pre('save', function() {
   if (!this.price) {

@@ -44,19 +44,32 @@ const normalizeRecommendationIds = async (ids, currentProductId = null) => {
 // @access  Public
 const getProducts = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 0; // 0 means no limit
-    const { includeOutOfStock } = req.query;
-    
-    // Build filter - exclude out of stock products for regular users
+    const limit = parseInt(req.query?.limit) || 0;
+    const { category, search } = req.query || {};
+
     const filter = {};
-    
-    // Only show products with stock > 0 for non-admin users
-    // Admin can see all products by passing includeOutOfStock=true
-    if (includeOutOfStock !== 'true') {
-      filter.stock = { $gt: 0 };
+
+    if (category && category !== 'all') {
+      filter.category = { $regex: new RegExp(`^${category}$`, 'i') };
     }
-    
-    const products = await Product.find(filter).limit(limit).lean();
+
+    if (search && search.trim()) {
+      filter.$text = { $search: search.trim() };
+    }
+
+    let query = Product.find(filter);
+
+    if (search && search.trim()) {
+      query = query.select({ score: { $meta: 'textScore' } }).sort({ score: { $meta: 'textScore' } });
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
+
+    if (limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const products = await query.lean();
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
