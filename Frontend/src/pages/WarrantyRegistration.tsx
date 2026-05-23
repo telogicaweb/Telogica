@@ -1,7 +1,7 @@
 import { useEffect, useState, useContext } from 'react';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
-import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info, Calendar, FileText } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Shield, Upload, CheckCircle, AlertCircle, Clock, Info, Calendar, FileText, ChevronRight, ExternalLink } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -24,6 +24,10 @@ const WarrantyRegistration = () => {
   const [serialValid, setSerialValid] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<'register' | 'history'>('register');
   const [existingWarrantyInfo, setExistingWarrantyInfo] = useState<any>(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -159,44 +163,50 @@ const WarrantyRegistration = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'approved':
-        return <CheckCircle className="text-green-500" size={20} />;
+        return <CheckCircle className="text-green-500" size={16} />;
       case 'rejected':
-        return <AlertCircle className="text-red-500" size={20} />;
+        return <AlertCircle className="text-red-500" size={16} />;
       default:
-        return <Clock className="text-yellow-500" size={20} />;
+        return <Clock className="text-yellow-500" size={16} />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-50 border-green-200 text-green-700';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 border-red-200 text-red-700';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-50 border-yellow-250 text-yellow-800';
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 md:pt-32 pb-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield size={32} className="text-blue-600" />
-            Warranty Registration
-          </h1>
-          <p className="text-gray-600 mt-2">Register your products for warranty coverage</p>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      {/* ─── Compact Dark Header ─── */}
+      <div className="bg-gray-900 pt-[68px] pb-3">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 text-xs mb-1">
+            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
+            <ChevronRight className="w-3 h-3 text-gray-600" />
+            <Link to="/user-dashboard" className="text-gray-400 hover:text-white transition-colors">My Account</Link>
+            <ChevronRight className="w-3 h-3 text-gray-600" />
+            <span className="text-white font-medium">Register Warranty</span>
+          </div>
+          <h1 className="text-xl font-bold text-white tracking-tight">Warranty Registration</h1>
         </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('register')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-bold text-xs uppercase tracking-wider transition-colors ${
                 activeTab === 'register'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-teal-600 text-teal-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -204,9 +214,9 @@ const WarrantyRegistration = () => {
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-bold text-xs uppercase tracking-wider transition-colors ${
                 activeTab === 'history'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-teal-600 text-teal-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -219,66 +229,68 @@ const WarrantyRegistration = () => {
           <div>
             {/* Existing Warranty Alert */}
             {existingWarrantyInfo && (
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-6 mb-6 rounded-r-lg">
-                <div className="flex items-start">
-                  <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
-                  <div className="ml-4 flex-1">
-                    <h3 className="text-lg font-bold text-amber-900 mb-2">Warranty Already Registered</h3>
-                    <p className="text-sm text-amber-800 mb-4">
+              <div className="bg-amber-50/50 border border-amber-250 p-6 mb-6 rounded-none animate-in fade-in duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-none bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                    <AlertCircle size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-amber-900 mb-1">Warranty Already Registered</h3>
+                    <p className="text-xs text-amber-800 mb-4 leading-relaxed font-semibold uppercase tracking-wider">
                       This product already has a warranty registration in our system.
                     </p>
                     
-                    <div className="bg-white rounded-lg p-4 border border-amber-200">
-                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="bg-white rounded-none p-4 border border-amber-100 shadow-[0_1px_2px_rgba(245,158,11,0.05)]">
+                      <div className="grid md:grid-cols-2 gap-4 text-xs">
                         <div>
-                          <p className="text-gray-600 font-medium">Product:</p>
-                          <p className="text-gray-900">{existingWarrantyInfo.productName}</p>
+                          <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px]">Product</p>
+                          <p className="text-gray-900 font-medium mt-0.5">{existingWarrantyInfo.productName}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600 font-medium">Serial Number:</p>
-                          <p className="text-gray-900 font-mono">{existingWarrantyInfo.serialNumber}</p>
+                          <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px]">Serial Number</p>
+                          <p className="text-gray-950 font-mono font-bold mt-0.5">{existingWarrantyInfo.serialNumber}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600 font-medium">Status:</p>
-                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
-                            existingWarrantyInfo.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            existingWarrantyInfo.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
+                          <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px]">Status</p>
+                          <span className={`inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                            existingWarrantyInfo.status === 'approved' ? 'bg-green-50 border-green-200 text-green-700' :
+                            existingWarrantyInfo.status === 'rejected' ? 'bg-red-50 border-red-200 text-red-700' :
+                            'bg-yellow-50 border-yellow-250 text-yellow-800'
                           }`}>
                             {existingWarrantyInfo.status?.charAt(0).toUpperCase() + existingWarrantyInfo.status?.slice(1)}
                           </span>
                         </div>
                         <div>
-                          <p className="text-gray-600 font-medium">Registered On:</p>
-                          <p className="text-gray-900">{new Date(existingWarrantyInfo.registeredOn).toLocaleDateString()}</p>
+                          <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px]">Registered On</p>
+                          <p className="text-gray-900 font-medium mt-0.5">{new Date(existingWarrantyInfo.registeredOn).toLocaleDateString()}</p>
                         </div>
                         
                         {existingWarrantyInfo.warrantyStartDate && existingWarrantyInfo.warrantyEndDate && (
                           <>
                             <div>
-                              <p className="text-gray-600 font-medium flex items-center gap-1">
-                                <Calendar size={14} />
-                                Warranty Period:
+                              <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px] flex items-center gap-1">
+                                <Calendar size={12} className="text-gray-400" />
+                                Warranty Period
                               </p>
-                              <p className="text-gray-900">
+                              <p className="text-gray-900 font-medium mt-0.5">
                                 {new Date(existingWarrantyInfo.warrantyStartDate).toLocaleDateString()} - {new Date(existingWarrantyInfo.warrantyEndDate).toLocaleDateString()}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-600 font-medium">Duration:</p>
-                              <p className="text-gray-900">{existingWarrantyInfo.warrantyPeriodMonths} months</p>
+                              <p className="text-gray-500 font-semibold uppercase tracking-wider text-[9px]">Duration</p>
+                              <p className="text-gray-900 font-medium mt-0.5">{existingWarrantyInfo.warrantyPeriodMonths} months</p>
                             </div>
                           </>
                         )}
                       </div>
                       
                       {existingWarrantyInfo.status === 'approved' && (
-                        <div className="mt-4 pt-4 border-t border-amber-200">
-                          <div className="flex items-center gap-2 text-green-700">
-                            <CheckCircle size={18} />
-                            <p className="text-sm font-medium">
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-1.5 text-green-700">
+                            <CheckCircle size={15} />
+                            <p className="text-xs font-semibold">
                               {new Date(existingWarrantyInfo.warrantyEndDate) > new Date() 
-                                ? `Warranty active for ${Math.ceil((new Date(existingWarrantyInfo.warrantyEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} more days`
+                                ? `Active for ${Math.ceil((new Date(existingWarrantyInfo.warrantyEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} more days`
                                 : 'Warranty period has expired'}
                             </p>
                           </div>
@@ -287,10 +299,11 @@ const WarrantyRegistration = () => {
                     </div>
                     
                     <button
+                      type="button"
                       onClick={() => setActiveTab('history')}
-                      className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-2"
+                      className="mt-4 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-none transition flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider shadow-none"
                     >
-                      <FileText size={16} />
+                      <FileText size={14} />
                       View Warranty History
                     </button>
                   </div>
@@ -299,223 +312,271 @@ const WarrantyRegistration = () => {
             )}
 
             {/* Info Box */}
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <Info className="h-5 w-5 text-blue-400" />
+            <div className="bg-teal-50/30 border border-teal-100 rounded-none p-5 mb-6 animate-in fade-in duration-300">
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-none bg-teal-100 flex items-center justify-center text-teal-700 flex-shrink-0">
+                  <Info className="h-4 w-4" />
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">Warranty Registration Information</h3>
-                  <div className="mt-2 text-sm text-blue-700">
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Online purchases: Invoice upload is NOT required (we have your data)</li>
-                      <li>Offline/Retailer purchases: Invoice upload is REQUIRED</li>
-                      <li>Serial number will be validated against our records</li>
-                      <li>You will receive email notifications about warranty status</li>
+                <div>
+                  <h3 className="text-xs font-bold text-teal-900 uppercase tracking-wider">Registration Guidelines</h3>
+                  <div className="mt-2 text-xs text-teal-850 leading-relaxed font-semibold">
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 list-none">
+                      <li className="flex items-start gap-2">
+                        <span className="text-teal-600 font-bold mt-0.5">✓</span>
+                        <span>Online purchases: Invoice upload is <span className="underline font-bold">NOT</span> required.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-teal-600 font-bold mt-0.5">✓</span>
+                        <span>Offline/Retailer purchases: Invoice upload is <span className="underline font-bold">REQUIRED</span>.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-teal-600 font-bold mt-0.5">✓</span>
+                        <span>Serial numbers are automatically validated.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-teal-600 font-bold mt-0.5">✓</span>
+                        <span>You will receive email notifications about warranty status.</span>
+                      </li>
                     </ul>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product *
-                  </label>
-                  <select
-                    required
-                    value={formData.productId}
-                    onChange={(e) => {
-                      const selectedProduct = products.find(p => p._id === e.target.value);
-                      setFormData({ 
-                        ...formData, 
-                        productId: e.target.value,
-                        productName: selectedProduct ? selectedProduct.name : ''
-                      });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select a product</option>
-                    {products.map((product) => (
-                      <option key={product._id} value={product._id}>
-                        {product.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 md:p-8">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Product *
+                    </label>
+                    <select
+                      required
+                      value={formData.productId}
+                      onChange={(e) => {
+                        const selectedProduct = products.find(p => p._id === e.target.value);
+                        setFormData({ 
+                          ...formData, 
+                          productId: e.target.value,
+                          productName: selectedProduct ? selectedProduct.name : ''
+                        });
+                      }}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs font-semibold text-gray-800 transition"
+                    >
+                      <option value="">Select a product</option>
+                      {products.map((product) => (
+                        <option key={product._id} value={product._id}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Model Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.modelNumber}
-                    onChange={(e) => setFormData({ ...formData, modelNumber: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter model number"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Model Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.modelNumber}
+                      onChange={(e) => setFormData({ ...formData, modelNumber: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs font-semibold text-gray-800 placeholder-gray-400 transition"
+                      placeholder="Enter model number"
+                    />
+                  </div>
 
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Serial Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.serialNumber}
-                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                    onBlur={handleSerialBlur}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter serial number"
-                  />
-                  {serialValid !== null && (
-                    <div className="absolute right-3 top-9">
-                      {serialValid ? (
-                        <CheckCircle className="text-green-500" size={20} />
+                  <div className="relative">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Serial Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.serialNumber}
+                      onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                      onBlur={handleSerialBlur}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs font-semibold text-gray-800 placeholder-gray-400 transition pr-10"
+                      placeholder="Enter serial number"
+                    />
+                    {serialValid !== null && (
+                      <div className="absolute right-3.5 top-[38px]">
+                        {serialValid ? (
+                          <CheckCircle className="text-green-500" size={16} />
+                        ) : (
+                          <AlertCircle className="text-red-500" size={16} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Purchase Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.purchaseDate}
+                      onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs font-semibold text-gray-800 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Purchase Type *
+                    </label>
+                    <select
+                      required
+                      value={formData.purchaseType}
+                      onChange={(e) => setFormData({ ...formData, purchaseType: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none text-xs font-semibold text-gray-800 transition"
+                    >
+                      <option value="telogica_online">Telogica Online Store</option>
+                      <option value="telogica_offline">Telogica Offline Store</option>
+                      <option value="retailer">Retailer</option>
+                    </select>
+                  </div>
+
+                  {formData.purchaseType !== 'telogica_online' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <Upload size={14} className="text-gray-400" />
+                        Invoice Upload (Required) *
+                      </label>
+                      
+                      {!formData.invoice ? (
+                        <div className="relative border-2 border-dashed border-gray-200 hover:border-teal-500 rounded-none p-5 text-center cursor-pointer transition group bg-gray-50/50 hover:bg-teal-50/10">
+                          <input
+                            type="file"
+                            id="invoice-upload"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            required={formData.purchaseType !== 'telogica_online' && !formData.invoice}
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                          <label htmlFor="invoice-upload" className="cursor-pointer block">
+                            <Upload className="mx-auto h-7 w-7 text-gray-400 group-hover:text-teal-600 transition mb-2" />
+                            <span className="block text-xs font-bold text-gray-700">Click to upload invoice document</span>
+                            <span className="block text-[10px] text-gray-400 mt-1">PDF, JPG, PNG up to 5MB</span>
+                          </label>
+                        </div>
                       ) : (
-                        <AlertCircle className="text-red-500" size={20} />
+                        <div className="border border-green-200 bg-green-50/20 rounded-none p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-none bg-green-100 flex items-center justify-center text-green-600">
+                              <FileText size={16} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-gray-800 truncate">Invoice Document Uploaded</p>
+                              <a 
+                                href={formData.invoice} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-[10px] text-teal-600 hover:underline font-semibold flex items-center gap-1 mt-0.5"
+                              >
+                                View Uploaded Document <ExternalLink size={10} />
+                              </a>
+                            </div>
+                          </div>
+                          <label htmlFor="invoice-upload" className="px-3 py-1.5 bg-white border border-gray-200 text-[10px] font-bold uppercase tracking-wider text-gray-600 rounded-none hover:bg-gray-50 cursor-pointer transition">
+                            Change File
+                            <input
+                              type="file"
+                              id="invoice-upload"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={handleFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Purchase Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.purchaseDate}
-                    onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Purchase Type *
-                  </label>
-                  <select
-                    required
-                    value={formData.purchaseType}
-                    onChange={(e) => setFormData({ ...formData, purchaseType: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/user-dashboard')}
+                    className="px-6 py-2.5 border border-gray-200 text-gray-600 rounded-none hover:bg-gray-50 text-xs font-bold uppercase tracking-wider transition"
                   >
-                    <option value="telogica_online">Telogica Online Store</option>
-                    <option value="telogica_offline">Telogica Offline Store</option>
-                    <option value="retailer">Retailer</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-2.5 bg-teal-600 text-white rounded-none hover:bg-teal-700 active:bg-teal-800 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition shadow-none"
+                  >
+                    {loading ? 'Submitting...' : 'Register Warranty'}
+                    <Shield size={14} />
+                  </button>
                 </div>
-
-                {formData.purchaseType !== 'telogica_online' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Upload size={16} />
-                      Invoice Upload (Required) *
-                    </label>
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      required={formData.purchaseType !== 'telogica_online' && !formData.invoice}
-                      onChange={handleFileChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    {formData.invoice && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-                        <CheckCircle size={16} />
-                        <span>Invoice uploaded successfully</span>
-                        <a href={formData.invoice} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">View</a>
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Supported formats: PDF, JPG, PNG (Max 5MB)
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-4">
-                <button
-                  type="button"
-                  onClick={() => navigate('/dashboard')}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {loading ? 'Submitting...' : 'Register Warranty'}
-                  <Shield size={16} />
-                </button>
-              </div>
-            </form>
-          </div>
+              </form>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
             {warranties.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <Shield size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">No warranty registrations yet</p>
+              <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-12 text-center max-w-lg mx-auto my-4 animate-in fade-in duration-300">
+                <div className="w-16 h-16 bg-gray-50 rounded-none flex items-center justify-center mx-auto text-gray-400 mb-4 border border-gray-100">
+                  <Shield size={32} />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">No warranties registered</h3>
+                <p className="text-xs text-gray-500 font-semibold mb-6">You haven't submitted any product warranty registrations yet.</p>
                 <button
+                  type="button"
                   onClick={() => setActiveTab('register')}
-                  className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-none font-bold uppercase tracking-wider text-[10px] transition shadow-none"
                 >
                   Register Your First Warranty
                 </button>
               </div>
             ) : (
               warranties.map((warranty: any) => (
-                <div key={warranty._id} className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex justify-between items-start mb-4">
+                <div key={warranty._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 mb-4 hover:border-gray-300 transition-colors animate-in fade-in duration-300">
+                  <div className="flex justify-between items-start gap-4 mb-4 pb-4 border-b border-gray-100">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{warranty.productName}</h3>
-                      <p className="text-sm text-gray-600">S/N: {warranty.serialNumber}</p>
-                      <p className="text-sm text-gray-600">Model: {warranty.modelNumber}</p>
+                      <h3 className="text-sm font-bold text-gray-900">{warranty.productName}</h3>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+                        <span>Model: <span className="text-gray-700 font-bold">{warranty.modelNumber}</span></span>
+                        <span>S/N: <span className="text-gray-700 font-mono font-bold">{warranty.serialNumber}</span></span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {getStatusIcon(warranty.status)}
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(warranty.status)}`}>
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(warranty.status)}`}>
                         {warranty.status.charAt(0).toUpperCase() + warranty.status.slice(1)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                     <div>
-                      <p className="text-gray-600">Purchase Date:</p>
-                      <p className="font-medium">{new Date(warranty.purchaseDate).toLocaleDateString()}</p>
+                      <p className="text-gray-400 font-semibold uppercase tracking-wider text-[9px]">Purchase Date</p>
+                      <p className="font-bold text-gray-800 mt-0.5">{new Date(warranty.purchaseDate).toLocaleDateString()}</p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Purchase Type:</p>
-                      <p className="font-medium capitalize">{warranty.purchaseType.replace('_', ' ')}</p>
+                      <p className="text-gray-400 font-semibold uppercase tracking-wider text-[9px]">Purchase Type</p>
+                      <p className="font-bold text-gray-800 mt-0.5 capitalize">{warranty.purchaseType.replace('_', ' ')}</p>
                     </div>
                     {warranty.status === 'approved' && warranty.warrantyEndDate && (
                       <>
                         <div>
-                          <p className="text-gray-600">Warranty Start:</p>
-                          <p className="font-medium">{new Date(warranty.warrantyStartDate).toLocaleDateString()}</p>
+                          <p className="text-gray-400 font-semibold uppercase tracking-wider text-[9px]">Warranty Start</p>
+                          <p className="font-bold text-gray-800 mt-0.5">{new Date(warranty.warrantyStartDate).toLocaleDateString()}</p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Warranty End:</p>
-                          <p className="font-medium">{new Date(warranty.warrantyEndDate).toLocaleDateString()}</p>
+                          <p className="text-gray-400 font-semibold uppercase tracking-wider text-[9px]">Warranty End</p>
+                          <p className="font-bold mt-0.5 text-teal-700">{new Date(warranty.warrantyEndDate).toLocaleDateString()}</p>
                         </div>
                       </>
                     )}
                     {warranty.rejectionReason && (
-                      <div className="md:col-span-2">
-                        <p className="text-gray-600">Rejection Reason:</p>
-                        <p className="font-medium text-red-600">{warranty.rejectionReason}</p>
+                      <div className="col-span-2 md:col-span-4 mt-2 p-3 bg-red-50/50 border border-red-100 rounded-none">
+                        <p className="text-red-500 font-bold uppercase tracking-wider text-[9px]">Rejection Reason</p>
+                        <p className="font-semibold text-red-700 text-xs mt-0.5">{warranty.rejectionReason}</p>
                       </div>
                     )}
                   </div>
@@ -530,3 +591,4 @@ const WarrantyRegistration = () => {
 };
 
 export default WarrantyRegistration;
+

@@ -59,7 +59,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 ${className}`}>
+    <div className={`bg-white rounded-none shadow-none border border-gray-200 p-4 ${className}`}>
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="w-5 h-5 text-gray-600" />
         <span className="text-sm font-semibold text-gray-700">{label}</span>
@@ -69,9 +69,9 @@ const DateFilter: React.FC<DateFilterProps> = ({
         <div className="flex flex-wrap gap-2 mb-3">
           <button
             onClick={() => handlePresetChange('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-none transition-all ${
               !dateFrom && !dateTo
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-none'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -79,27 +79,27 @@ const DateFilter: React.FC<DateFilterProps> = ({
           </button>
           <button
             onClick={() => handlePresetChange('today')}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
           >
             Today
           </button>
           <button
             onClick={() => handlePresetChange('week')}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
           >
             Last 7 Days
           </button>
           <button
             onClick={() => handlePresetChange('month')}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
           >
             Last 30 Days
           </button>
           <button
             onClick={() => handlePresetChange('custom')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-none transition-all ${
               dateFrom || dateTo
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-none'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -117,7 +117,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
             type="date"
             value={dateFrom}
             onChange={(e) => onDateFromChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
         </div>
         <div>
@@ -128,7 +128,7 @@ const DateFilter: React.FC<DateFilterProps> = ({
             type="date"
             value={dateTo}
             onChange={(e) => onDateToChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
         </div>
       </div>

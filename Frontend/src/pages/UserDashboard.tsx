@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext, useMemo } from 'react';
 import api from '../api';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, TrendingUp, ShoppingBag, Star, Award, Gift, Zap, CreditCard, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Package, FileText, Clock, CheckCircle, XCircle, AlertCircle, ThumbsUp, ThumbsDown, Shield, Download, Eye, Loader2, MapPin, Phone, User, Building2, X, Sparkles, Award, Calendar, ChevronDown, ChevronUp, ChevronRight, ShoppingCart, ExternalLink } from 'lucide-react';
 import type { RazorpayOptions, RazorpayResponse } from '../types/razorpay';
 import DateFilter from '../components/AdminDashboard/DateFilter';
 
@@ -236,7 +236,7 @@ const UserDashboard = () => {
           email: user?.email || '',
         },
         theme: {
-          color: "#3399cc"
+          color: "#0d9488"
         }
       };
 
@@ -283,12 +283,12 @@ const UserDashboard = () => {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'accepted':
-      case 'confirmed': return 'text-green-600 bg-green-100';
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'responded': return 'text-blue-600 bg-blue-100';
+      case 'confirmed': return 'text-emerald-700 bg-emerald-50 border border-emerald-200';
+      case 'pending': return 'text-amber-700 bg-amber-50 border border-amber-200';
+      case 'responded': return 'text-blue-700 bg-blue-50 border border-blue-200';
       case 'cancelled':
-      case 'rejected': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'rejected': return 'text-red-700 bg-red-50 border border-red-200';
+      default: return 'text-gray-700 bg-gray-50 border border-gray-200';
     }
   };
 
@@ -296,253 +296,257 @@ const UserDashboard = () => {
     switch (status.toLowerCase()) {
       case 'completed':
       case 'accepted':
-      case 'confirmed': return <CheckCircle size={16} />;
-      case 'pending': return <Clock size={16} />;
-      case 'responded': return <AlertCircle size={16} />;
+      case 'confirmed': return <CheckCircle size={14} />;
+      case 'pending': return <Clock size={14} />;
+      case 'responded': return <AlertCircle size={14} />;
       case 'cancelled':
-      case 'rejected': return <XCircle size={16} />;
-      default: return <AlertCircle size={16} />;
+      case 'rejected': return <XCircle size={14} />;
+      default: return <AlertCircle size={14} />;
     }
   };
 
+  const navItems = [
+    { key: 'orders' as const, label: 'My Orders', icon: Package, count: orders.length },
+    { key: 'quotes' as const, label: 'Quote Requests', icon: FileText, count: quotes.length },
+    { key: 'warranties' as const, label: 'Warranties', icon: Shield, count: warranties.length },
+    { key: 'invoices' as const, label: 'Invoices', icon: Download, count: invoices.length },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-gray-50">
-      {/* Ultra Premium Header */}
-      <div className="relative bg-gradient-to-br from-[#1a0b2e] via-[#2d1b4e] to-[#1a0b2e] text-white overflow-hidden pt-32 pb-24">
-        {/* Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
-          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-purple-600/15 blur-[140px] animate-pulse"></div>
-          <div className="absolute top-[40%] right-[30%] w-[400px] h-[400px] rounded-full bg-blue-600/10 blur-[100px] animate-pulse"></div>
-          
-          {/* Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between flex-wrap gap-6">
-            <div>
-              {/* Premium Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-900/50 to-purple-900/50 border border-indigo-700/50 text-indigo-200 text-sm font-bold mb-6 backdrop-blur-md shadow-2xl">
-                <Sparkles size={16} className="text-indigo-300 animate-pulse" />
-                <span>PREMIUM MEMBER</span>
-                <Award size={14} className="text-yellow-400" />
-              </div>
-
-              {/* Welcome Message */}
-              <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-purple-200 drop-shadow-2xl">
-                Welcome back!
-              </h1>
-              <p className="text-2xl md:text-3xl text-gray-300 font-light">
-                <span className="font-bold text-white">{user?.name}</span>
-              </p>
-              <p className="text-gray-400 mt-2 text-lg">{user?.email}</p>
-            </div>
-
-            {/* Quick Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-blue-500/20 rounded-xl">
-                    <Package size={20} className="text-blue-300" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white">{orders.length}</p>
-                    <p className="text-xs text-gray-300">Orders</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-purple-500/20 rounded-xl">
-                    <FileText size={20} className="text-purple-300" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white">{quotes.length}</p>
-                    <p className="text-xs text-gray-300">Quotes</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-green-500/20 rounded-xl">
-                    <Shield size={20} className="text-green-300" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white">{warranties.length}</p>
-                    <p className="text-xs text-gray-300">Warranties</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-orange-500/20 rounded-xl">
-                    <Download size={20} className="text-orange-300" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white">{invoices.length}</p>
-                    <p className="text-xs text-gray-300">Invoices</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="min-h-screen bg-[#f5f5f7]">
+      {/* ─── Compact Dark Header ─── */}
+      <div className="bg-gray-900 pt-[68px] pb-3">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 text-xs mb-1">
+            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
+            <ChevronRight className="w-3 h-3 text-gray-600" />
+            <span className="text-white font-medium">My Account</span>
           </div>
+          <h1 className="text-xl font-bold text-white tracking-tight">My Account</h1>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20 pb-16">
-        {/* Premium Tab Navigation */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border-2 border-gray-200 overflow-hidden mb-8">
-          <div className="border-b-2 border-gray-100">
-            <nav className="flex overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('orders')}
-                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'orders'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                {activeTab === 'orders' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
-                )}
-                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'orders' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
-                  <Package size={20} />
-                </div>
-                <div>
-                  <span className="block">My Orders</span>
-                  <span className="text-xs opacity-70">{orders.length} total</span>
-                </div>
-              </button>
+      {/* ─── Main Layout ─── */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
 
-              <button
-                onClick={() => setActiveTab('quotes')}
-                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'quotes'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                {activeTab === 'quotes' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
-                )}
-                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'quotes' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
-                  <FileText size={20} />
+          {/* ─── Sidebar ─── */}
+          <aside className="w-full lg:w-[280px] flex-shrink-0">
+            {/* Account Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] p-6 mb-6">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <div>
-                  <span className="block">Quote Requests</span>
-                  <span className="text-xs opacity-70">{quotes.length} total</span>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-gray-900 truncate">{user?.name}</h2>
+                  <p className="text-sm text-gray-500 truncate">{user?.email}</p>
                 </div>
-              </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold">
+                  <Award size={12} />
+                  {user?.role === 'retailer' ? 'Retailer' : user?.role === 'admin' ? 'Admin' : 'Member'}
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
+                  <Sparkles size={12} />
+                  Active
+                </span>
+              </div>
+            </div>
 
-              <button
-                onClick={() => setActiveTab('warranties')}
-                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'warranties'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500 hover:text-gray-700'
+            {/* Navigation — Desktop */}
+            <nav className="hidden lg:block bg-white rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden mb-6">
+              <div className="px-5 py-3 border-b border-gray-100">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Dashboard</p>
+              </div>
+              {navItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200 border-l-[3px] ${
+                    activeTab === item.key
+                      ? 'bg-teal-50/60 text-teal-700 border-l-teal-600'
+                      : 'text-gray-600 hover:bg-gray-50 border-l-transparent hover:text-gray-900'
                   }`}
-              >
-                {activeTab === 'warranties' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
-                )}
-                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'warranties' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
-                  <Shield size={20} />
-                </div>
-                <div>
-                  <span className="block">Warranties</span>
-                  <span className="text-xs opacity-70">{warranties.length} registered</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('invoices')}
-                className={`group relative py-6 px-8 text-center font-bold text-sm flex items-center gap-3 whitespace-nowrap transition-all duration-300 ${activeTab === 'invoices'
-                  ? 'text-indigo-600'
-                  : 'text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                {activeTab === 'invoices' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-t-full"></div>
-                )}
-                <div className={`p-2.5 rounded-xl transition-all duration-300 ${activeTab === 'invoices' ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
-                  <Download size={20} />
-                </div>
-                <div>
-                  <span className="block">Invoices</span>
-                  <span className="text-xs opacity-70">{invoices.length} available</span>
-                </div>
-              </button>
+                >
+                  <item.icon size={18} className={activeTab === item.key ? 'text-teal-600' : 'text-gray-400'} />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    activeTab === item.key ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {item.count}
+                  </span>
+                </button>
+              ))}
             </nav>
-          </div>
 
-          <div className="p-6">
+            {/* Quick Links */}
+            <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Quick Links</p>
+              </div>
+              <Link
+                to="/products"
+                className="flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              >
+                <ShoppingCart size={18} className="text-gray-400" />
+                <span>Browse Products</span>
+                <ChevronRight size={14} className="ml-auto text-gray-300" />
+              </Link>
+              <Link
+                to="/warranty-registration"
+                className="flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors border-t border-gray-50"
+              >
+                <Shield size={18} className="text-gray-400" />
+                <span>Register Warranty</span>
+                <ChevronRight size={14} className="ml-auto text-gray-300" />
+              </Link>
+            </div>
+          </aside>
+
+          {/* ─── Main Content Area ─── */}
+          <main className="flex-1 min-w-0">
+
+            {/* Mobile Navigation */}
+            <div className="lg:hidden mb-6 overflow-x-auto">
+              <div className="flex gap-2 min-w-max pb-2">
+                {navItems.map(item => (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-none text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
+                      activeTab === item.key
+                        ? 'bg-teal-600 text-white shadow-none'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <item.icon size={16} />
+                    {item.label}
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                      activeTab === item.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {item.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-4 border-l-4 border-l-blue-500">
+                <p className="text-xs font-medium text-gray-500 mb-1">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+              </div>
+              <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-4 border-l-4 border-l-purple-500">
+                <p className="text-xs font-medium text-gray-500 mb-1">Quote Requests</p>
+                <p className="text-2xl font-bold text-gray-900">{quotes.length}</p>
+              </div>
+              <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-4 border-l-4 border-l-emerald-500">
+                <p className="text-xs font-medium text-gray-500 mb-1">Warranties</p>
+                <p className="text-2xl font-bold text-gray-900">{warranties.length}</p>
+              </div>
+              <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-4 border-l-4 border-l-amber-500">
+                <p className="text-xs font-medium text-gray-500 mb-1">Invoices</p>
+                <p className="text-2xl font-bold text-gray-900">{invoices.length}</p>
+              </div>
+            </div>
+
+            {/* ════════════════════════════════════════════ */}
+            {/* ORDERS TAB                                  */}
+            {/* ════════════════════════════════════════════ */}
             {activeTab === 'orders' && (
               <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">My Orders</h2>
+                  <span className="text-sm text-gray-500">{orders.length} order{orders.length !== 1 ? 's' : ''}</span>
+                </div>
+
                 {orders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No orders found.</p>
+                  <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-16 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
+                      <Package size={36} className="text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
+                    <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">When you place orders, they'll appear here so you can track and manage them.</p>
+                    <Link
+                      to="/products"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-none hover:bg-teal-700 transition-colors shadow-none"
+                    >
+                      <ShoppingCart size={16} />
+                      Browse Products
+                    </Link>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     {orders.map(order => (
-                      <div key={order._id} className="border border-gray-200 rounded-lg overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
-                          <div>
-                            <p className="text-sm text-gray-500">Order ID</p>
-                            <p className="font-medium text-gray-900">#{order._id.slice(-8).toUpperCase()}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Date</p>
-                            <p className="font-medium text-gray-900">{new Date(order.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Total Amount</p>
-                            <p className="font-medium text-gray-900">₹{order.totalAmount}</p>
-                          </div>
-                          {order.isQuoteBased && (
-                            <div>
-                              <p className="text-sm text-gray-500">Discount</p>
-                              <p className="font-medium text-green-600">{order.discountApplied}%</p>
+                      <div key={order._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
+                        {/* Order Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-6">
+                              <div>
+                                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Order ID</p>
+                                <p className="text-sm font-bold text-gray-900 font-mono">#{order._id.slice(-8).toUpperCase()}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Placed on</p>
+                                <p className="text-sm font-medium text-gray-700">{new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Total</p>
+                                <p className="text-sm font-bold text-gray-900">₹{order.totalAmount?.toLocaleString()}</p>
+                              </div>
+                              {order.isQuoteBased && (
+                                <div>
+                                  <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Discount</p>
+                                  <p className="text-sm font-semibold text-emerald-600">{order.discountApplied}% OFF</p>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          <div>
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold ${getStatusColor(order.orderStatus)}`}>
                               {getStatusIcon(order.orderStatus)}
                               {order.orderStatus}
                             </span>
                           </div>
                         </div>
+
+                        {/* Order Products */}
                         <div className="p-6">
-                          <ul className="divide-y divide-gray-200">
+                          <div className="space-y-4">
                             {order.products.map((p: any) => (
-                              <li key={p._id} className="py-4 flex flex-col gap-2">
+                              <div key={p._id} className="flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
-                                  <div className="flex items-center">
-                                    <div className="ml-4">
-                                      <p className="text-sm font-medium text-gray-900">{p.product?.name || 'Product Unavailable'}</p>
-                                      <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-none bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                      <Package size={18} className="text-gray-400" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-900">{p.product?.name || 'Product Unavailable'}</p>
+                                      <p className="text-xs text-gray-500">Qty: {p.quantity} × ₹{p.price?.toLocaleString()}</p>
                                     </div>
                                   </div>
-                                  <p className="text-sm font-medium text-gray-900">₹{p.price}</p>
+                                  <p className="text-sm font-bold text-gray-900">₹{(p.price * p.quantity)?.toLocaleString()}</p>
                                 </div>
+
+                                {/* Serial Numbers */}
                                 {p.serialNumbers && p.serialNumbers.length > 0 && (
-                                  <div className="ml-4 mt-2">
-                                    <p className="text-xs text-gray-500 mb-1">Serial Numbers:</p>
-                                    <div className="flex flex-wrap gap-2">
+                                  <div className="ml-13 pl-13">
+                                    <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">Serial Numbers</p>
+                                    <div className="flex flex-wrap gap-1.5">
                                       {p.serialNumbers.map((sn: string) => (
-                                        <span key={sn} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                        <span key={sn} className="inline-flex items-center px-2.5 py-1 rounded-none text-xs font-mono font-medium bg-gray-100 text-gray-700 border border-gray-200">
                                           {sn}
                                         </span>
                                       ))}
                                     </div>
                                   </div>
                                 )}
+
+                                {/* Brochure Download */}
                                 {p.product?.brochureUrl && (
-                                  <div className="ml-4 mt-2">
+                                  <div className="ml-13">
                                     <button
                                       onClick={() => {
                                         const link = document.createElement('a');
@@ -552,71 +556,57 @@ const UserDashboard = () => {
                                         link.click();
                                         document.body.removeChild(link);
                                       }}
-                                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm hover:shadow-md"
+                                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-none hover:bg-gray-200 transition-colors border border-gray-200"
                                     >
-                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                      </svg>
-                                      Download Product Brochure
+                                      <Download size={14} />
+                                      Product Brochure
                                     </button>
                                   </div>
                                 )}
-                              </li>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
 
-                          {/* Tracking Information Section */}
+                          {/* Tracking Information */}
                           {(order.deliveryTrackingLink || order.trackingId) && (
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                <div className="flex items-start gap-3">
-                                  <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Package className="w-5 h-5 text-blue-600" />
+                            <div className="mt-6 pt-5 border-t border-gray-100">
+                              <div className="bg-blue-50 rounded-none p-5 border border-blue-200">
+                                <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                  <Package size={16} className="text-blue-600" />
+                                  Tracking Information
+                                </h4>
+                                
+                                {order.trackingId && (
+                                  <div className="mb-4">
+                                    <p className="text-xs text-gray-600 mb-1.5">Tracking ID</p>
+                                    <div className="flex items-center gap-3">
+                                      <code className="text-sm font-bold text-blue-700 bg-white px-4 py-2 rounded-none border border-blue-200 font-mono">
+                                        {order.trackingId}
+                                      </code>
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(order.trackingId);
+                                          alert('Tracking ID copied to clipboard!');
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline underline-offset-2"
+                                      >
+                                        Copy
+                                      </button>
+                                    </div>
                                   </div>
-                                  <div className="flex-1">
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                      <span>📦 Tracking Information</span>
-                                    </h4>
-                                    
-                                    {order.trackingId && (
-                                      <div className="mb-3">
-                                        <p className="text-xs text-gray-600 mb-1">Tracking ID / Reference Number:</p>
-                                        <div className="flex items-center gap-2">
-                                          <code className="text-sm font-bold text-blue-700 bg-white px-3 py-1.5 rounded border border-blue-200">
-                                            {order.trackingId}
-                                          </code>
-                                          <button
-                                            onClick={() => {
-                                              navigator.clipboard.writeText(order.trackingId);
-                                              alert('Tracking ID copied to clipboard!');
-                                            }}
-                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                          >
-                                            Copy
-                                          </button>
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1">Use this ID to track with the courier service</p>
-                                      </div>
-                                    )}
-                                    
-                                    {order.deliveryTrackingLink && (
-                                      <div>
-                                        <p className="text-xs text-gray-600 mb-2">Track Your Shipment:</p>
-                                        <a
-                                          href={order.deliveryTrackingLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                          </svg>
-                                          Track Package
-                                        </a>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
+                                )}
+                                
+                                {order.deliveryTrackingLink && (
+                                  <a
+                                    href={order.deliveryTrackingLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-none hover:bg-blue-700 transition-colors shadow-none"
+                                  >
+                                    <ExternalLink size={16} />
+                                    Track Package
+                                  </a>
+                                )}
                               </div>
                             </div>
                           )}
@@ -628,8 +618,16 @@ const UserDashboard = () => {
               </div>
             )}
 
+            {/* ════════════════════════════════════════════ */}
+            {/* QUOTES TAB                                  */}
+            {/* ════════════════════════════════════════════ */}
             {activeTab === 'quotes' && (
               <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Quote Requests</h2>
+                  <span className="text-sm text-gray-500">{quotes.length} total</span>
+                </div>
+
                 {/* Date Filter */}
                 <DateFilter
                   dateFrom={quoteDateFrom}
@@ -637,54 +635,58 @@ const UserDashboard = () => {
                   onDateFromChange={setQuoteDateFrom}
                   onDateToChange={setQuoteDateTo}
                   label="Filter Quotes by Date"
-                  className="mb-6"
+                  className="mb-6 !rounded-none"
                 />
 
-                {/* Active Quotes Section */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
+                {/* Active Quotes */}
+                <div className="mb-10">
+                  <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-teal-500"></div>
+                    Active Quotes
+                  </h3>
                   {filteredQuotes.filter(q => q.status !== 'completed').length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                      <FileText size={32} className="mx-auto text-gray-300 mb-2" />
-                      <p className="text-gray-500 text-sm">No active quotes found.</p>
+                    <div className="bg-white rounded-none border border-dashed border-gray-300 p-12 text-center">
+                      <FileText size={36} className="mx-auto text-gray-300 mb-3" />
+                      <p className="text-sm text-gray-500">No active quotes found.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
                       {filteredQuotes.filter(q => q.status !== 'completed').map(quote => {
                         const isExpanded = expandedQuotes.has(quote._id);
                         return (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-white">
-                          {/* Condensed Preview */}
+                        <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-none transition-shadow">
                           <div className="p-6">
-                            <div className="flex justify-between items-start mb-3">
-                              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                                {getStatusIcon(quote.status)}
-                                {quote.status}
-                              </span>
-                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                            {/* Quote Summary Row */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                              <div className="flex items-center gap-4">
+                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold ${getStatusColor(quote.status)}`}>
+                                  {getStatusIcon(quote.status)}
+                                  {quote.status}
+                                </span>
+                                <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                              </div>
+                              {quote.adminResponse && (
+                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
+                              )}
                             </div>
 
-                            <div className="mb-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-gray-900">
-                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
-                                </h4>
-                                {quote.adminResponse && (
-                                  <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
-                                )}
-                              </div>
+                            {/* Product Preview */}
+                            <div className="mb-4">
+                              <p className="text-sm font-semibold text-gray-900">
+                                {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
+                              </p>
                               {!isExpanded && quote.products.length > 0 && (
-                                <p className="text-sm text-gray-600 mt-1">
+                                <p className="text-sm text-gray-500 mt-0.5">
                                   {quote.products[0].product?.name || 'Product Unavailable'}
                                   {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
                                 </p>
                               )}
                             </div>
 
-                            {/* View Quote Toggle Button */}
+                            {/* Expand/Collapse */}
                             <button
                               onClick={() => toggleQuoteExpand(quote._id)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium mb-3"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium border border-gray-200"
                             >
                               {isExpanded ? (
                                 <>
@@ -694,50 +696,52 @@ const UserDashboard = () => {
                               ) : (
                                 <>
                                   <ChevronDown size={16} />
-                                  View Quote
+                                  View Quote Details
                                 </>
                               )}
                             </button>
 
-                            {/* Expanded Details */}
+                            {/* Expanded Content */}
                             {isExpanded && (
-                              <div className="space-y-4 pt-4 border-t border-gray-200">
+                              <div className="mt-5 pt-5 border-t border-gray-100 space-y-4">
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                                  <ul className="text-sm text-gray-600 space-y-2">
+                                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products</p>
+                                  <div className="space-y-2">
                                     {quote.products.map((p: any) => (
-                                      <li key={p._id} className="flex justify-between items-start bg-gray-50 p-2 rounded">
-                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
-                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
-                                      </li>
+                                      <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
+                                        <span className="text-sm text-gray-700 font-medium">{p.product?.name || 'Product Unavailable'}</span>
+                                        <span className="text-xs text-gray-500 font-semibold bg-white px-2 py-1 rounded border border-gray-200">Qty: {p.quantity}</span>
+                                      </div>
                                     ))}
-                                  </ul>
+                                  </div>
                                 </div>
 
                                 {quote.message && (
                                   <div>
-                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Your Message:</h4>
-                                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{quote.message}</p>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Message</p>
+                                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-none border border-gray-100 leading-relaxed">{quote.message}</p>
                                   </div>
                                 )}
 
                                 {quote.adminResponse && (
-                                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                                    <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
-                                      <Sparkles size={16} />
+                                  <div className="bg-teal-50 p-5 rounded-none border border-teal-200">
+                                    <h4 className="text-sm font-bold text-teal-800 mb-3 flex items-center gap-2">
+                                      <Sparkles size={14} />
                                       Admin Response
                                     </h4>
                                     <div className="flex justify-between items-center mb-2">
-                                      <span className="text-sm text-indigo-700">Offered Price:</span>
-                                      <span className="text-lg font-bold text-indigo-900">₹{quote.adminResponse.totalPrice}</span>
+                                      <span className="text-sm text-teal-700">Offered Price</span>
+                                      <span className="text-lg font-bold text-teal-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
                                     </div>
                                     {quote.adminResponse.discountPercentage > 0 && (
                                       <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm text-indigo-700">Discount:</span>
-                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                        <span className="text-sm text-teal-700">Discount</span>
+                                        <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
                                       </div>
                                     )}
-                                    <p className="text-sm text-indigo-800 mt-2">{quote.adminResponse.message}</p>
+                                    {quote.adminResponse.message && (
+                                      <p className="text-sm text-teal-800 mt-3 pt-3 border-t border-teal-200">{quote.adminResponse.message}</p>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -745,53 +749,56 @@ const UserDashboard = () => {
 
                             {/* Action Buttons */}
                             {quote.status === 'responded' && (
-                              <div className="flex gap-2 mt-4">
+                              <div className="flex gap-3 mt-5">
                                 <button
                                   onClick={() => acceptQuote(quote._id)}
                                   disabled={actionLoading}
-                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-none hover:bg-emerald-700 disabled:bg-gray-300 transition-colors text-sm font-semibold shadow-none"
                                 >
                                   <ThumbsUp size={16} />
-                                  Accept
+                                  Accept Quote
                                 </button>
                                 <button
                                   onClick={() => rejectQuote(quote._id)}
                                   disabled={actionLoading}
-                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border border-red-200 rounded-none hover:bg-red-50 disabled:bg-gray-100 transition-colors text-sm font-semibold"
                                 >
                                   <ThumbsDown size={16} />
-                                  Reject
+                                  Decline
                                 </button>
                               </div>
                             )}
 
                             {quote.status === 'accepted' && (
-                              <>
+                              <div className="mt-5">
                                 {quote.orderId ? (
                                   <button
                                     onClick={() => setActiveTab('orders')}
-                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                    className="w-full px-4 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-none hover:bg-blue-100 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
                                   >
                                     <CheckCircle size={16} />
-                                    Order Created - View in Orders
+                                    Order Created — View in Orders
                                   </button>
                                 ) : (
                                   <button
                                     onClick={() => proceedToCheckout(quote)}
                                     disabled={actionLoading}
-                                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center"
+                                    className="w-full px-4 py-2.5 bg-teal-600 text-white rounded-none hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-none"
                                   >
                                     {actionLoading ? (
                                       <>
-                                        <Loader2 size={16} className="mr-2 animate-spin" />
+                                        <Loader2 size={16} className="animate-spin" />
                                         Processing...
                                       </>
                                     ) : (
-                                      'Proceed to Checkout'
+                                      <>
+                                        <ShoppingCart size={16} />
+                                        Proceed to Checkout
+                                      </>
                                     )}
                                   </button>
                                 )}
-                              </>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -800,89 +807,72 @@ const UserDashboard = () => {
                   )}
                 </div>
 
-                {/* Quote History Section */}
+                {/* Quote History */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
+                  <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                    Quote History
+                  </h3>
                   {filteredQuotes.filter(q => q.status === 'completed').length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                      <Clock size={32} className="mx-auto text-gray-300 mb-2" />
-                      <p className="text-gray-500 text-sm">No completed quotes found.</p>
+                    <div className="bg-white rounded-none border border-dashed border-gray-300 p-12 text-center">
+                      <Clock size={36} className="mx-auto text-gray-300 mb-3" />
+                      <p className="text-sm text-gray-500">No completed quotes found.</p>
                     </div>
                   ) : (
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-4">
                       {filteredQuotes.filter(q => q.status === 'completed').map(quote => {
                         const isExpanded = expandedQuotes.has(quote._id);
                         return (
-                        <div key={quote._id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 opacity-75 hover:opacity-100 transition-opacity">
+                        <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
                           <div className="p-6">
-                            <div className="flex justify-between items-start mb-3">
-                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
-                                <CheckCircle size={14} />
-                                Completed
-                              </span>
-                              <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                            </div>
-
-                            <div className="mb-3">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-gray-900">
-                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
-                                </h4>
-                                {quote.adminResponse && (
-                                  <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
-                                )}
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                              <div className="flex items-center gap-3">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                                  <CheckCircle size={14} />
+                                  Completed
+                                </span>
+                                <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                               </div>
-                              {!isExpanded && quote.products.length > 0 && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {quote.products[0].product?.name || 'Product Unavailable'}
-                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
-                                </p>
+                              {quote.adminResponse && (
+                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
                               )}
                             </div>
 
-                            {/* View Quote Toggle Button */}
+                            <p className="text-sm font-semibold text-gray-700 mb-3">
+                              {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
+                              {!isExpanded && quote.products.length > 0 && (
+                                <span className="text-gray-500 font-normal ml-2">
+                                  — {quote.products[0].product?.name || 'Product Unavailable'}
+                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                </span>
+                              )}
+                            </p>
+
                             <button
                               onClick={() => toggleQuoteExpand(quote._id)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium"
                             >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp size={16} />
-                                  Hide Details
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown size={16} />
-                                  View Quote
-                                </>
-                              )}
+                              {isExpanded ? <><ChevronUp size={16} /> Hide</> : <><ChevronDown size={16} /> Details</>}
                             </button>
 
-                            {/* Expanded Details */}
                             {isExpanded && (
-                              <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900 mb-2">Products:</h4>
-                                  <ul className="text-sm text-gray-600 space-y-2">
-                                    {quote.products.map((p: any) => (
-                                      <li key={p._id} className="flex justify-between items-start bg-white p-2 rounded">
-                                        <span className="flex-1">{p.product?.name || 'Product Unavailable'}</span>
-                                        <span className="text-gray-500 ml-2">Qty: {p.quantity}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-
+                              <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                                {quote.products.map((p: any) => (
+                                  <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
+                                    <span className="text-sm text-gray-700">{p.product?.name || 'Product Unavailable'}</span>
+                                    <span className="text-xs text-gray-500">Qty: {p.quantity}</span>
+                                  </div>
+                                ))}
                                 {quote.adminResponse && (
-                                  <div className="bg-white p-3 rounded-lg border border-gray-200">
+                                  <div className="bg-gray-50 p-4 rounded-none border border-gray-200">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-sm text-gray-600">Final Price:</span>
-                                      <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice}</span>
+                                      <span className="text-sm text-gray-600">Final Price</span>
+                                      <span className="text-base font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
                                     </div>
                                     {quote.adminResponse.discountPercentage > 0 && (
                                       <div className="flex justify-between items-center mt-2">
-                                        <span className="text-sm text-gray-600">Discount Applied:</span>
-                                        <span className="text-sm font-semibold text-green-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                        <span className="text-sm text-gray-600">Discount</span>
+                                        <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
                                       </div>
                                     )}
                                   </div>
@@ -898,158 +888,153 @@ const UserDashboard = () => {
               </div>
             )}
 
+            {/* ════════════════════════════════════════════ */}
+            {/* WARRANTIES TAB                              */}
+            {/* ════════════════════════════════════════════ */}
             {activeTab === 'warranties' && (
               <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">My Warranties</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {warranties.filter((w: any) => w.status === 'approved').length} active · {warranties.filter((w: any) => w.status === 'pending').length} pending
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/warranty-registration')}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-none hover:bg-teal-700 transition-colors shadow-none"
+                  >
+                    <Shield size={16} />
+                    Register New
+                  </button>
+                </div>
+
                 {warranties.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Shield size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500 mb-4">No warranties registered.</p>
+                  <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-16 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
+                      <Shield size={36} className="text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No warranties registered</h3>
+                    <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">Register your product warranties to track coverage and access certificates.</p>
                     <button
                       onClick={() => navigate('/warranty-registration')}
-                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-none hover:bg-teal-700 transition-colors shadow-none"
                     >
+                      <Shield size={16} />
                       Register Warranty
                     </button>
                   </div>
                 ) : (
                   <div>
-                    <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-900">My Warranties</h2>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {warranties.filter((w: any) => w.status === 'approved').length} approved, {warranties.filter((w: any) => w.status === 'pending').length} pending
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => navigate('/warranty-registration')}
-                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 text-sm font-medium shadow-md flex items-center gap-2"
-                      >
-                        <Shield size={16} />
-                        Register New Warranty
-                      </button>
-                    </div>
-
-                    {/* Approved Warranties Section */}
+                    {/* Active Warranties */}
                     {warranties.filter((w: any) => w.status === 'approved').length > 0 && (
-                      <div className="mb-8">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <CheckCircle className="text-green-600" size={20} />
+                      <div className="mb-10">
+                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                           Active Warranties
                         </h3>
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid md:grid-cols-2 gap-5">
                           {warranties
                             .filter((w: any) => w.status === 'approved')
                             .map((warranty: any) => {
                               const endDate = new Date(warranty.warrantyEndDate);
+                              const startDate = new Date(warranty.warrantyStartDate);
                               const now = new Date();
                               const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                              const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+                              const progressPct = Math.max(0, Math.min(100, ((totalDays - daysRemaining) / totalDays) * 100));
                               const isExpired = daysRemaining < 0;
                               const isExpiringSoon = daysRemaining <= 30 && daysRemaining > 0;
 
                               return (
                                 <div
                                   key={warranty._id}
-                                  className="bg-gradient-to-br from-white to-green-50 border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all"
+                                  className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden"
                                 >
-                                  <div className="flex justify-between items-start mb-4">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Shield className="text-green-600" size={24} />
-                                        <h3 className="font-bold text-lg text-gray-900">
-                                          {warranty.productName}
-                                        </h3>
+                                  <div className="p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <Shield className="text-emerald-600 flex-shrink-0" size={20} />
+                                          <h3 className="font-bold text-base text-gray-900 truncate">{warranty.productName}</h3>
+                                        </div>
+                                        <p className="text-xs text-gray-500 font-mono ml-7">S/N: {warranty.serialNumber}</p>
                                       </div>
-                                      <p className="text-xs text-gray-500 font-mono">
-                                        S/N: {warranty.serialNumber}
-                                      </p>
+                                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-none ${
+                                        isExpired ? 'bg-red-100 text-red-700 border border-red-200' :
+                                        isExpiringSoon ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                        'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                      }`}>
+                                        {isExpired ? 'EXPIRED' : isExpiringSoon ? 'EXPIRING' : 'ACTIVE'}
+                                      </span>
                                     </div>
-                                    <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold">
-                                      ACTIVE
-                                    </span>
-                                  </div>
 
-                                  <div className="bg-white rounded-lg p-4 mb-4">
-                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                      <div>
-                                        <p className="text-gray-500 text-xs mb-1">Model</p>
-                                        <p className="font-semibold text-gray-900">{warranty.modelNumber}</p>
+                                    {/* Product Details */}
+                                    <div className="grid grid-cols-2 gap-3 mb-5">
+                                      <div className="bg-gray-50 rounded-none p-3">
+                                        <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Model</p>
+                                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{warranty.modelNumber}</p>
                                       </div>
-                                      <div>
-                                        <p className="text-gray-500 text-xs mb-1">Purchase Date</p>
-                                        <p className="font-semibold text-gray-900">
-                                          {new Date(warranty.purchaseDate).toLocaleDateString()}
+                                      <div className="bg-gray-50 rounded-none p-3">
+                                        <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Purchased</p>
+                                        <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                                          {new Date(warranty.purchaseDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         </p>
                                       </div>
                                     </div>
-                                  </div>
 
-                                  <div className={`rounded-lg p-4 mb-4 ${
-                                    isExpired ? 'bg-red-50 border border-red-200' :
-                                    isExpiringSoon ? 'bg-amber-50 border border-amber-200' :
-                                    'bg-green-50 border border-green-200'
-                                  }`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <p className={`text-xs font-medium ${
-                                        isExpired ? 'text-red-700' :
-                                        isExpiringSoon ? 'text-amber-700' :
-                                        'text-green-700'
-                                      }`}>
-                                        <Calendar size={14} className="inline mr-1" />
-                                        Warranty Period
-                                      </p>
-                                      <span className={`text-xs font-bold px-2 py-1 rounded ${
-                                        isExpired ? 'bg-red-200 text-red-800' :
-                                        isExpiringSoon ? 'bg-amber-200 text-amber-800' :
-                                        'bg-green-200 text-green-800'
-                                      }`}>
-                                        {warranty.warrantyPeriodMonths || 12} months
-                                      </span>
+                                    {/* Warranty Progress Bar */}
+                                    <div className="mb-5">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                                          <Calendar size={12} />
+                                          {warranty.warrantyPeriodMonths || 12} month warranty
+                                        </p>
+                                        <p className={`text-xs font-bold ${
+                                          isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-emerald-600'
+                                        }`}>
+                                          {isExpired ? 'Expired' : `${daysRemaining} days left`}
+                                        </p>
+                                      </div>
+                                      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-500 ${
+                                            isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'
+                                          }`}
+                                          style={{ width: `${isExpired ? 100 : progressPct}%` }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between mt-1.5">
+                                        <span className="text-[10px] text-gray-400">{startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                                        <span className="text-[10px] text-gray-400">{endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                                      </div>
                                     </div>
-                                    <p className={`text-sm font-semibold ${
-                                      isExpired ? 'text-red-900' :
-                                      isExpiringSoon ? 'text-amber-900' :
-                                      'text-green-900'
-                                    }`}>
-                                      {new Date(warranty.warrantyStartDate).toLocaleDateString()} - {endDate.toLocaleDateString()}
-                                    </p>
-                                    {!isExpired && (
-                                      <p className={`text-xs mt-2 font-medium ${
-                                        isExpiringSoon ? 'text-amber-700' : 'text-green-700'
-                                      }`}>
-                                        {isExpiringSoon ? '⚠️ ' : '✓ '}
-                                        {daysRemaining} days remaining
-                                      </p>
-                                    )}
-                                    {isExpired && (
-                                      <p className="text-xs mt-2 font-medium text-red-700">
-                                        ✗ Warranty expired
-                                      </p>
-                                    )}
-                                  </div>
 
-                                  <div className="flex gap-3">
-                                    {warranty.warrantyCertificateUrl && (
-                                      <a
-                                        href={warranty.warrantyCertificateUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-                                      >
-                                        <Download size={16} />
-                                        Certificate
-                                      </a>
-                                    )}
-                                    {warranty.invoice && (
-                                      <a
-                                        href={warranty.invoice}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-                                      >
-                                        <Eye size={16} />
-                                        Invoice
-                                      </a>
-                                    )}
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2">
+                                      {warranty.warrantyCertificateUrl && (
+                                        <a
+                                          href={warranty.warrantyCertificateUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-center py-2.5 rounded-none text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+                                        >
+                                          <Download size={14} />
+                                          Certificate
+                                        </a>
+                                      )}
+                                      {warranty.invoice && (
+                                        <a
+                                          href={warranty.invoice}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-center py-2.5 rounded-none text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-gray-200"
+                                        >
+                                          <Eye size={14} />
+                                          Invoice
+                                        </a>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -1061,9 +1046,9 @@ const UserDashboard = () => {
                     {/* Pending/Other Warranties */}
                     {warranties.filter((w: any) => w.status !== 'approved').length > 0 && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                          <Clock className="text-yellow-600" size={20} />
-                          Other Registrations
+                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                          Pending Registrations
                         </h3>
                         <div className="space-y-4">
                           {warranties
@@ -1071,54 +1056,44 @@ const UserDashboard = () => {
                             .map((warranty: any) => (
                               <div
                                 key={warranty._id}
-                                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                                className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-6"
                               >
-                                <div className="flex justify-between items-start mb-4">
+                                <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                                   <div>
-                                    <h3 className="font-semibold text-lg text-gray-900">
-                                      {warranty.productName}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">
-                                      Registered: {new Date(warranty.createdAt).toLocaleDateString()}
+                                    <h3 className="font-bold text-base text-gray-900">{warranty.productName}</h3>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      Registered {new Date(warranty.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </p>
                                   </div>
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                                      warranty.status
-                                    )}`}
-                                  >
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold ${getStatusColor(warranty.status)}`}>
                                     {getStatusIcon(warranty.status)}
                                     {warranty.status.charAt(0).toUpperCase() + warranty.status.slice(1)}
                                   </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                  <div>
-                                    <p className="text-xs text-gray-500">Serial Number</p>
-                                    <p className="font-medium text-gray-900">{warranty.serialNumber}</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                  <div className="bg-gray-50 rounded-none p-3">
+                                    <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Serial</p>
+                                    <p className="text-sm font-semibold text-gray-900 mt-0.5 font-mono">{warranty.serialNumber}</p>
                                   </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Model Number</p>
-                                    <p className="font-medium text-gray-900">{warranty.modelNumber}</p>
+                                  <div className="bg-gray-50 rounded-none p-3">
+                                    <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Model</p>
+                                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{warranty.modelNumber}</p>
                                   </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Purchase Date</p>
-                                    <p className="font-medium text-gray-900">
-                                      {new Date(warranty.purchaseDate).toLocaleDateString()}
-                                    </p>
+                                  <div className="bg-gray-50 rounded-none p-3">
+                                    <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Purchased</p>
+                                    <p className="text-sm font-semibold text-gray-900 mt-0.5">{new Date(warranty.purchaseDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                                   </div>
-                                  <div>
-                                    <p className="text-xs text-gray-500">Purchase Type</p>
-                                    <p className="font-medium text-gray-900 capitalize">
-                                      {warranty.purchaseType.replace('_', ' ')}
-                                    </p>
+                                  <div className="bg-gray-50 rounded-none p-3">
+                                    <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Type</p>
+                                    <p className="text-sm font-semibold text-gray-900 mt-0.5 capitalize">{warranty.purchaseType.replace('_', ' ')}</p>
                                   </div>
                                 </div>
 
                                 {warranty.rejectionReason && (
-                                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                                    <p className="text-xs text-red-700 font-medium mb-1">Rejection Reason:</p>
-                                    <p className="text-sm text-red-900">{warranty.rejectionReason}</p>
+                                  <div className="bg-red-50 border border-red-200 rounded-none p-4 mb-3">
+                                    <p className="text-xs text-red-700 font-semibold mb-1">Rejection Reason</p>
+                                    <p className="text-sm text-red-800">{warranty.rejectionReason}</p>
                                   </div>
                                 )}
 
@@ -1127,7 +1102,7 @@ const UserDashboard = () => {
                                     href={warranty.invoice}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center gap-1"
+                                    className="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-medium transition-colors"
                                   >
                                     <Eye size={16} />
                                     View Invoice
@@ -1143,125 +1118,171 @@ const UserDashboard = () => {
               </div>
             )}
 
+            {/* ════════════════════════════════════════════ */}
+            {/* INVOICES TAB                                */}
+            {/* ════════════════════════════════════════════ */}
             {activeTab === 'invoices' && (
               <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Invoices</h2>
+                  <span className="text-sm text-gray-500">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</span>
+                </div>
+
                 {invoices.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Download size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No invoices found.</p>
+                  <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-16 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
+                      <Download size={36} className="text-gray-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices yet</h3>
+                    <p className="text-sm text-gray-500 max-w-sm mx-auto">Invoices will appear here once your orders are processed.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Invoice ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Order ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Amount
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Date
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {invoices.map((invoice: any) => (
-                            <tr key={invoice._id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                                #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
-                              </td>
-                              <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                                #{invoice.order?._id?.slice(-8).toUpperCase() || 'N/A'}
-                              </td>
-                              <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                                ₹{invoice.totalAmount?.toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-900">
-                                {new Date(invoice.createdAt).toLocaleDateString()}
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.paymentStatus === 'completed'
-                                  ? 'bg-green-100 text-green-800'
+                  <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden">
+                    {/* Desktop Table Header */}
+                    <div className="hidden md:grid grid-cols-6 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                      <span>Invoice</span>
+                      <span>Order</span>
+                      <span>Amount</span>
+                      <span>Date</span>
+                      <span>Status</span>
+                      <span>Actions</span>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {invoices.map((invoice: any) => (
+                        <div key={invoice._id} className="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                          {/* Desktop Row */}
+                          <div className="hidden md:grid grid-cols-6 gap-4 items-center">
+                            <span className="text-sm font-bold text-gray-900 font-mono">
+                              #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
+                            </span>
+                            <span className="text-sm text-gray-600 font-mono">
+                              #{invoice.order?._id?.slice(-8).toUpperCase() || 'N/A'}
+                            </span>
+                            <span className="text-sm font-bold text-gray-900">
+                              ₹{invoice.totalAmount?.toLocaleString()}
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {new Date(invoice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                            <span>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${
+                                invoice.paymentStatus === 'completed'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : invoice.paymentStatus === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-red-100 text-red-700'
-                                  }`}>
-                                  {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-sm">
-                                {invoice.invoiceUrl ? (
-                                  <a
-                                    href={invoice.invoiceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                                  >
-                                    <Download size={16} />
-                                    Download
-                                  </a>
-                                ) : (
-                                  <button
-                                    onClick={() => downloadInvoice(invoice._id)}
-                                    className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                                  >
-                                    <Download size={16} />
-                                    Download
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}>
+                                {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
+                              </span>
+                            </span>
+                            <span>
+                              {invoice.invoiceUrl ? (
+                                <a
+                                  href={invoice.invoiceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-semibold transition-colors"
+                                >
+                                  <Download size={14} />
+                                  Download
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => downloadInvoice(invoice._id)}
+                                  className="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-semibold transition-colors"
+                                >
+                                  <Download size={14} />
+                                  Download
+                                </button>
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Mobile Card */}
+                          <div className="md:hidden">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-bold text-gray-900 font-mono">
+                                #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${
+                                invoice.paymentStatus === 'completed'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : invoice.paymentStatus === 'pending'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}>
+                                {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Amount</p>
+                                <p className="text-sm font-bold text-gray-900">₹{invoice.totalAmount?.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Date</p>
+                                <p className="text-sm text-gray-600">{new Date(invoice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                              </div>
+                            </div>
+                            {invoice.invoiceUrl ? (
+                              <a
+                                href={invoice.invoiceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-semibold"
+                              >
+                                <Download size={14} />
+                                Download Invoice
+                              </a>
+                            ) : (
+                              <button
+                                onClick={() => downloadInvoice(invoice._id)}
+                                className="inline-flex items-center gap-1.5 text-teal-600 hover:text-teal-800 text-sm font-semibold"
+                              >
+                                <Download size={14} />
+                                Download Invoice
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
             )}
-          </div>
+
+          </main>
         </div>
       </div>
 
-      {/* Address Modal */}
+      {/* ─── Address Modal ─── */}
       {showAddressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <MapPin size={24} className="mr-2 text-indigo-600" />
-                Enter Shipping Address
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-none shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 flex justify-between items-center rounded-t-2xl">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <MapPin size={20} className="text-teal-600" />
+                Shipping Address
               </h2>
               <button
                 onClick={() => {
                   setShowAddressModal(false);
                   setActionLoading(false);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-none hover:bg-gray-100 transition-colors"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
               {/* Full Name and Phone */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="modal-fullName" className="block text-sm font-medium text-gray-700 mb-1">
-                    <User size={16} className="inline mr-1" />
-                    Full Name *
+                  <label htmlFor="modal-fullName" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    <User size={14} className="inline mr-1 text-gray-400" />
+                    Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1269,14 +1290,14 @@ const UserDashboard = () => {
                     required
                     value={addressForm.fullName}
                     onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                     placeholder="John Doe"
                   />
                 </div>
                 <div>
-                  <label htmlFor="modal-phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    <Phone size={16} className="inline mr-1" />
-                    Phone Number *
+                  <label htmlFor="modal-phone" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    <Phone size={14} className="inline mr-1 text-gray-400" />
+                    Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -1284,7 +1305,7 @@ const UserDashboard = () => {
                     required
                     value={addressForm.phone}
                     onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                     placeholder="+91 98765 43210"
                   />
                 </div>
@@ -1292,9 +1313,9 @@ const UserDashboard = () => {
 
               {/* Street Address */}
               <div>
-                <label htmlFor="modal-streetAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                  <Building2 size={16} className="inline mr-1" />
-                  Street Address *
+                <label htmlFor="modal-streetAddress" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  <Building2 size={14} className="inline mr-1 text-gray-400" />
+                  Street Address <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1302,22 +1323,22 @@ const UserDashboard = () => {
                   required
                   value={addressForm.streetAddress}
                   onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                   placeholder="House No, Building Name, Street"
                 />
               </div>
 
               {/* Landmark */}
               <div>
-                <label htmlFor="modal-landmark" className="block text-sm font-medium text-gray-700 mb-1">
-                  Landmark (Optional)
+                <label htmlFor="modal-landmark" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Landmark <span className="text-gray-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   id="modal-landmark"
                   value={addressForm.landmark}
                   onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                   placeholder="Near Park, Behind Mall, etc."
                 />
               </div>
@@ -1325,8 +1346,8 @@ const UserDashboard = () => {
               {/* City, State, Pincode */}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div>
-                  <label htmlFor="modal-city" className="block text-sm font-medium text-gray-700 mb-1">
-                    City *
+                  <label htmlFor="modal-city" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    City <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1334,13 +1355,13 @@ const UserDashboard = () => {
                     required
                     value={addressForm.city}
                     onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                     placeholder="Mumbai"
                   />
                 </div>
                 <div>
-                  <label htmlFor="modal-state" className="block text-sm font-medium text-gray-700 mb-1">
-                    State *
+                  <label htmlFor="modal-state" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    State <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1348,13 +1369,13 @@ const UserDashboard = () => {
                     required
                     value={addressForm.state}
                     onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                     placeholder="Maharashtra"
                   />
                 </div>
                 <div>
-                  <label htmlFor="modal-pincode" className="block text-sm font-medium text-gray-700 mb-1">
-                    Pincode *
+                  <label htmlFor="modal-pincode" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Pincode <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -1362,7 +1383,7 @@ const UserDashboard = () => {
                     required
                     value={addressForm.pincode}
                     onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-none shadow-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm transition-colors"
                     placeholder="400001"
                     maxLength={6}
                   />
@@ -1370,15 +1391,15 @@ const UserDashboard = () => {
               </div>
 
               {/* Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-3">
                 <button
                   onClick={handleAddressSubmit}
                   disabled={actionLoading}
-                  className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed font-medium flex items-center justify-center"
+                  className="flex-1 bg-teal-600 text-white px-6 py-3 rounded-none hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold flex items-center justify-center transition-colors shadow-none text-sm"
                 >
                   {actionLoading ? (
                     <>
-                      <Loader2 size={18} className="mr-2 animate-spin" />
+                      <Loader2 size={16} className="mr-2 animate-spin" />
                       Processing...
                     </>
                   ) : (
@@ -1391,7 +1412,7 @@ const UserDashboard = () => {
                     setActionLoading(false);
                   }}
                   disabled={actionLoading}
-                  className="px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 font-medium"
+                  className="px-6 py-3 border border-gray-300 rounded-none text-gray-700 hover:bg-gray-50 disabled:opacity-50 font-semibold transition-colors text-sm"
                 >
                   Cancel
                 </button>
