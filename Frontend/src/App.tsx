@@ -78,11 +78,11 @@ function GuestOnlyRoute({ children }: { children: JSX.Element }) {
 
 function AppContent() {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isDashboardRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/retailer');
 
   return (
     <>
-      {!isAdminRoute && <Header />}
+      <Header />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
@@ -116,7 +116,7 @@ function AppContent() {
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/site-map" element={<SiteMap />} />
       </Routes>
-      {!isAdminRoute && <Footer />}
+      {!isDashboardRoute && <Footer />}
     </>
   );
 }

@@ -25,7 +25,11 @@ import {
   Tag,
   Loader,
   Truck,
-  ArrowUpRight
+  ArrowUpRight,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -147,7 +151,16 @@ const RetailerDashboard = () => {
   const { success, error, warning, info } = useToast();
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const handleLogout = () => {
+    if (authContext?.logout) {
+      authContext.logout();
+      navigate('/login');
+    }
+  };
 
   // Generic Modal States
   const [confirmationModal, setConfirmationModal] = useState({
@@ -601,71 +614,82 @@ const RetailerDashboard = () => {
     { id: 'sales', name: 'Sales', icon: DollarSign },
     { id: 'customer-shipments', name: 'Direct - Customer Shipments', icon: Truck },
   ];
-
-  // Render Dashboard Tab
   const renderDashboard = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg text-white shadow-lg">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* In Stock */}
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">In Stock</p>
-              <p className="text-3xl font-bold">{stats?.inventory.inStock || 0}</p>
-              <p className="text-xs text-blue-200 mt-1">Products available</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">In Stock</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.inventory.inStock || 0}</p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">Products available</p>
             </div>
-            <Package className="w-12 h-12 text-blue-200" />
+            <div className="bg-indigo-50 p-2.5 rounded-none border border-indigo-200/50">
+              <Package className="w-5 h-5 text-indigo-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg text-white shadow-lg">
+        {/* Total Sales */}
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm">Total Sales</p>
-              <p className="text-3xl font-bold">{stats?.sales.totalSales || 0}</p>
-              <p className="text-xs text-green-200 mt-1">{formatCurrency(stats?.sales.totalRevenue || 0)}</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Sales</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats?.sales.totalSales || 0}</p>
+              <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider mt-1">{formatCurrency(stats?.sales.totalRevenue || 0)}</p>
             </div>
-            <DollarSign className="w-12 h-12 text-green-200" />
+            <div className="bg-green-50 p-2.5 rounded-none border border-green-200/50">
+              <DollarSign className="w-5 h-5 text-green-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg text-white shadow-lg">
+        {/* Total Profit */}
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-purple-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">Total Profit</p>
-              <p className="text-3xl font-bold">{formatCurrency(stats?.sales.totalProfit || 0)}</p>
-              <p className="text-xs text-purple-200 mt-1">From all sales</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Profit</p>
+              <p className="text-2xl font-bold text-purple-600 mt-1">{formatCurrency(stats?.sales.totalProfit || 0)}</p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">From all sales</p>
             </div>
-            <TrendingUp className="w-12 h-12 text-purple-200" />
+            <div className="bg-purple-50 p-2.5 rounded-none border border-purple-200/50">
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-lg text-white shadow-lg">
+        {/* Pending Quotes */}
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-orange-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm">Pending Quotes</p>
-              <p className="text-3xl font-bold">{stats?.quotes.responded || 0}</p>
-              <p className="text-xs text-orange-200 mt-1">Awaiting your action</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending Quotes</p>
+              <p className="text-2xl font-bold text-orange-600 mt-1">{stats?.quotes.responded || 0}</p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">Awaiting your action</p>
             </div>
-            <FileText className="w-12 h-12 text-orange-200" />
+            <div className="bg-orange-50 p-2.5 rounded-none border border-orange-200/50">
+              <FileText className="w-5 h-5 text-orange-600" />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-none border border-gray-200 shadow-none">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Sales Summary</h3>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Sales Summary</h3>
+            <div className="flex bg-gray-50 border border-gray-200 rounded-none p-1">
               {['weekly', 'monthly', 'yearly'].map((period) => (
                 <button
                   key={period}
                   onClick={() => setSalesFilter(period)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${salesFilter === period
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none transition-colors ${
+                    salesFilter === period
+                      ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
                 >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                  {period}
                 </button>
               ))}
             </div>
@@ -678,7 +702,6 @@ const RetailerDashboard = () => {
                   let dataPoints = [];
 
                   if (salesFilter === 'weekly') {
-                    // Last 7 days
                     dataPoints = Array.from({ length: 7 }, (_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - (6 - i));
@@ -687,30 +710,23 @@ const RetailerDashboard = () => {
                       const dateStr = date.toISOString().split('T')[0];
                       const daySales = (sales || []).filter(s => s.saleDate.startsWith(dateStr))
                         .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
-                      return { name: date.toLocaleString('default', { weekday: 'short' }), value: daySales };
+                      return { name: date.toLocaleString('default', { weekday: 'short' }).toUpperCase(), value: daySales };
                     });
                   } else if (salesFilter === 'monthly') {
-                    // Last 30 days (grouped by 5-day intervals or weeks for cleaner chart? Let's do last 4 weeks)
-                    // Or just simply last 4 weeks.
                     dataPoints = Array.from({ length: 4 }, (_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - ((3 - i) * 7));
                       return d;
                     }).map((date, i) => {
-                      // Week starting from 'date'
                       const weekStart = new Date(date);
-                      weekStart.setDate(weekStart.getDate() - 6); // Look back 7 days
-                      // Approximation: Filter sales in this week window. 
-                      // Actually, simpler to just group by week number or something. 
-                      // Let's stick to simple "Last 4 Weeks" by aggregate
+                      weekStart.setDate(weekStart.getDate() - 6);
                       const weekSales = (sales || []).filter(s => {
                         const sDate = new Date(s.saleDate);
                         return sDate <= date && sDate > weekStart;
                       }).reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
-                      return { name: `Week ${i + 1}`, value: weekSales };
+                      return { name: `WEEK ${i + 1}`, value: weekSales };
                     });
                   } else {
-                    // Yearly - Last 12 months
                     dataPoints = Array.from({ length: 12 }, (_, i) => {
                       const d = new Date();
                       d.setMonth(d.getMonth() - (11 - i));
@@ -719,7 +735,7 @@ const RetailerDashboard = () => {
                       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                       const monthSales = (sales || []).filter(s => s.saleDate.startsWith(monthKey))
                         .reduce((sum, s) => sum + (s.sellingPrice || 0), 0);
-                      return { name: date.toLocaleString('default', { month: 'short' }), value: monthSales };
+                      return { name: date.toLocaleString('default', { month: 'short' }).toUpperCase(), value: monthSales };
                     });
                   }
                   return dataPoints;
@@ -731,35 +747,36 @@ const RetailerDashboard = () => {
                     <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={10} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} dy={10} />
                 <Tooltip
-                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Sales']}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'SALES']}
+                  contentStyle={{ borderRadius: '0px', border: '1px solid #E5E7EB', backgroundColor: '#FFFFFF', padding: '8px' }}
                 />
                 <Area type="monotone" dataKey="value" stroke="#3B82F6" fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-            <span className="text-gray-600 font-medium">Total Sales Revenue</span>
+          <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Sales Revenue</span>
             <span className="text-xl font-bold text-blue-600">{formatCurrency(stats?.sales.totalRevenue || 0)}</span>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-none border border-gray-200 shadow-none">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Order Summary</h3>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Order Summary</h3>
+            <div className="flex bg-gray-50 border border-gray-200 rounded-none p-1">
               {['weekly', 'monthly', 'yearly'].map((period) => (
                 <button
                   key={period}
                   onClick={() => setOrderFilter(period)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${orderFilter === period
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900'
-                    }`}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-none transition-colors ${
+                    orderFilter === period
+                      ? 'bg-white text-blue-600 shadow-sm border border-gray-200'
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
                 >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                  {period}
                 </button>
               ))}
             </div>
@@ -772,7 +789,6 @@ const RetailerDashboard = () => {
                   let dataPoints = [];
 
                   if (orderFilter === 'weekly') {
-                    // Last 7 days
                     dataPoints = Array.from({ length: 7 }, (_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - (6 - i));
@@ -781,10 +797,9 @@ const RetailerDashboard = () => {
                       const dateStr = date.toISOString().split('T')[0];
                       const daySpend = orders.filter(o => o.createdAt.startsWith(dateStr))
                         .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-                      return { name: date.toLocaleString('default', { weekday: 'short' }), spend: daySpend };
+                      return { name: date.toLocaleString('default', { weekday: 'short' }).toUpperCase(), spend: daySpend };
                     });
                   } else if (orderFilter === 'monthly') {
-                    // Last 4 weeks
                     dataPoints = Array.from({ length: 4 }, (_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - ((3 - i) * 7));
@@ -796,10 +811,9 @@ const RetailerDashboard = () => {
                         const oDate = new Date(o.createdAt);
                         return oDate <= date && oDate > weekStart;
                       }).reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-                      return { name: `Week ${i + 1}`, spend: weekSpend };
+                      return { name: `WEEK ${i + 1}`, spend: weekSpend };
                     });
                   } else {
-                    // Yearly - Last 12 months
                     dataPoints = Array.from({ length: 12 }, (_, i) => {
                       const d = new Date();
                       d.setMonth(d.getMonth() - (11 - i));
@@ -808,7 +822,7 @@ const RetailerDashboard = () => {
                       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                       const monthSpend = orders.filter(o => o.createdAt.startsWith(monthKey))
                         .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-                      return { name: date.toLocaleString('default', { month: 'short' }), spend: monthSpend };
+                      return { name: date.toLocaleString('default', { month: 'short' }).toUpperCase(), spend: monthSpend };
                     });
                   }
                   return dataPoints;
@@ -826,15 +840,15 @@ const RetailerDashboard = () => {
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  tick={{ fontSize: 10, fill: '#6B7280', fontWeight: 'bold' }}
                   dy={10}
                 />
                 <YAxis
                   hide={true}
                 />
                 <Tooltip
-                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Spent']}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [`₹${value.toLocaleString()}`, 'SPENT']}
+                  contentStyle={{ borderRadius: '0px', border: '1px solid #E5E7EB', backgroundColor: '#FFFFFF', padding: '8px' }}
                 />
                 <Area
                   type="monotone"
@@ -847,13 +861,13 @@ const RetailerDashboard = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-4 flex justify-between items-end">
+          <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">Total Spent</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats?.orders.totalSpent || 0)}</p>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Spent</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(stats?.orders.totalSpent || 0)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-green-600 font-medium flex items-center gap-1">
+              <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider flex items-center gap-1">
                 <TrendingUp size={14} />
                 Shopping Trend
               </p>
@@ -862,41 +876,39 @@ const RetailerDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Sales</h3>
+      <div className="bg-white p-6 rounded-none border border-gray-200 shadow-none">
+        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Recent Sales</h3>
         {stats?.recentSales && stats.recentSales.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead>
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider">Product</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider">Customer</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider">Price</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {stats.recentSales.map((sale: any) => (
-                  <tr key={sale._id}>
-                    <td className="px-4 py-2 text-sm text-gray-900">{sale.product?.name || sale.productDetails?.name}</td>
-                    <td className="px-4 py-2 text-sm text-gray-600">{sale.customer?.name}</td>
-                    <td className="px-4 py-2 text-sm text-gray-600">{new Date(sale.saleDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-900">{formatCurrency(sale.sellingPrice)}</td>
+                  <tr key={sale._id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-3 text-sm font-bold text-gray-900">{sale.product?.name || sale.productDetails?.name}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 font-semibold">{sale.customer?.name}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{new Date(sale.saleDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-sm font-bold text-gray-950">{formatCurrency(sale.sellingPrice)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-4">No recent sales</p>
+          <p className="text-gray-500 text-center py-8 text-xs font-bold uppercase tracking-wider">No recent sales</p>
         )}
       </div>
     </div>
   );
 
-  // Render Customer Shipments Tab
   const renderCustomerShipments = () => {
-    // Filter for dropship orders
     const dropshipOrders = orders.filter(
       (order: any) => {
         const isDropshipValid = order.isDropship && order.customerDetails;
@@ -915,10 +927,10 @@ const RetailerDashboard = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center border-b border-gray-200 pb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Customer Shipments ({dropshipOrders.length})</h2>
-            <p className="text-sm text-gray-600 mt-1">Track your dropship orders and shipments to customers.</p>
+            <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">Customer Shipments ({dropshipOrders.length})</h2>
+            <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Track and download delivery notes for direct-to-customer dropship shipments</p>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -927,71 +939,71 @@ const RetailerDashboard = () => {
               placeholder="Search by customer name, email..."
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+              className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400 w-full md:w-64"
             />
           </div>
         </div>
 
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Dropshipping:</strong> These orders are shipped directly to your customers. You can download the delivery note (Customer Invoice) here.
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-none">
+          <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+            Dropshipping: These orders are shipped directly to your customers. You can download the delivery note (Customer Invoice) here.
           </p>
         </div>
 
         {dropshipOrders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
             <Truck size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">No customer shipments found</p>
+            <p className="text-sm text-gray-900 font-bold uppercase tracking-wider mb-2">No customer shipments found</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-none border border-gray-200 overflow-hidden shadow-none">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 text-gray-500 border-b border-gray-200 font-black text-[10px] uppercase tracking-wider">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Products</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tracking Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documents</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-6 py-3 text-left">Order Details</th>
+                    <th className="px-6 py-3 text-left">Customer</th>
+                    <th className="px-6 py-3 text-left">Products</th>
+                    <th className="px-6 py-3 text-left">Payment</th>
+                    <th className="px-6 py-3 text-left">Tracking Details</th>
+                    <th className="px-6 py-3 text-left">Documents</th>
+                    <th className="px-6 py-3 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {dropshipOrders.map((order: any) => (
-                    <tr key={order._id} className="hover:bg-gray-50">
+                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="font-medium text-gray-900">{order.orderNumber || order._id}</p>
-                          <p className="text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
-                          <p className="font-medium text-gray-900 mt-1">{formatCurrency(order.totalAmount)}</p>
+                        <div className="text-[10px] font-bold uppercase tracking-wider">
+                          <p className="font-black text-gray-900 text-xs">{order.orderNumber || order._id.slice(-8).toUpperCase()}</p>
+                          <p className="text-gray-400 mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          <p className="font-black text-gray-950 mt-1">{formatCurrency(order.totalAmount)}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="font-medium text-gray-900">{order.customerDetails?.name}</p>
-                          <p className="text-gray-500">{order.customerDetails?.email}</p>
-                          <p className="text-gray-500">{order.customerDetails?.phone}</p>
-                          <p className="text-xs text-gray-400 mt-1 truncate max-w-xs">{order.customerDetails?.address}</p>
+                        <div className="text-[10px] font-bold uppercase tracking-wider">
+                          <p className="font-black text-gray-900 text-xs">{order.customerDetails?.name}</p>
+                          <p className="text-gray-400 mt-0.5">{order.customerDetails?.email}</p>
+                          <p className="text-gray-400">{order.customerDetails?.phone}</p>
+                          <p className="text-[9px] text-gray-450 mt-1 truncate max-w-xs font-mono lowercase">{order.customerDetails?.address}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm space-y-3">
+                        <div className="space-y-3">
                           {order.products.map((item: any, idx: number) => (
-                            <div key={idx} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                            <div key={idx} className="border-b border-gray-150 pb-2 last:border-0 last:pb-0 last:mb-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                                <span className="w-5 h-5 rounded-none bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-600 border border-gray-250">
                                   {item.quantity}
                                 </span>
-                                <span className="text-gray-900 font-medium">{item.product?.name || 'Unknown Product'}</span>
+                                <span className="text-gray-900 font-bold text-xs uppercase tracking-wide">{item.product?.name || 'Unknown Product'}</span>
                               </div>
-                              <div className="pl-7 text-xs text-gray-500 space-y-0.5">
+                              <div className="pl-7 text-[10px] text-gray-400 font-bold uppercase tracking-wider space-y-0.5">
                                 {item.product?.modelNumberPrefix && (
-                                  <p>Model: <span className="font-mono text-gray-700">{item.product.modelNumberPrefix}</span></p>
+                                  <p>Model: <span className="font-mono text-gray-650">{item.product.modelNumberPrefix}</span></p>
                                 )}
                                 {item.serialNumbers && item.serialNumbers.length > 0 && (
-                                  <p>S/N: <span className="font-mono text-gray-700">{item.serialNumbers.join(', ')}</span></p>
+                                  <p>S/N: <span className="font-mono text-gray-655">{item.serialNumbers.join(', ')}</span></p>
                                 )}
                               </div>
                             </div>
@@ -999,29 +1011,27 @@ const RetailerDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium w-fit ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {order.paymentStatus.toUpperCase()}
-                          </span>
-                        </div>
+                        <span className={`px-2 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${order.paymentStatus === 'completed' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                          {order.paymentStatus.toUpperCase()}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm">
+                        <div className="text-[10px] font-bold uppercase tracking-wider">
                           {order.trackingId ? (
-                            <div className="space-y-1">
-                              <p className="font-medium text-gray-900">ID: <span className="font-mono text-gray-600">{order.trackingId}</span></p>
+                            <div className="space-y-1.5">
+                              <p className="text-gray-400">ID: <span className="font-mono text-gray-700 font-black">{order.trackingId}</span></p>
                               {order.deliveryTrackingLink ? (
                                 <a
                                   href={order.deliveryTrackingLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                  className="text-indigo-600 hover:text-indigo-800 font-black flex items-center gap-0.5 uppercase tracking-wide"
                                 >
                                   Track Shipment
-                                  <ArrowUpRight size={12} />
+                                  <ArrowUpRight size={10} />
                                 </a>
                               ) : (
-                                <span className="text-gray-500 text-xs">No link available</span>
+                                <span className="text-gray-450 italic">No link</span>
                               )}
                             </div>
                           ) : (
@@ -1035,48 +1045,48 @@ const RetailerDashboard = () => {
                             href={order.customerInvoiceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            className="flex items-center gap-1.5 text-blue-700 hover:text-blue-800 font-bold uppercase tracking-widest text-[10px]"
                           >
-                            <FileText size={16} />
+                            <FileText size={12} />
                             Customer Invoice
                           </a>
                         ) : (
-                          <span className="text-xs text-gray-400">Processing...</span>
+                          <span className="text-[10px] text-gray-450 uppercase italic font-bold">Processing...</span>
                         )}
                       </td>
-
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-2">
-                          <button
-                            onClick={() => handleDownloadInvoice(order._id)}
-                            disabled={downloadingOrderId === order._id}
-                            className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-medium text-sm disabled:text-gray-400"
-                          >
-                            {downloadingOrderId === order._id ? (
-                              <Loader size={16} className="animate-spin" />
-                            ) : (
-                              <Download size={16} />
-                            )}
-                            Get Tax Invoice
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleDownloadInvoice(order._id)}
+                          disabled={downloadingOrderId === order._id}
+                          className="flex items-center gap-1.5 text-indigo-700 hover:text-indigo-800 font-bold uppercase tracking-widest text-[10px] disabled:opacity-50"
+                        >
+                          {downloadingOrderId === order._id ? (
+                            <Loader size={12} className="animate-spin" />
+                          ) : (
+                            <Download size={12} />
+                          )}
+                          Get Tax Invoice
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div >
-          </div >
+            </div>
+          </div>
         )}
-      </div >
+      </div>
     );
   };
 
   // Render Products Tab
   const renderProducts = () => (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Browse Products</h2>
+      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between border-b border-gray-200 pb-4">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">Browse Products</h2>
+          <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Special partner tier pricing and active catalogue</p>
+        </div>
         <div className="flex gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -1085,13 +1095,13 @@ const RetailerDashboard = () => {
               placeholder="Search products..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
             />
           </div>
           <select
             value={productCategory}
             onChange={(e) => setProductCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase cursor-pointer"
           >
             <option value="">All Categories</option>
             {categories.map(cat => (
@@ -1101,15 +1111,15 @@ const RetailerDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-        <p className="text-sm text-blue-800">
-          <strong>Retailer Benefits:</strong> You see special retailer pricing on products. Request a quote for bulk orders to get the best deals!
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-none">
+        <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+          Retailer Benefits: You see special retailer pricing on products. Request a quote for bulk orders to get the best deals!
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProducts.map(product => (
-          <div key={product._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+          <div key={product._id} className="bg-white rounded-none border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
             {product.images && product.images[0] && (
               <div className="relative">
                 <img
@@ -1117,36 +1127,40 @@ const RetailerDashboard = () => {
                   alt={product.name}
                   className="w-full h-48 object-cover"
                 />
-                <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                <span className="absolute top-2 right-2 bg-white/95 text-gray-900 border border-gray-200 px-2 py-0.5 rounded-none text-[10px] font-black uppercase tracking-wider shadow-sm">
                   {product.category}
                 </span>
               </div>
             )}
-            <div className="p-4">
-              <h3 className="font-bold text-lg text-gray-900 mb-2">{product.name}</h3>
-              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-              <div className="flex justify-between items-center mb-3">
+            <div className="p-5">
+              <h3 className="font-bold text-sm uppercase tracking-wide text-gray-900 mb-2">{product.name}</h3>
+              <p className="text-xs text-gray-500 mb-4 line-clamp-2 uppercase font-semibold">{product.description}</p>
+              <div className="flex justify-between items-center mb-4">
                 <div>
                   {product.retailerPrice ? (
                     <>
-                      <p className="text-lg font-bold text-green-600">₹{product.retailerPrice}</p>
+                      <p className="text-base font-black text-green-600">{formatCurrency(product.retailerPrice)}</p>
                       {product.price && (
-                        <p className="text-sm text-gray-400 line-through">₹{product.price}</p>
+                        <p className="text-[10px] text-gray-400 line-through font-bold uppercase">{formatCurrency(product.price)}</p>
                       )}
                     </>
                   ) : product.price ? (
-                    <p className="text-lg font-bold text-gray-900">₹{product.price}</p>
+                    <p className="text-base font-black text-gray-900">{formatCurrency(product.price)}</p>
                   ) : (
-                    <p className="text-sm text-blue-600 font-medium">Quote Required</p>
+                    <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Quote Required</p>
                   )}
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs ${product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <span className={`px-2 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${
+                  product.stock > 0 
+                    ? 'bg-green-50 border-green-200 text-green-700' 
+                    : 'bg-red-50 border-red-200 text-red-700'
+                }`}>
                   {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                 </span>
               </div>
               <button
                 onClick={() => navigate(`/product/${product._id}`)}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full bg-indigo-600 text-white py-2.5 rounded-none hover:bg-indigo-700 text-xs font-black uppercase tracking-widest transition-colors"
               >
                 View Details
               </button>
@@ -1157,7 +1171,6 @@ const RetailerDashboard = () => {
     </div>
   );
 
-  // Render Quoted Products Tab
   const renderQuotedProducts = () => {
     const handleAddToCart = (quotedProduct: QuotedProduct) => {
       if (!addToCart) return;
@@ -1204,28 +1217,27 @@ const RetailerDashboard = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center border-b border-gray-200 pb-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Quoted Products</h2>
-            <p className="text-sm text-gray-600 mt-1">Products with special pricing from accepted quotes. Add to cart to purchase.</p>
+            <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">Quoted Products</h2>
+            <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Special negotiated pricing unlocked via accepted quotes</p>
           </div>
         </div>
 
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Your Special Prices:</strong> These products have been quoted specifically for you. You can order them anytime at the quoted price.
-            Simply add them to your cart and proceed to checkout (Direct or Dropship).
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-none">
+          <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+            Your Special Prices: These products have been quoted specifically for you. You can order them anytime at the quoted price. Simply add them to your cart and proceed to checkout.
           </p>
         </div>
 
         {quotedProducts.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
             <Tag size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 mb-4">No quoted products yet</p>
-            <p className="text-sm text-gray-400 mb-4">Request a quote and accept the admin's offer to get special pricing</p>
+            <p className="text-sm text-gray-900 font-bold uppercase tracking-wider mb-2">No quoted products yet</p>
+            <p className="text-xs text-gray-500 mb-6 uppercase font-semibold">Request a quote and accept the admin's offer to unlock special pricing</p>
             <button
               onClick={() => navigate('/quote')}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-indigo-600 text-white px-6 py-2.5 rounded-none hover:bg-indigo-700 text-xs font-black uppercase tracking-widest transition-colors"
             >
               Request a Quote
             </button>
@@ -1235,7 +1247,7 @@ const RetailerDashboard = () => {
             {quotedProducts.filter(qp => qp && qp.product).map(qp => {
               const stock = qp.product.stock || 0;
               return (
-                <div key={qp._id} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+                <div key={qp._id} className="bg-white rounded-none border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
                   {qp.product.images && qp.product.images[0] && (
                     <div className="relative">
                       <img
@@ -1243,45 +1255,49 @@ const RetailerDashboard = () => {
                         alt={qp.product.name}
                         className="w-full h-48 object-cover"
                       />
-                      <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                      <span className="absolute top-2 left-2 bg-green-600 text-white border border-green-700 px-2 py-0.5 rounded-none text-[10px] font-black uppercase tracking-wider shadow-sm">
                         Special Price
                       </span>
                       {qp.product.category && (
-                        <span className="absolute top-2 right-2 bg-white/90 text-gray-900 px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow">
+                        <span className="absolute top-2 right-2 bg-white/95 text-gray-900 border border-gray-200 px-2 py-0.5 rounded-none text-[10px] font-black uppercase tracking-wider shadow-sm">
                           {qp.product.category}
                         </span>
                       )}
                     </div>
                   )}
-                  <div className="p-4">
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">{qp.product.name}</h3>
+                  <div className="p-5">
+                    <h3 className="font-bold text-sm uppercase tracking-wide text-gray-900 mb-2">{qp.product.name}</h3>
                     {qp.product.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{qp.product.description}</p>
+                      <p className="text-xs text-gray-500 mb-4 line-clamp-2 uppercase font-semibold">{qp.product.description}</p>
                     )}
 
-                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                    <div className="bg-gray-50 border border-gray-200 rounded-none p-4 mb-4">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm text-gray-600">Your Quoted Price:</span>
-                        <span className="text-xl font-bold text-green-600">₹{qp.quotedPrice.toLocaleString('en-IN')}</span>
+                        <span className="text-xs text-gray-600 font-bold uppercase tracking-wider">Your Price:</span>
+                        <span className="text-base font-black text-green-600">{formatCurrency(qp.quotedPrice)}</span>
                       </div>
                       {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-500">Original Price:</span>
-                          <span className="text-sm text-gray-400 line-through">₹{qp.originalPrice.toLocaleString('en-IN')}</span>
+                        <div className="flex justify-between items-center border-t border-gray-200/50 pt-2 mt-2">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Original:</span>
+                          <span className="text-xs text-gray-400 line-through font-bold">{formatCurrency(qp.originalPrice)}</span>
                         </div>
                       )}
                       {qp.originalPrice && qp.originalPrice > qp.quotedPrice && (
-                        <div className="mt-2 text-xs text-green-600 font-medium">
-                          Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}%
+                        <div className="mt-2 text-[10px] text-green-700 font-black uppercase tracking-widest">
+                          Save {Math.round(((qp.originalPrice - qp.quotedPrice) / qp.originalPrice) * 100)}% INSTANTLY
                         </div>
                       )}
                     </div>
 
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs ${stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className={`px-2 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${
+                        stock > 0 
+                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          : 'bg-red-50 border-red-200 text-red-700'
+                      }`}>
                         {stock > 0 ? `${stock} in stock` : 'Out of stock'}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider">
                         Updated: {new Date(qp.updatedAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -1289,7 +1305,7 @@ const RetailerDashboard = () => {
                     <button
                       onClick={() => handleAddToCart(qp)}
                       disabled={stock <= 0}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full bg-indigo-600 text-white py-2.5 rounded-none hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-xs font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                     >
                       <ShoppingCart size={16} />
                       Add to Cart
@@ -1307,11 +1323,14 @@ const RetailerDashboard = () => {
   // Render Quotes Tab
   const renderQuotes = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">My Quotes</h2>
+      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">My Quotes</h2>
+          <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Active price requests and commercial negotiations history</p>
+        </div>
         <button
           onClick={() => navigate('/quote')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="bg-indigo-600 text-white px-4 py-2.5 rounded-none hover:bg-indigo-700 flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
         >
           <Plus size={16} />
           New Quote Request
@@ -1320,14 +1339,15 @@ const RetailerDashboard = () => {
 
       {/* Active Quotes Section */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotes</h3>
+        <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider mb-4">Active Quotes</h3>
         {quotes.filter(q => q.status !== 'completed').length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
             <FileText size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 mb-4">No active quotes found</p>
+            <p className="text-sm text-gray-900 font-bold uppercase tracking-wider mb-2">No active quotes found</p>
+            <p className="text-xs text-gray-500 mb-6 uppercase font-semibold">Create a new price negotiation request to begin</p>
             <button
               onClick={() => navigate('/quote')}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-indigo-600 text-white px-6 py-2.5 rounded-none hover:bg-indigo-700 text-xs font-black uppercase tracking-widest transition-colors"
             >
               Request a Quote
             </button>
@@ -1335,117 +1355,125 @@ const RetailerDashboard = () => {
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
             {quotes.filter(q => q.status !== 'completed').map(quote => (
-              <div key={quote._id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                    {quote.status}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ml-2 ${quote.type === 'bulk_order' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                    {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-auto">{new Date(quote.createdAt).toLocaleDateString()}</span>
+              <div key={quote._id} className="bg-white rounded-none border border-gray-200 p-6 shadow-none hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className={`px-2.5 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${getStatusColor(quote.status)}`}>
+                      {quote.status}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ml-2 ${
+                      quote.type === 'bulk_order' 
+                        ? 'bg-purple-50 border-purple-200 text-purple-700' 
+                        : 'bg-blue-50 border-blue-200 text-blue-700'
+                    }`}>
+                      {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider ml-auto">{new Date(quote.createdAt).toLocaleDateString()}</span>
+                  </div>
+
+                  <div className="mb-4">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">Products Requested:</h4>
+                    <div className="space-y-2">
+                      {quote.products.map((p: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center text-xs bg-gray-50 p-3 rounded-none border border-gray-200">
+                          <div>
+                            <p className="font-bold text-gray-900 uppercase tracking-wide">{p.product?.name || 'Unknown'}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Qty: {p.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            {p.offeredPrice ? (
+                              <>
+                                <p className="font-black text-green-600">{formatCurrency(p.offeredPrice)}</p>
+                                {(p.originalPrice || p.product?.price) && (
+                                  <p className="text-[9px] text-gray-400 line-through font-bold">{formatCurrency(p.originalPrice || p.product?.price)}</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-gray-500 font-bold">
+                                {(p.originalPrice || p.product?.price) ? formatCurrency(p.originalPrice || p.product?.price) : 'Price on Request'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {quote.adminResponse && (
+                    <div className="bg-indigo-50/50 p-4 rounded-none border border-indigo-100 mb-4">
+                      <h4 className="text-[10px] font-black text-indigo-900 uppercase tracking-wider mb-3">Admin Offer Details</h4>
+
+                      {/* Price Comparison */}
+                      <div className="flex justify-between items-center mb-2 text-xs">
+                        <span className="text-gray-500 uppercase font-bold">Original Total:</span>
+                        <span className="text-gray-400 line-through decoration-red-500 font-bold">
+                          {formatCurrency(quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0))}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mb-3 text-xs border-t border-indigo-200/50 pt-2">
+                        <span className="font-black text-indigo-900 uppercase tracking-wider">Offered Total:</span>
+                        <span className="text-base font-black text-green-600">{formatCurrency(quote.adminResponse.totalPrice)}</span>
+                      </div>
+
+                      {quote.adminResponse.discountPercentage > 0 && (
+                        <div className="bg-green-100 border border-green-200 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-none uppercase tracking-widest inline-block mb-3">
+                          {quote.adminResponse.discountPercentage}% Savings Unlocked
+                        </div>
+                      )}
+
+                      {quote.adminResponse.message && (
+                        <div className="text-xs text-indigo-900 bg-white border border-indigo-100 p-3 rounded-none">
+                          <span className="font-black uppercase tracking-wider text-[10px] block mb-1">Admin Remark:</span> {quote.adminResponse.message}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
-                  <div className="space-y-2">
-                    {quote.products.map((p: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded border border-gray-100">
-                        <div>
-                          <p className="font-medium text-gray-900">{p.product?.name || 'Unknown'}</p>
-                          <p className="text-xs text-gray-500">Qty: {p.quantity}</p>
-                        </div>
-                        <div className="text-right">
-                          {p.offeredPrice ? (
-                            <>
-                              <p className="font-bold text-green-600">₹{p.offeredPrice.toLocaleString()}</p>
-                              {(p.originalPrice || p.product?.price) && (
-                                <p className="text-xs text-gray-400 line-through">₹{(p.originalPrice || p.product?.price).toLocaleString()}</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-gray-600">
-                              {(p.originalPrice || p.product?.price) ? `₹${(p.originalPrice || p.product?.price).toLocaleString()}` : 'Price on Request'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {quote.adminResponse && (
-                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
-                    <h4 className="text-sm font-bold text-indigo-900 mb-2">Admin Offer</h4>
-
-                    {/* Price Comparison */}
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-gray-600">Original Total:</span>
-                      <span className="text-sm text-gray-500 line-through decoration-red-500">
-                        ₹{quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-sm font-bold text-indigo-900">Offered Total:</span>
-                      <span className="text-xl font-bold text-green-600">₹{quote.adminResponse.totalPrice.toLocaleString()}</span>
-                    </div>
-
-                    {quote.adminResponse.discountPercentage > 0 && (
-                      <div className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded inline-block mb-2">
-                        {quote.adminResponse.discountPercentage}% Savings
-                      </div>
-                    )}
-
-                    {quote.adminResponse.message && (
-                      <div className="mt-2 text-sm text-indigo-800 bg-white/50 p-2 rounded border border-indigo-100">
-                        <span className="font-semibold">Note:</span> {quote.adminResponse.message}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {quote.status === 'responded' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => acceptQuote(quote)}
-                      disabled={loading}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
-                    >
-                      <ThumbsUp size={16} />
-                      {quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept'}
-                    </button>
-                    <button
-                      onClick={() => rejectQuote(quote._id)}
-                      disabled={loading}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400"
-                    >
-                      <ThumbsDown size={16} />
-                      Reject
-                    </button>
-                  </div>
-                )}
-
-                {quote.status === 'accepted' && (
-                  <>
-                    {quote.orderId ? (
+                <div className="mt-4 pt-4 border-t border-gray-150">
+                  {quote.status === 'responded' && (
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => setActiveTab('orders')}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle size={16} />
-                        Order Created - View in Orders
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => proceedToCheckout(quote)}
+                        onClick={() => acceptQuote(quote)}
                         disabled={loading}
-                        className="w-full px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-none hover:bg-green-700 text-xs font-black uppercase tracking-wider transition-colors disabled:opacity-50"
                       >
-                        Proceed to Checkout
+                        <ThumbsUp size={14} />
+                        {quote.type === 'bulk_order' ? 'Accept & Checkout' : 'Accept'}
                       </button>
-                    )}
-                  </>
-                )}
+                      <button
+                        onClick={() => rejectQuote(quote._id)}
+                        disabled={loading}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-none hover:bg-red-700 text-xs font-black uppercase tracking-wider transition-colors disabled:opacity-50"
+                      >
+                        <ThumbsDown size={14} />
+                        Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {quote.status === 'accepted' && (
+                    <>
+                      {quote.orderId ? (
+                        <button
+                          onClick={() => setActiveTab('orders')}
+                          className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle size={14} />
+                          Order Created - View in Orders
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => proceedToCheckout(quote)}
+                          disabled={loading}
+                          className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-none hover:bg-indigo-700 disabled:opacity-50 text-xs font-black uppercase tracking-widest transition-colors"
+                        >
+                          Proceed to Checkout
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1454,73 +1482,75 @@ const RetailerDashboard = () => {
 
       {/* Quote History Section */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote History</h3>
+        <h3 className="text-xs font-black text-gray-900 uppercase tracking-wider mb-4">Quote History</h3>
         {quotes.filter(q => q.status === 'completed').length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <div className="text-center py-12 bg-gray-50 border border-gray-200 rounded-none shadow-none">
             <Clock size={32} className="mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500 text-sm">No completed quotes found.</p>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">No completed negotiations found.</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
             {quotes.filter(q => q.status === 'completed').map(quote => (
-              <div key={quote._id} className="bg-white rounded-lg shadow p-6 opacity-75 hover:opacity-100 transition-opacity">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-green-800 bg-green-100">
-                    <CheckCircle size={14} />
-                    Completed
-                  </span>
-                  <span className="text-xs text-gray-500">{new Date(quote.createdAt).toLocaleDateString()}</span>
-                </div>
-
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Products:</h4>
-                  <div className="space-y-2">
-                    {quote.products.map((p: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded border border-gray-100">
-                        <div>
-                          <p className="font-medium text-gray-900">{p.product?.name || 'Unknown'}</p>
-                          <p className="text-xs text-gray-500">Qty: {p.quantity}</p>
-                        </div>
-                        <div className="text-right">
-                          {p.offeredPrice ? (
-                            <>
-                              <p className="font-bold text-green-600">₹{p.offeredPrice.toLocaleString()}</p>
-                              {(p.originalPrice || p.product?.price) && (
-                                <p className="text-xs text-gray-400 line-through">₹{(p.originalPrice || p.product?.price).toLocaleString()}</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-gray-600">
-                              {(p.originalPrice || p.product?.price) ? `₹${(p.originalPrice || p.product?.price).toLocaleString()}` : 'Price on Request'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <div key={quote._id} className="bg-white rounded-none border border-gray-200 p-6 opacity-85 hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider text-green-700 bg-green-50 border-green-200">
+                      <CheckCircle size={12} />
+                      Completed
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{new Date(quote.createdAt).toLocaleDateString()}</span>
                   </div>
-                </div>
 
-                {quote.adminResponse && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm text-gray-600">Original Total:</span>
-                      <span className="text-sm text-gray-500 line-through decoration-red-500">
-                        ₹{quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0).toLocaleString()}
-                      </span>
+                  <div className="mb-4">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2">Products Requested:</h4>
+                    <div className="space-y-2">
+                      {quote.products.map((p: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center text-xs bg-gray-50 p-3 rounded-none border border-gray-200">
+                          <div>
+                            <p className="font-bold text-gray-900 uppercase tracking-wide">{p.product?.name || 'Unknown'}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Qty: {p.quantity}</p>
+                          </div>
+                          <div className="text-right">
+                            {p.offeredPrice ? (
+                              <>
+                                <p className="font-black text-green-600">{formatCurrency(p.offeredPrice)}</p>
+                                {(p.originalPrice || p.product?.price) && (
+                                  <p className="text-[9px] text-gray-400 line-through font-bold">{formatCurrency(p.originalPrice || p.product?.price)}</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-gray-500 font-bold">
+                                {(p.originalPrice || p.product?.price) ? formatCurrency(p.originalPrice || p.product?.price) : 'Price on Request'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-700">Final Price:</span>
-                      <span className="text-lg font-bold text-green-600">₹{quote.adminResponse.totalPrice.toLocaleString()}</span>
-                    </div>
-                    {quote.adminResponse.discountPercentage > 0 && (
-                      <div className="mt-2 text-right">
-                        <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">
-                          {quote.adminResponse.discountPercentage}% Savings
+                  </div>
+
+                  {quote.adminResponse && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center mb-1 text-xs">
+                        <span className="text-gray-500 uppercase font-bold">Original Total:</span>
+                        <span className="text-gray-400 line-through decoration-red-500 font-bold">
+                          {formatCurrency(quote.products.reduce((sum: number, p: any) => sum + ((p.originalPrice || p.product?.price || 0) * p.quantity), 0))}
                         </span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      <div className="flex justify-between items-center text-xs border-t border-gray-200/50 pt-2 mt-2">
+                        <span className="font-black text-gray-700 uppercase tracking-wider">Final Price:</span>
+                        <span className="text-sm font-black text-green-600">{formatCurrency(quote.adminResponse.totalPrice)}</span>
+                      </div>
+                      {quote.adminResponse.discountPercentage > 0 && (
+                        <div className="mt-3 text-right">
+                          <span className="bg-green-50 border border-green-200 text-green-800 text-[10px] font-black px-2 py-0.5 rounded-none uppercase tracking-wider">
+                            {quote.adminResponse.discountPercentage}% SAVED
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1532,46 +1562,51 @@ const RetailerDashboard = () => {
   // Render Orders Tab
   const renderOrders = () => (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">My Orders</h2>
+      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">My Orders</h2>
+          <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Track your commercial order fulfillment and purchase invoices</p>
+        </div>
+      </div>
 
       {orders.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
           <ShoppingCart size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No orders found</p>
+          <p className="text-sm text-gray-900 font-bold uppercase tracking-wider mb-2">No orders found</p>
+          <p className="text-xs text-gray-500 uppercase font-semibold">Your completed and active orders will be displayed here</p>
         </div>
       ) : (
         <div className="space-y-4">
           {orders.map(order => (
-            <div key={order._id} className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="bg-gray-50 px-6 py-4 border-b flex flex-wrap justify-between items-center gap-4">
+            <div key={order._id} className="bg-white rounded-none border border-gray-200 overflow-hidden shadow-none hover:shadow-md transition-shadow duration-200">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Order ID</p>
-                  <p className="font-medium">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Order Reference</p>
+                  <p className="font-bold text-xs uppercase tracking-wide mt-0.5">
                     #{order.orderNumber || order._id.slice(-8).toUpperCase()}
                     {order.isDropship && (
-                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-none border text-[9px] font-black uppercase tracking-widest bg-blue-50 border-blue-200 text-blue-700">
                         Dropship
                       </span>
                     )}
                   </p>
                   {order.isDropship && order.customerDetails && (
-                    <p className="text-xs text-blue-600 font-medium mt-0.5">
+                    <p className="text-[10px] text-blue-600 font-black uppercase tracking-wider mt-1">
                       Ship to: {order.customerDetails.name}
                     </p>
                   )}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Date</p>
+                  <p className="font-bold text-xs mt-0.5 text-gray-700">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Total</p>
-                  <p className="font-medium text-lg">{formatCurrency(order.totalAmount)}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Total Amount</p>
+                  <p className="font-black text-sm mt-0.5 text-gray-950">{formatCurrency(order.totalAmount)}</p>
                 </div>
-                <div className="flex gap-2">
-                  {/* Order status removed as per request */}
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
-                    {order.paymentStatus}
+                <div className="flex items-center gap-3">
+                  <span className={`px-2.5 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${getStatusColor(order.paymentStatus)}`}>
+                    {order.paymentStatus.toUpperCase()}
                   </span>
                   <button
                     onClick={async () => {
@@ -1596,27 +1631,27 @@ const RetailerDashboard = () => {
                       }
                     }}
                     disabled={downloadingOrderId === order._id}
-                    className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-indigo-700 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-none transition-colors disabled:opacity-50"
                     title="Download Invoice"
                   >
                     {downloadingOrderId === order._id ? (
-                      <Loader size={16} className="animate-spin" />
+                      <Loader size={12} className="animate-spin" />
                     ) : (
-                      <Download size={16} />
+                      <Download size={12} />
                     )}
-                    <span>{downloadingOrderId === order._id ? 'Downloading...' : 'Download Invoice'}</span>
+                    <span>{downloadingOrderId === order._id ? 'Downloading...' : 'Tax Invoice'}</span>
                   </button>
                 </div>
               </div>
               <div className="p-6">
                 <ul className="divide-y divide-gray-200">
                   {order.products.map((p: any, idx: number) => (
-                    <li key={idx} className="py-3 flex justify-between">
+                    <li key={idx} className="py-3 flex justify-between items-center last:pb-0 first:pt-0">
                       <div>
-                        <p className="font-medium text-gray-900">{p.product?.name || 'Product'}</p>
-                        <p className="text-sm text-gray-500">Qty: {p.quantity}</p>
+                        <p className="font-bold text-xs uppercase tracking-wide text-gray-900">{p.product?.name || 'Product'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Qty: {p.quantity}</p>
                       </div>
-                      <p className="font-medium text-gray-900">{formatCurrency(p.price)}</p>
+                      <p className="font-black text-xs text-gray-950">{formatCurrency(p.price)}</p>
                     </li>
                   ))}
                 </ul>
@@ -1631,8 +1666,11 @@ const RetailerDashboard = () => {
   // Render Inventory Tab
   const renderInventory = () => (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">My Inventory</h2>
+      <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between border-b border-gray-200 pb-4">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">My Inventory</h2>
+          <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Monitor and record sales for in-stock retail product units</p>
+        </div>
 
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative">
@@ -1642,14 +1680,14 @@ const RetailerDashboard = () => {
               placeholder="Search inventory..."
               value={inventorySearch}
               onChange={(e) => setInventorySearch(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full md:w-64"
+              className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400 w-full md:w-64"
             />
           </div>
 
           <select
             value={inventoryCategory}
             onChange={(e) => setInventoryCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase cursor-pointer"
           >
             <option value="">All Categories</option>
             {inventoryCategories.map(cat => (
@@ -1657,14 +1695,14 @@ const RetailerDashboard = () => {
             ))}
           </select>
 
-          <div className="flex gap-2">
+          <div className="flex rounded-none border border-gray-200 overflow-hidden">
             {['all', 'in_stock', 'sold'].map(filter => (
               <button
                 key={filter}
                 onClick={() => setInventoryFilter(filter)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${inventoryFilter === filter
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-colors border-r last:border-r-0 border-gray-200 ${inventoryFilter === filter
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
               >
                 {filter === 'all' ? 'All' : filter === 'in_stock' ? 'In Stock' : 'Sold'}
@@ -1675,67 +1713,67 @@ const RetailerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm text-green-600 font-medium">In Stock</p>
-          <p className="text-2xl font-bold text-green-800">
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">In Stock Units</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">
             {inventory.filter(i => i.status === 'in_stock').length}
           </p>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-600 font-medium">Sold</p>
-          <p className="text-2xl font-bold text-blue-800">
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-blue-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sold Units</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">
             {inventory.filter(i => i.status === 'sold').length}
           </p>
         </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-sm text-purple-600 font-medium">Inventory Value</p>
-          <p className="text-2xl font-bold text-purple-800">
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-purple-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Book Value</p>
+          <p className="text-2xl font-bold text-purple-600 mt-1">
             {formatCurrency(inventory.filter(i => i.status === 'in_stock').reduce((sum, i) => sum + i.purchasePrice, 0))}
           </p>
         </div>
       </div>
 
       {filteredInventory.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
           <Package size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No items in inventory</p>
+          <p className="text-sm text-gray-900 font-bold uppercase tracking-wider">No items in inventory</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 overflow-hidden shadow-none">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-200 font-black text-[10px] uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serial Number</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purchase Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left">Product</th>
+                  <th className="px-6 py-3 text-left">Serial Number</th>
+                  <th className="px-6 py-3 text-left">Purchase Price</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredInventory.map(item => (
-                  <tr key={item._id} className="hover:bg-gray-50">
+                  <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         {item.product?.images?.[0] && (
                           <img
                             src={item.product.images[0]}
                             alt={item.product.name}
-                            className="w-10 h-10 rounded object-cover mr-3"
+                            className="w-10 h-10 rounded-none border border-gray-200 object-cover mr-3"
                           />
                         )}
-                        <span className="font-medium text-gray-900">{item.product?.name}</span>
+                        <span className="font-bold text-xs uppercase tracking-wide text-gray-900">{item.product?.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 font-mono">
+                    <td className="px-6 py-4 text-xs text-gray-650 font-bold font-mono">
                       {item.productUnit?.serialNumber || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 text-xs font-black text-gray-950">
                       {formatCurrency(item.purchasePrice)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                      <span className={`px-2 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${getStatusColor(item.status)}`}>
                         {item.status.replace('_', ' ').toUpperCase()}
                       </span>
                     </td>
@@ -1743,14 +1781,14 @@ const RetailerDashboard = () => {
                       {item.status === 'in_stock' ? (
                         <button
                           onClick={() => openSellModal(item)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          className="text-indigo-700 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-none text-xs font-black uppercase tracking-widest transition-colors"
                         >
                           Record Sale
                         </button>
                       ) : item.soldTo ? (
-                        <div className="text-xs text-gray-600">
-                          <p className="font-medium">{item.soldTo.name}</p>
-                          <p>{new Date(item.soldDate!).toLocaleDateString()}</p>
+                        <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                          <p className="font-black text-gray-900">{item.soldTo.name}</p>
+                          <p className="mt-0.5">{new Date(item.soldDate!).toLocaleDateString()}</p>
                         </div>
                       ) : null}
                     </td>
@@ -1767,8 +1805,11 @@ const RetailerDashboard = () => {
   // Render Sales Tab
   const renderSales = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Sales History</h2>
+      <div className="flex justify-between items-center border-b border-gray-200 pb-4">
+        <div>
+          <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">Sales History</h2>
+          <p className="text-xs text-gray-500 mt-1 uppercase font-semibold">Track your customer sales history, generated invoices, and warranty status</p>
+        </div>
         <button
           onClick={() => {
             const data = sales.map(s => ({
@@ -1798,7 +1839,7 @@ const RetailerDashboard = () => {
             a.download = `sales_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
           }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+          className="bg-indigo-600 text-white px-4 py-2.5 rounded-none hover:bg-indigo-700 flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
         >
           <Download size={16} />
           Export CSV
@@ -1806,89 +1847,90 @@ const RetailerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm text-green-600 font-medium">Total Sales</p>
-          <p className="text-2xl font-bold text-green-800">{sales.length}</p>
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Sales Record</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{sales.length}</p>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-600 font-medium">Total Revenue</p>
-          <p className="text-2xl font-bold text-blue-800">
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-blue-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+          <p className="text-2xl font-bold text-indigo-600 mt-1">
             {formatCurrency(sales.reduce((sum, s) => sum + s.sellingPrice, 0))}
           </p>
         </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-sm text-purple-600 font-medium">Total Profit</p>
-          <p className="text-2xl font-bold text-purple-800">
+        <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-purple-500 shadow-none">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Net Profit</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">
             {formatCurrency(sales.reduce((sum, s) => sum + (s.profit || 0), 0))}
           </p>
         </div>
       </div>
 
       {sales.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-none border border-gray-200 p-12 text-center shadow-none">
           <DollarSign size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No sales recorded yet</p>
+          <p className="text-sm text-gray-900 font-bold uppercase tracking-wider mb-2">No sales recorded yet</p>
+          <p className="text-xs text-gray-500 uppercase font-semibold">Record sales from your Inventory tab to view history</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 overflow-hidden shadow-none">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-200 font-black text-[10px] uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
+                  <th className="px-6 py-3 text-left">Product</th>
+                  <th className="px-6 py-3 text-left">Customer</th>
+                  <th className="px-6 py-3 text-left">Invoice</th>
+                  <th className="px-6 py-3 text-left">Sale Date</th>
+                  <th className="px-6 py-3 text-left">Price</th>
+                  <th className="px-6 py-3 text-left">Profit</th>
+                  <th className="px-6 py-3 text-left">Warranty</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {sales.map(sale => (
-                  <tr key={sale._id} className="hover:bg-gray-50">
+                  <tr key={sale._id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{sale.productDetails?.name || sale.product?.name}</p>
-                        <p className="text-xs text-gray-500 font-mono">{sale.productDetails?.serialNumber}</p>
+                        <p className="font-bold text-xs uppercase tracking-wide text-gray-900">{sale.productDetails?.name || sale.product?.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold font-mono uppercase mt-0.5">{sale.productDetails?.serialNumber}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-900">{sale.customer?.name}</p>
-                        <p className="text-gray-500">{sale.customer?.email}</p>
-                        <p className="text-gray-500">{sale.customer?.phone}</p>
+                      <div className="text-[10px] font-bold uppercase tracking-wider">
+                        <p className="font-black text-gray-900 text-xs">{sale.customer?.name}</p>
+                        <p className="text-gray-400 mt-0.5">{sale.customer?.email}</p>
+                        <p className="text-gray-400">{sale.customer?.phone}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
+                      <div className="text-[10px] font-bold uppercase tracking-wider">
                         {sale.invoiceNumber && (
-                          <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
+                          <p className="font-black text-gray-900 font-mono">{sale.invoiceNumber}</p>
                         )}
                         {sale.invoiceUrl && (
                           <a
                             href={sale.invoiceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-xs"
+                            className="text-indigo-650 hover:text-indigo-850 font-black mt-1 block uppercase"
                           >
                             View Invoice
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-6 py-4 text-xs font-semibold text-gray-700">
                       {new Date(sale.saleDate).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 text-xs font-black text-gray-950">
                       {formatCurrency(sale.sellingPrice)}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    <td className="px-6 py-4 text-xs font-black text-green-700">
                       {formatCurrency(sale.profit || 0)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sale.warrantyStatus)}`}>
-                        {sale.warrantyStatus}
+                      <span className={`px-2 py-0.5 rounded-none border text-[10px] font-black uppercase tracking-wider ${getStatusColor(sale.warrantyStatus)}`}>
+                        {sale.warrantyStatus.toUpperCase()}
                       </span>
                     </td>
                   </tr>
@@ -1903,155 +1945,339 @@ const RetailerDashboard = () => {
 
   if (!user || user.role !== 'retailer') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">This page is only accessible to retailers.</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center rounded-none">
+        <div className="text-center p-8 border border-gray-200 bg-white rounded-none">
+          <h2 className="text-xl font-bold text-gray-900 mb-2 uppercase tracking-wide">Access Denied</h2>
+          <p className="text-sm text-gray-600 uppercase tracking-wide font-bold">This page is only accessible to retailers.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-2xl font-bold">Retailer Dashboard</h1>
-          <p className="text-blue-100">Welcome back, {user.name}</p>
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {/* --- DESKTOP COLLAPSIBLE LEFT SIDEBAR --- */}
+      <aside className={`bg-slate-900 text-slate-300 flex-shrink-0 transition-all duration-300 border-r border-slate-800 hidden lg:flex flex-col sticky top-20 h-[calc(100vh-80px)] ${
+        sidebarCollapsed ? 'w-[78px]' : 'w-[280px]'
+      }`}>
+        {/* Brand Header */}
+        <div className="h-[70px] border-b border-slate-800 flex items-center justify-between px-4">
+          {!sidebarCollapsed ? (
+            <div className="flex items-center flex-1 mr-4">
+              <div className="bg-white rounded-lg p-2 w-full flex justify-center items-center">
+                <img
+                   src="https://aishwaryatechtele.com/images/telogica_logo.png"
+                   alt="Telogica Logo"
+                   className="h-10 w-auto max-w-full"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg p-1 mx-auto">
+              <img
+                src="https://aishwaryatechtele.com/images/telogica_logo.png"
+                alt="Telogica Logo"
+                className="h-6 w-auto"
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="bg-white shadow sticky top-16 z-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-1 overflow-x-auto">
-            {tabs.map(tab => {
+        {/* Sidebar Nav Items */}
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            let count = 0;
+            if (tab.id === 'quotes') {
+              count = quotes.filter(q => q.status === 'pending').length;
+            }
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center rounded-xl transition-all duration-150 py-3 ${
+                  sidebarCollapsed ? 'justify-center px-0' : 'px-4'
+                } ${
+                  active
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/10 font-bold'
+                    : 'hover:bg-slate-800/60 hover:text-white text-slate-400'
+                }`}
+                title={tab.name}
+              >
+                <Icon size={18} className={active ? 'text-white' : 'text-slate-400'} />
+                {!sidebarCollapsed && (
+                  <>
+                    <span className="ml-3 text-sm truncate flex-1 text-left">{tab.name}</span>
+                    {count > 0 && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        active ? 'bg-white text-indigo-700' : 'bg-red-500 text-white'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </>
+                )}
+                {sidebarCollapsed && count > 0 && (
+                  <span className="absolute ml-6 mb-4 w-2 h-2 rounded-full bg-red-500 ring-2 ring-slate-900"></span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Profile Card & Logout */}
+        <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+          {!sidebarCollapsed ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-indigo-600/15 text-indigo-500 rounded-xl p-2 font-bold w-10 h-10 flex items-center justify-center border border-indigo-500/20">
+                  {user?.name?.charAt(0).toUpperCase() || 'R'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-bold text-xs uppercase tracking-wider truncate">{user?.name || 'Retailer User'}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 rounded-xl font-bold transition-all text-xs uppercase tracking-wider"
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="w-10 h-10 mx-auto flex items-center justify-center bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 rounded-xl transition-all"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* --- MOBILE SIDEBAR NAVIGATION --- */}
+      <div className="lg:hidden sticky top-0 z-50 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 h-[60px] w-full rounded-none">
+        <div className="flex items-center gap-2">
+          <div className="bg-white rounded-none p-1 flex-shrink-0">
+            <img
+              src="https://aishwaryatechtele.com/images/telogica_logo.png"
+              alt="Telogica Logo"
+              className="h-6 w-auto"
+            />
+          </div>
+          <span className="font-extrabold text-xs text-white uppercase tracking-wider">Retailer</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => loadDashboardData()}
+            className="p-2 text-slate-400 hover:text-white transition-colors"
+            title="Refresh"
+          >
+            <Loader size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="p-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
+
+        {/* Mobile Dropdown Panel */}
+        {mobileSidebarOpen && (
+          <div className="absolute top-[60px] left-0 w-full bg-slate-950 border-b border-slate-800 shadow-2xl p-4 space-y-1 max-h-[75vh] overflow-y-auto z-50 animate-in slide-in-from-top duration-200 rounded-none">
+            {tabs.map((tab) => {
               const Icon = tab.icon;
+              const active = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                    }`}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-none transition-all ${
+                    active
+                      ? 'bg-indigo-600 text-white font-bold'
+                      : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <Icon size={18} />
-                  {tab.name}
+                  <Icon size={16} />
+                  <span className="ml-3 text-xs font-bold uppercase tracking-wider">{tab.name}</span>
                 </button>
               );
             })}
+            <div className="border-t border-slate-800 pt-3 mt-3 flex justify-between items-center px-4 rounded-none">
+              <div className="text-left min-w-0 flex-1 mr-2">
+                <p className="text-white font-semibold text-xs truncate">{user?.name}</p>
+                <p className="text-slate-500 text-[10px] truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600 hover:text-white text-xs font-bold rounded-none uppercase tracking-wider transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {loading && !stats ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'products' && renderProducts()}
-            {activeTab === 'quoted-products' && renderQuotedProducts()}
-            {activeTab === 'quotes' && renderQuotes()}
-            {activeTab === 'orders' && renderOrders()}
-            {activeTab === 'inventory' && renderInventory()}
-            {activeTab === 'sales' && renderSales()}
-            {activeTab === 'customer-shipments' && renderCustomerShipments()}
-          </>
         )}
       </div>
 
+      {/* --- MAIN ANALYTICAL VIEWPORT --- */}
+      <main className="flex-1 min-w-0 flex flex-col">
+        {/* Top Header Bar on Desktop */}
+        <header className="h-[70px] bg-white border-b border-slate-200 px-8 items-center justify-between hidden lg:flex sticky top-20 z-30">
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider font-sans">
+              {tabs.find(t => t.id === activeTab)?.name || 'Retailer Dashboard'}
+            </h2>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadDashboardData}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
+                title="Sync Dashboard Data"
+              >
+                <Loader size={18} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-slate-200"></div>
+
+            {/* Profile Avatar info */}
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-bold text-slate-800 leading-none">{user?.name || 'Retailer User'}</p>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Partner Portal</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white font-bold flex items-center justify-center shadow-md">
+                {user?.name?.slice(0, 2).toUpperCase() || 'RE'}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Viewport Content */}
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+          {loading && !stats ? (
+            <div className="flex justify-center items-center h-96">
+              <div className="animate-spin rounded-none h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'dashboard' && renderDashboard()}
+              {activeTab === 'products' && renderProducts()}
+              {activeTab === 'quoted-products' && renderQuotedProducts()}
+              {activeTab === 'quotes' && renderQuotes()}
+              {activeTab === 'orders' && renderOrders()}
+              {activeTab === 'inventory' && renderInventory()}
+              {activeTab === 'sales' && renderSales()}
+              {activeTab === 'customer-shipments' && renderCustomerShipments()}
+            </>
+          )}
+        </div>
+      </main>
+
       {/* Sell Modal */}
       {showSellModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Record Sale</h2>
-            <p className="text-gray-600 mb-4">
-              Product: <strong>{selectedItem.product?.name}</strong> |
-              Serial: <strong>{selectedItem.productUnit?.serialNumber}</strong>
-            </p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-none border border-gray-200 shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-200 pb-3 mb-4">Record Product Sale</h2>
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-none mb-4 text-[10px] font-bold uppercase tracking-wider text-gray-500 space-y-1">
+              <p>Product: <span className="font-black text-gray-900">{selectedItem.product?.name}</span></p>
+              <p>Serial Number: <span className="font-mono text-gray-800 font-black">{selectedItem.productUnit?.serialNumber}</span></p>
+            </div>
 
             <form onSubmit={handleSellSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name or Company Name *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Customer / Company Name *</label>
                   <input
                     type="text"
                     required
                     value={sellFormData.customerName}
                     onChange={(e) => setSellFormData({ ...sellFormData, customerName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Email *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Customer Email Address *</label>
                   <input
                     type="email"
                     required
                     value={sellFormData.customerEmail}
                     onChange={(e) => setSellFormData({ ...sellFormData, customerEmail: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Phone *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Customer Phone Number *</label>
                   <input
                     type="tel"
                     required
                     value={sellFormData.customerPhone}
                     onChange={(e) => setSellFormData({ ...sellFormData, customerPhone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Final Selling Price *</label>
                   <input
                     type="number"
                     required
                     value={sellFormData.sellingPrice}
                     onChange={(e) => setSellFormData({ ...sellFormData, sellingPrice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Address *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Billing / Delivery Address *</label>
                   <textarea
                     required
                     value={sellFormData.customerAddress}
                     onChange={(e) => setSellFormData({ ...sellFormData, customerAddress: e.target.value })}
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sale Date *</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">Sale Date *</label>
                   <input
                     type="date"
                     required
                     value={sellFormData.soldDate}
                     onChange={(e) => setSellFormData({ ...sellFormData, soldDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Invoice Number <span className="text-xs text-gray-500 font-normal">(Enter the number from the generated invoice)</span>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">
+                    Invoice Number <span className="text-[9px] text-gray-400 font-normal uppercase">(Or leave blank to auto-generate)</span>
                   </label>
                   <input
                     type="text"
                     value={sellFormData.invoiceNumber}
                     onChange={(e) => setSellFormData({ ...sellFormData, invoiceNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., INV-2024-001"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-bold uppercase placeholder-gray-400"
+                    placeholder="e.g., INV-2026-001"
                   />
                 </div>
-                <div className="md:col-span-2">
-                  <div className="flex items-center gap-4">
+                <div className="md:col-span-2 mt-2">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <button
                       type="button"
                       onClick={async () => {
@@ -2078,7 +2304,7 @@ const RetailerDashboard = () => {
                         }
                       }}
                       disabled={loading}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-none hover:bg-indigo-700 disabled:opacity-50 text-xs font-black uppercase tracking-widest transition-colors shadow-sm"
                     >
                       {loading ? 'Generating...' : 'Generate Invoice'}
                     </button>
@@ -2088,40 +2314,39 @@ const RetailerDashboard = () => {
                         href={sellFormData.customerInvoice}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                        className="flex items-center gap-1.5 text-indigo-700 hover:text-indigo-800 font-black text-xs uppercase tracking-widest"
                       >
-                        <Download size={16} />
+                        <Download size={14} />
                         Download & Verify Invoice
                       </a>
                     )}
                   </div>
                   {!sellFormData.customerInvoice && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Generate an invoice to proceed with the sale record.
+                    <p className="text-[9px] text-gray-450 uppercase font-bold mt-2">
+                      An invoice must be generated in order to record the sale.
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Once you record this sale, the warranty will be automatically registered for the customer.
-                  Both you and the customer will receive email notifications.
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-none">
+                <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                  Note: Once recorded, customer warranty gets auto-registered and standard notification emails will be sent out instantly.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-4 pt-4">
+              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => setShowSellModal(false)}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-none hover:bg-gray-50 text-xs font-black uppercase tracking-wider transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !sellFormData.customerInvoice}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-none hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-450 disabled:cursor-not-allowed text-xs font-black uppercase tracking-wider transition-colors shadow-sm"
                 >
                   {loading ? 'Processing...' : 'Record Sale'}
                 </button>

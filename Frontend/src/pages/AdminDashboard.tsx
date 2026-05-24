@@ -6000,7 +6000,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {/* --- DESKTOP COLLAPSIBLE LEFT SIDEBAR --- */}
-      <aside className={`bg-slate-900 text-slate-300 flex-shrink-0 transition-all duration-300 border-r border-slate-800 hidden lg:flex flex-col sticky top-0 h-screen ${
+      <aside className={`bg-slate-900 text-slate-300 flex-shrink-0 transition-all duration-300 border-r border-slate-800 hidden lg:flex flex-col sticky top-20 h-[calc(100vh-80px)] ${
         sidebarCollapsed ? 'w-[78px]' : 'w-[280px]'
       }`}>
         {/* Brand Header */}
@@ -6187,7 +6187,7 @@ const AdminDashboard: React.FC = () => {
       {/* --- MAIN ANALYTICAL VIEWPORT --- */}
       <main className="flex-1 min-w-0 flex flex-col">
         {/* Top Header Bar on Desktop */}
-        <header className="h-[70px] bg-white border-b border-slate-200 px-8 items-center justify-between hidden lg:flex sticky top-0 z-30">
+        <header className="h-[70px] bg-white border-b border-slate-200 px-8 items-center justify-between hidden lg:flex sticky top-20 z-30">
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-black text-slate-800 uppercase tracking-wider font-sans">
               {tabs.find(t => t.id === activeTab)?.pageName || tabs.find(t => t.id === activeTab)?.name || 'Admin'}
