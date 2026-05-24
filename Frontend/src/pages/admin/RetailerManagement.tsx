@@ -310,127 +310,131 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Export Section */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex-1 max-w-2xl">
-            <DateFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              label="Filter by Date"
-              showPresets={true}
-              className="border-0 shadow-none p-0"
-            />
+      <div className="bg-white border border-gray-200 rounded-none shadow-sm mb-6">
+        <div className="px-5 py-4 border-b border-gray-150 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
+          <div>
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Report Generation</h3>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Generate and download retailer inventory reports</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => handleExport('pdf')}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors uppercase tracking-wider"
             >
               <Download size={14} /> PDF
             </button>
             <button
               onClick={() => handleExport('csv')}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors uppercase tracking-wider"
             >
               <Download size={14} /> CSV
             </button>
             <button
               onClick={() => handleExport('excel')}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors uppercase tracking-wider"
             >
               <Download size={14} /> Excel
             </button>
           </div>
         </div>
+        <div className="p-5">
+          <DateFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            label="Filter Reports by Date"
+            showPresets={true}
+            className="border-0 shadow-none p-0"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg text-white shadow-lg">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 rounded-none border border-blue-700 text-white shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">Total Retailers</p>
-              <p className="text-3xl font-bold">{analytics?.retailers.total || 0}</p>
-              <p className="text-xs text-blue-200 mt-1">{analytics?.retailers.active || 0} active</p>
+              <p className="text-[10px] font-bold text-blue-100 uppercase tracking-wider">Total Retailers</p>
+              <p className="text-2xl font-black mt-1">{analytics?.retailers.total || 0}</p>
+              <p className="text-[10px] font-semibold text-blue-200 uppercase tracking-wider mt-1">{analytics?.retailers.active || 0} active</p>
             </div>
-            <Users className="w-12 h-12 text-blue-200" />
+            <Users className="w-10 h-10 text-blue-200/80" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg text-white shadow-lg">
+        <div className="bg-gradient-to-br from-green-600 to-green-700 p-5 rounded-none border border-green-700 text-white shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm">Total Sales</p>
-              <p className="text-3xl font-bold">{analytics?.sales.totalSales || 0}</p>
-              <p className="text-xs text-green-200 mt-1">{formatCurrency(analytics?.sales.totalRevenue || 0)}</p>
+              <p className="text-[10px] font-bold text-green-100 uppercase tracking-wider">Total Sales</p>
+              <p className="text-2xl font-black mt-1">{analytics?.sales.totalSales || 0}</p>
+              <p className="text-[10px] font-semibold text-green-200 uppercase tracking-wider mt-1">{formatCurrency(analytics?.sales.totalRevenue || 0)}</p>
             </div>
-            <DollarSign className="w-12 h-12 text-green-200" />
+            <DollarSign className="w-10 h-10 text-green-200/80" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-5 rounded-none border border-purple-700 text-white shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">Inventory in Retailers</p>
-              <p className="text-3xl font-bold">{analytics?.inventory.inStock || 0}</p>
-              <p className="text-xs text-purple-200 mt-1">{formatCurrency(analytics?.inventory.totalValue || 0)}</p>
+              <p className="text-[10px] font-bold text-purple-100 uppercase tracking-wider">Inventory in Retailers</p>
+              <p className="text-2xl font-black mt-1">{analytics?.inventory.inStock || 0}</p>
+              <p className="text-[10px] font-semibold text-purple-200 uppercase tracking-wider mt-1">{formatCurrency(analytics?.inventory.totalValue || 0)}</p>
             </div>
-            <Package className="w-12 h-12 text-purple-200" />
+            <Package className="w-10 h-10 text-purple-200/80" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-lg text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-600 to-orange-700 p-5 rounded-none border border-orange-700 text-white shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm">Pending Approvals</p>
-              <p className="text-3xl font-bold">{analytics?.retailers.pending || 0}</p>
-              <p className="text-xs text-orange-200 mt-1">Retailers waiting</p>
+              <p className="text-[10px] font-bold text-orange-100 uppercase tracking-wider">Pending Approvals</p>
+              <p className="text-2xl font-black mt-1">{analytics?.retailers.pending || 0}</p>
+              <p className="text-[10px] font-semibold text-orange-200 uppercase tracking-wider mt-1">Retailers waiting</p>
             </div>
-            <Clock className="w-12 h-12 text-orange-200" />
+            <Clock className="w-10 h-10 text-orange-200/80" />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Top Performing Retailers</h3>
+        <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Top Performing Retailers</h3>
           {analytics?.topRetailers && analytics.topRetailers.length > 0 ? (
             <div className="space-y-4">
               {analytics.topRetailers.map((retailer: any, idx: number) => (
-                <div key={retailer.retailerId} className="flex items-center justify-between">
+                <div key={retailer.retailerId} className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-b-0 last:pb-0">
                   <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    <span className="w-8 h-8 rounded-none bg-slate-900 text-white flex items-center justify-center font-black text-xs">
                       {idx + 1}
                     </span>
                     <div>
-                      <p className="font-medium text-gray-900">{retailer.name}</p>
-                      <p className="text-sm text-gray-500">{retailer.totalSales} sales</p>
+                      <p className="text-sm font-bold text-gray-900">{retailer.name}</p>
+                      <p className="text-xs text-gray-400 font-semibold uppercase">{retailer.totalSales} sales</p>
                     </div>
                   </div>
-                  <p className="font-bold text-green-600">{formatCurrency(retailer.totalRevenue)}</p>
+                  <p className="text-sm font-black text-emerald-600">{formatCurrency(retailer.totalRevenue)}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">No sales data yet</p>
+            <p className="text-gray-400 text-center py-4 text-xs font-semibold uppercase">No sales data yet</p>
           )}
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Sales Overview</h3>
+        <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Sales Overview</h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Products Sold</span>
-              <span className="font-bold text-gray-900">{analytics?.inventory.sold || 0}</span>
+            <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Products Sold</span>
+              <span className="text-sm font-black text-gray-950">{analytics?.inventory.sold || 0}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-gray-50 pb-3">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Avg Sale Price</span>
+              <span className="text-sm font-black text-gray-950">{formatCurrency(analytics?.sales.avgSalePrice || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Avg Sale Price</span>
-              <span className="font-bold text-gray-900">{formatCurrency(analytics?.sales.avgSalePrice || 0)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Retailer Profit (Total)</span>
-              <span className="font-bold text-green-600">{formatCurrency(analytics?.sales.totalRetailerProfit || 0)}</span>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Retailer Profit (Total)</span>
+              <span className="text-sm font-black text-emerald-600">{formatCurrency(analytics?.sales.totalRetailerProfit || 0)}</span>
             </div>
           </div>
         </div>
@@ -438,19 +442,19 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
 
       {/* Monthly Sales Trend */}
       {analytics?.monthlySales && analytics.monthlySales.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Monthly Sales Trend</h3>
+        <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm">
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">Monthly Sales Trend</h3>
           <div className="overflow-x-auto">
-            <div className="flex gap-4 min-w-max">
+            <div className="flex gap-4 min-w-max items-end pt-4">
               {analytics.monthlySales.map((month: any) => (
                 <div key={`${month._id.year}-${month._id.month}`} className="text-center min-w-[100px]">
                   <div
-                    className="bg-blue-500 rounded-t"
-                    style={{ height: `${Math.max(20, (month.revenue / Math.max(...analytics.monthlySales.map((m: any) => m.revenue))) * 150)}px` }}
+                    className="bg-emerald-600 rounded-none transition-all duration-300 hover:bg-emerald-700"
+                    style={{ height: `${Math.max(20, (month.revenue / Math.max(...analytics.monthlySales.map((m: any) => m.revenue))) * 120)}px` }}
                   />
-                  <p className="text-sm font-medium text-gray-900 mt-2">{formatCurrency(month.revenue)}</p>
-                  <p className="text-xs text-gray-500">{month._id.month}/{month._id.year}</p>
-                  <p className="text-xs text-gray-400">{month.count} sales</p>
+                  <p className="text-xs font-bold text-gray-900 mt-2">{formatCurrency(month.revenue)}</p>
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase">{month._id.month}/{month._id.year}</p>
+                  <p className="text-[10px] text-gray-400 font-mono">{month.count} sales</p>
                 </div>
               ))}
             </div>
@@ -463,82 +467,97 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   // Render Retailers Tab
   const renderRetailers = () => (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">All Retailers</h2>
+      {/* Enhanced Header */}
+      <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+        <div>
+          <p className="text-gray-400 text-xs">Manage retailer accounts, approvals, sales tracking, and special quote pricing.</p>
+        </div>
+        <Users className="w-10 h-10 text-gray-500" />
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between bg-white p-5 border border-gray-200 rounded-none shadow-sm">
+        <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">All Retailer Partners</h2>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
             placeholder="Search retailers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all w-64"
           />
         </div>
       </div>
 
       {filteredRetailers.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm p-12 text-center">
           <Users size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No retailers found</p>
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">No retailers found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Inventory</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Orders</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Retailer</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Inventory</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Sales</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Revenue</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Orders</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3.5 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white">
                 {filteredRetailers.map(retailer => (
-                  <tr key={retailer._id} className="hover:bg-gray-50">
+                  <tr key={retailer._id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{retailer.name}</p>
-                        <p className="text-sm text-gray-500">{retailer.email}</p>
-                        {retailer.phone && <p className="text-sm text-gray-500">{retailer.phone}</p>}
+                        <p className="font-semibold text-sm text-gray-900">{retailer.name}</p>
+                        <p className="text-xs text-gray-400 font-mono">{retailer.email}</p>
+                        {retailer.phone && <p className="text-xs text-gray-500 mt-0.5">{retailer.phone}</p>}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                      <span className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border ${
+                        retailer.isApproved
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      }`}>
                         {retailer.isApproved ? 'Active' : 'Pending'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{retailer.summary.inventoryCount}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{retailer.summary.totalSales}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">{retailer.summary.inventoryCount}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">{retailer.summary.totalSales}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-green-600">
                       {formatCurrency(retailer.summary.totalRevenue)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{retailer.summary.ordersCount}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(retailer.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4 text-sm text-gray-700 font-medium">{retailer.summary.ordersCount}</td>
+                    <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                      {new Date(retailer.createdAt).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex gap-2">
+                      <div className="flex justify-end gap-1.5">
                         <button
                           onClick={() => loadRetailerDetails(retailer._id)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="View Details"
+                          className="text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-2 rounded-none transition-colors"
+                          title="VIEW DETAILS"
                         >
-                          <Eye size={18} />
+                          <Eye size={14} />
                         </button>
                         {!retailer.isApproved && (
                           <button
                             onClick={() => approveRetailer(retailer._id)}
-                            className="text-green-600 hover:text-green-800"
-                            title="Approve"
+                            className="text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 p-2 rounded-none transition-colors"
+                            title="APPROVE"
                           >
-                            <CheckCircle size={18} />
+                            <CheckCircle size={14} />
                           </button>
                         )}
                       </div>
@@ -556,124 +575,134 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   // Render Sales Tab
   const renderSales = () => (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">All Retailer Sales</h2>
-        <div className="flex gap-3 items-center">
-          <div className="flex-1 max-w-2xl">
-            <DateFilter
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onDateFromChange={setDateFrom}
-              onDateToChange={setDateTo}
-              label="Filter Sales by Date"
-              showPresets={true}
-              className="border-0 shadow-none p-0"
-            />
+      {/* Sales Header & Filters Card */}
+      <div className="bg-white border border-gray-200 rounded-none shadow-sm">
+        <div className="px-5 py-4 border-b border-gray-150 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
+          <div>
+            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">All Retailer Sales Records</h2>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Track and filter retailer transaction histories and performance metrics</p>
           </div>
-          <button
-            onClick={loadAllSales}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
-          >
-            Apply
-          </button>
-          <button
-            onClick={exportSales}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm"
-          >
-            <Download size={16} />
-            Export
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={loadAllSales}
+              className="bg-slate-900 text-white px-4 py-2 rounded-none hover:bg-slate-800 text-xs font-bold uppercase tracking-wider border border-slate-900 transition-colors"
+            >
+              Apply Filter
+            </button>
+            <button
+              onClick={exportSales}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-none hover:bg-emerald-700 flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors"
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+          </div>
+        </div>
+        <div className="p-5">
+          <DateFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            label="Filter Sales by Date"
+            showPresets={true}
+            className="border-0 shadow-none p-0"
+          />
         </div>
       </div>
 
       {salesTotals && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-600 font-medium">Total Sales</p>
-            <p className="text-2xl font-bold text-green-800">{salesTotals.totalSales || 0}</p>
+          <div className="bg-green-50/70 border border-green-200 rounded-none p-5 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Total Sales</p>
+            <p className="text-2xl font-black text-green-800 mt-1">{salesTotals.totalSales || 0}</p>
           </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-600 font-medium">Total Revenue</p>
-            <p className="text-2xl font-bold text-blue-800">{formatCurrency(salesTotals.totalRevenue || 0)}</p>
+          <div className="bg-blue-50/70 border border-blue-200 rounded-none p-5 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Revenue</p>
+            <p className="text-2xl font-black text-blue-800 mt-1">{formatCurrency(salesTotals.totalRevenue || 0)}</p>
           </div>
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <p className="text-sm text-purple-600 font-medium">Retailer Profit</p>
-            <p className="text-2xl font-bold text-purple-800">{formatCurrency(salesTotals.totalProfit || 0)}</p>
+          <div className="bg-purple-50/70 border border-purple-200 rounded-none p-5 shadow-sm hover:shadow-md transition-shadow">
+            <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Retailer Profit</p>
+            <p className="text-2xl font-black text-purple-800 mt-1">{formatCurrency(salesTotals.totalProfit || 0)}</p>
           </div>
         </div>
       )}
 
       {allSales.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm p-12 text-center">
           <DollarSign size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No sales found</p>
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">No sales found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retailer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Warranty</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Retailer</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Invoice</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Sale Date</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Profit</th>
+                  <th className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Warranty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white">
                 {allSales.map(sale => (
-                  <tr key={sale._id} className="hover:bg-gray-50">
+                  <tr key={sale._id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <p className="font-medium text-gray-900">{sale.retailer?.name}</p>
-                        <p className="text-gray-500">{sale.retailer?.email}</p>
+                        <p className="font-semibold text-gray-900">{sale.retailer?.name}</p>
+                        <p className="text-xs text-gray-400 font-mono">{sale.retailer?.email}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <p className="font-medium text-gray-900">{sale.productDetails?.name || sale.product?.name}</p>
-                        <p className="text-gray-500 font-mono">{sale.productDetails?.serialNumber}</p>
+                        <p className="font-semibold text-gray-900">{sale.productDetails?.name || sale.product?.name}</p>
+                        <p className="text-xs text-gray-400 font-mono">{sale.productDetails?.serialNumber}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-900">{sale.customer?.name}</p>
-                        <p className="text-gray-500">{sale.customer?.email}</p>
-                        <p className="text-gray-500">{sale.customer?.phone}</p>
+                      <div className="text-xs">
+                        <p className="font-semibold text-gray-900">{sale.customer?.name}</p>
+                        <p className="text-gray-400 font-mono mt-0.5">{sale.customer?.email}</p>
+                        <p className="text-gray-500 mt-0.5">{sale.customer?.phone}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
+                      <div className="text-xs">
                         {sale.invoiceNumber && (
-                          <p className="font-medium text-gray-900">{sale.invoiceNumber}</p>
+                          <p className="font-bold text-gray-950">{sale.invoiceNumber}</p>
                         )}
                         {sale.invoiceUrl && (
                           <a
                             href={sale.invoiceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-xs"
+                            className="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold uppercase tracking-wider hover:underline mt-0.5 inline-block"
                           >
                             View Invoice
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(sale.saleDate).toLocaleDateString()}
+                    <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                      {new Date(sale.saleDate).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900">
                       {formatCurrency(sale.sellingPrice)}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                    <td className="px-6 py-4 text-sm font-bold text-emerald-600">
                       {formatCurrency(sale.profit || 0)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(sale.warrantyStatus)}`}>
+                      <span className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(sale.warrantyStatus)}`}>
                         {sale.warrantyStatus}
                       </span>
                     </td>
@@ -693,157 +722,160 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
     const { retailer, stats, inventory, sales, orders } = selectedRetailer;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-none border border-gray-300 shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center text-white z-10">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{retailer.name}</h2>
-              <p className="text-gray-500">{retailer.email}</p>
+              <h2 className="text-sm font-bold uppercase tracking-wider">{retailer.name}</h2>
+              <p className="text-xs text-gray-400 font-mono mt-0.5">{retailer.email}</p>
             </div>
             <button
               onClick={() => setShowDetails(false)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-400 hover:text-white p-1 rounded-none transition-colors"
             >
-              <XCircle size={24} />
+              <XCircle size={20} />
             </button>
           </div>
 
           <div className="p-6 space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-600 font-medium">Inventory</p>
-                <p className="text-2xl font-bold text-blue-800">{stats.inventory.total}</p>
-                <p className="text-xs text-blue-600">{stats.inventory.inStock} in stock</p>
+              <div className="bg-blue-50/70 border border-blue-200 rounded-none p-4 shadow-sm">
+                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Inventory</p>
+                <p className="text-xl font-black text-blue-800 mt-0.5">{stats.inventory.total}</p>
+                <p className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider mt-1">{stats.inventory.inStock} in stock</p>
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-600 font-medium">Sales</p>
-                <p className="text-2xl font-bold text-green-800">{stats.sales.total}</p>
-                <p className="text-xs text-green-600">{formatCurrency(stats.sales.totalRevenue)}</p>
+              <div className="bg-green-50/70 border border-green-200 rounded-none p-4 shadow-sm">
+                <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Sales</p>
+                <p className="text-xl font-black text-green-800 mt-0.5">{stats.sales.total}</p>
+                <p className="text-[10px] text-green-600 font-semibold uppercase tracking-wider mt-1">{formatCurrency(stats.sales.totalRevenue)}</p>
               </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-sm text-purple-600 font-medium">Orders</p>
-                <p className="text-2xl font-bold text-purple-800">{stats.orders.total}</p>
-                <p className="text-xs text-purple-600">{formatCurrency(stats.orders.totalSpent)}</p>
+              <div className="bg-purple-50/70 border border-purple-200 rounded-none p-4 shadow-sm">
+                <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Orders</p>
+                <p className="text-xl font-black text-purple-800 mt-0.5">{stats.orders.total}</p>
+                <p className="text-[10px] text-purple-600 font-semibold uppercase tracking-wider mt-1">{formatCurrency(stats.orders.totalSpent)}</p>
               </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p className="text-sm text-orange-600 font-medium">Profit</p>
-                <p className="text-2xl font-bold text-orange-800">{formatCurrency(stats.sales.totalProfit)}</p>
+              <div className="bg-orange-50/70 border border-orange-200 rounded-none p-4 shadow-sm">
+                <p className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">Profit</p>
+                <p className="text-xl font-black text-orange-800 mt-0.5">{formatCurrency(stats.sales.totalProfit)}</p>
+                <p className="text-[10px] text-orange-650 font-semibold uppercase tracking-wider mt-1">Retailer margin</p>
               </div>
             </div>
 
             {/* Recent Inventory */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Package size={20} />
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+                <Package size={16} className="text-indigo-600" />
                 Inventory ({inventory.length})
               </h3>
               {inventory.length > 0 ? (
-                <div className="overflow-x-auto max-h-64 border rounded-lg">
+                <div className="overflow-x-auto max-h-64 border border-gray-200 rounded-none shadow-sm">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Serial</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Serial</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Price</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 bg-white">
                       {inventory.slice(0, 10).map((item: any) => (
-                        <tr key={item._id}>
-                          <td className="px-4 py-2 text-sm text-gray-900">{item.product?.name}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600 font-mono">{item.productUnit?.serialNumber}</td>
-                          <td className="px-4 py-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                        <tr key={item._id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-900">{item.product?.name}</td>
+                          <td className="px-4 py-2.5 text-xs text-gray-600 font-mono">{item.productUnit?.serialNumber}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider border ${getStatusColor(item.status)}`}>
                               {item.status}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(item.purchasePrice)}</td>
+                          <td className="px-4 py-2.5 text-sm font-bold text-gray-900">{formatCurrency(item.purchasePrice)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No inventory</p>
+                <p className="text-gray-400 text-center py-4 text-xs font-bold uppercase tracking-wider">No inventory</p>
               )}
             </div>
 
             {/* Recent Sales */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign size={20} />
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+                <DollarSign size={16} className="text-emerald-600" />
                 Sales ({sales.length})
               </h3>
               {sales.length > 0 ? (
-                <div className="overflow-x-auto max-h-64 border rounded-lg">
+                <div className="overflow-x-auto max-h-64 border border-gray-200 rounded-none shadow-sm">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profit</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Invoice</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Price</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Profit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 bg-white">
                       {sales.slice(0, 10).map((sale: any) => (
-                        <tr key={sale._id}>
-                          <td className="px-4 py-2 text-sm text-gray-900">{sale.productDetails?.name || sale.product?.name}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{sale.customer?.name}</td>
-                          <td className="px-4 py-2 text-sm">
-                            {sale.invoiceNumber && <span className="text-gray-900">{sale.invoiceNumber}</span>}
+                        <tr key={sale._id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2.5 text-sm font-semibold text-gray-900">{sale.productDetails?.name || sale.product?.name}</td>
+                          <td className="px-4 py-2.5 text-xs text-gray-650">
+                            <p className="font-bold text-gray-900">{sale.customer?.name}</p>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs">
+                            {sale.invoiceNumber && <span className="text-gray-900 font-bold">{sale.invoiceNumber}</span>}
                             {sale.invoiceUrl && (
-                              <a href={sale.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs block">View</a>
+                              <a href={sale.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-650 hover:text-indigo-850 text-[10px] font-bold uppercase tracking-wider block hover:underline mt-0.5">View Invoice</a>
                             )}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{new Date(sale.saleDate).toLocaleDateString()}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(sale.sellingPrice)}</td>
-                          <td className="px-4 py-2 text-sm text-green-600">{formatCurrency(sale.profit)}</td>
+                          <td className="px-4 py-2.5 text-xs text-gray-500 font-medium">{new Date(sale.saleDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-2.5 text-sm font-bold text-gray-900">{formatCurrency(sale.sellingPrice)}</td>
+                          <td className="px-4 py-2.5 text-sm font-bold text-green-600">{formatCurrency(sale.profit)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No sales</p>
+                <p className="text-gray-400 text-center py-4 text-xs font-bold uppercase tracking-wider">No sales</p>
               )}
             </div>
 
             {/* Recent Orders */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <ShoppingCart size={20} />
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+                <ShoppingCart size={16} className="text-purple-600" />
                 Orders ({orders.length})
               </h3>
               {orders.length > 0 ? (
-                <div className="overflow-x-auto max-h-64 border rounded-lg">
+                <div className="overflow-x-auto max-h-64 border border-gray-200 rounded-none shadow-sm">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 border-b border-gray-200">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 bg-white">
                       {orders.slice(0, 10).map((order: any) => (
-                        <tr key={order._id}>
-                          <td className="px-4 py-2 text-sm font-mono text-gray-900">
+                        <tr key={order._id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-2.5 text-xs font-mono font-bold text-gray-950">
                             {order.orderNumber || order._id.slice(-8).toUpperCase()}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(order.totalAmount)}</td>
+                          <td className="px-4 py-2.5 text-xs text-gray-500 font-medium">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="px-4 py-2.5 text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No orders</p>
+                <p className="text-gray-400 text-center py-4 text-xs font-bold uppercase tracking-wider">No orders</p>
               )}
             </div>
           </div>
@@ -861,97 +893,99 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
 
     return (
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between bg-white p-5 border border-gray-200 rounded-none shadow-sm">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Retailer Quoted Products</h2>
-            <p className="text-sm text-gray-600 mt-1">View and manage quoted prices for each retailer</p>
+            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Retailer Quoted Products</h2>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">View and manage quoted prices for each retailer</p>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search retailers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all w-64"
             />
           </div>
         </div>
 
-        <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg">
-          <p className="text-sm text-indigo-800">
+        <div className="bg-indigo-50/70 border border-indigo-100 p-4 rounded-none text-xs text-indigo-900 leading-relaxed shadow-sm">
+          <p>
             <strong>Quoted Products:</strong> These are products with special pricing for specific retailers. When a retailer accepts a quote, the products are saved here with their quoted prices. You can edit the prices, and changes will reflect on the retailer's dashboard.
           </p>
         </div>
 
         {filteredRetailers.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-none border border-gray-200 shadow-sm p-12 text-center">
             <Tag size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">No retailers with quoted products found</p>
+            <p className="text-gray-450 text-xs font-bold uppercase tracking-wider">No retailers with quoted products found</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {filteredRetailers.map(retailer => (
-              <div key={retailer._id} className="bg-white rounded-lg shadow overflow-hidden">
+              <div key={retailer._id} className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden mb-4">
                 <div 
-                  className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                  className="bg-gray-50/50 px-6 py-4 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors"
                   onClick={() => setSelectedRetailerForQuotes(
                     selectedRetailerForQuotes?._id === retailer._id ? null : retailer
                   )}
                 >
                   <div>
-                    <h3 className="font-semibold text-gray-900">{retailer.name}</h3>
-                    <p className="text-sm text-gray-500">{retailer.email}</p>
+                    <h3 className="font-bold text-sm text-gray-900">{retailer.name}</h3>
+                    <p className="text-xs text-gray-450 font-mono mt-0.5">{retailer.email}</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      retailer.isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider border ${
+                      retailer.isApproved
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'bg-yellow-50 text-yellow-700 border-yellow-200'
                     }`}>
                       {retailer.isApproved ? 'Active' : 'Pending'}
                     </span>
-                    <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium">
+                    <span className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider">
                       {retailer.quotedProductsCount} products
                     </span>
-                    <Eye size={18} className="text-gray-400" />
+                    <Eye size={16} className="text-gray-400" />
                   </div>
                 </div>
 
                 {selectedRetailerForQuotes?._id === retailer._id && (
-                  <div className="p-6">
+                  <div className="p-6 bg-white border-t border-gray-100">
                     {retailer.quotedProducts.length === 0 ? (
-                      <p className="text-gray-500 text-center py-4">No quoted products for this retailer</p>
+                      <p className="text-gray-450 text-center py-4 text-xs font-bold uppercase tracking-wider">No quoted products for this retailer</p>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto border border-gray-200 rounded-none shadow-sm">
                         <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Original Price</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quoted Price</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                              <th className="px-4 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Product</th>
+                              <th className="px-4 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                              <th className="px-4 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Original Price</th>
+                              <th className="px-4 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Quoted Price</th>
+                              <th className="px-4 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
+                              <th className="px-4 py-3.5 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
+                          <tbody className="divide-y divide-gray-200 bg-white">
                             {retailer.quotedProducts.map(qp => (
-                              <tr key={qp._id} className="hover:bg-gray-50">
+                              <tr key={qp._id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-3">
                                     {qp.product.images && qp.product.images[0] && (
                                       <img 
                                         src={qp.product.images[0]} 
                                         alt={qp.product.name}
-                                        className="w-10 h-10 rounded object-cover"
+                                        className="w-10 h-10 rounded-none object-cover border border-gray-200"
                                       />
                                     )}
-                                    <span className="font-medium text-gray-900">{qp.product.name}</span>
+                                    <span className="font-semibold text-sm text-gray-900">{qp.product.name}</span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-600">
+                                <td className="px-4 py-3 text-xs text-gray-650 font-medium">
                                   {qp.product.category || '-'}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-600">
+                                <td className="px-4 py-3 text-xs text-gray-600 font-medium">
                                   {qp.originalPrice ? formatCurrency(qp.originalPrice) : '-'}
                                 </td>
                                 <td className="px-4 py-3">
@@ -960,58 +994,64 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
                                       type="number"
                                       value={editPrice}
                                       onChange={(e) => setEditPrice(e.target.value)}
-                                      className="w-28 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                                      className="w-28 px-2 py-1 bg-gray-50 border border-gray-200 rounded-none text-xs focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 focus:outline-none"
                                       autoFocus
                                     />
                                   ) : (
-                                    <span className="font-semibold text-green-600">
+                                    <span className="font-bold text-sm text-green-600">
                                       {formatCurrency(qp.quotedPrice)}
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-500">
-                                  {new Date(qp.updatedAt).toLocaleDateString()}
+                                <td className="px-4 py-3 text-xs text-gray-500 font-medium">
+                                  {new Date(qp.updatedAt).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
                                 </td>
                                 <td className="px-4 py-3">
-                                  {editingQuotedProduct === qp._id ? (
-                                    <div className="flex gap-2">
+                                  <div className="flex justify-end gap-1.5">
+                                    {editingQuotedProduct === qp._id ? (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            const price = parseFloat(editPrice);
+                                            if (!isNaN(price) && price > 0) {
+                                              updateQuotedPrice(qp._id, price);
+                                            } else {
+                                              alert('Please enter a valid price');
+                                            }
+                                          }}
+                                          className="text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 p-1.5 rounded-none transition-colors"
+                                          title="SAVE"
+                                        >
+                                          <Save size={14} />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingQuotedProduct(null);
+                                            setEditPrice('');
+                                          }}
+                                          className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 p-1.5 rounded-none transition-colors"
+                                          title="CANCEL"
+                                        >
+                                          <XCircle size={14} />
+                                        </button>
+                                      </>
+                                    ) : (
                                       <button
                                         onClick={() => {
-                                          const price = parseFloat(editPrice);
-                                          if (!isNaN(price) && price > 0) {
-                                            updateQuotedPrice(qp._id, price);
-                                          } else {
-                                            alert('Please enter a valid price');
-                                          }
+                                          setEditingQuotedProduct(qp._id);
+                                          setEditPrice(qp.quotedPrice.toString());
                                         }}
-                                        className="text-green-600 hover:text-green-800"
-                                        title="Save"
+                                        className="text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-1.5 rounded-none transition-colors"
+                                        title="EDIT PRICE"
                                       >
-                                        <Save size={18} />
+                                        <Edit size={14} />
                                       </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingQuotedProduct(null);
-                                          setEditPrice('');
-                                        }}
-                                        className="text-gray-600 hover:text-gray-800"
-                                        title="Cancel"
-                                      >
-                                        <XCircle size={18} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setEditingQuotedProduct(qp._id);
-                                        setEditPrice(qp.quotedPrice.toString());
-                                      }}
-                                      className="text-indigo-600 hover:text-indigo-800"
-                                      title="Edit Price"
-                                    >
-                                      <Edit size={18} />
-                                    </button>
-                                  )}
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -1037,22 +1077,21 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
   ];
 
   return (
-    <div className={`min-h-screen bg-gray-100 ${!isEmbedded ? 'pt-20' : ''}`}>
-      {/* Header */}
+    <div className={`min-h-screen bg-[#f8fafc] ${!isEmbedded ? 'pt-20' : ''}`}>
       {/* Header - Only show if not embedded */}
       {!isEmbedded && (
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-6">
+        <div className="bg-slate-900 border-b border-slate-800 text-white py-6">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/admin')}
-                className="text-white hover:text-gray-200"
+                className="text-gray-400 hover:text-white transition-colors"
               >
                 <ArrowLeft size={24} />
               </button>
               <div>
-                <h1 className="text-2xl font-bold">Retailer Management</h1>
-                <p className="text-indigo-200">Track retailers, inventory, and sales</p>
+                <h1 className="text-xl font-bold uppercase tracking-wider">Retailer Management</h1>
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Track retailers, inventory, and sales</p>
               </div>
             </div>
           </div>
@@ -1060,7 +1099,7 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       )}
 
       {/* Tabs */}
-      <div className={`bg-white shadow ${!isEmbedded ? 'sticky top-16 z-10' : ''}`}>
+      <div className={`bg-white border-b border-gray-200 mb-6 ${!isEmbedded ? 'sticky top-[70px] z-10' : ''}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex space-x-1 overflow-x-auto">
             {tabs.map(tab => {
@@ -1069,12 +1108,12 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
-                      ? 'border-indigo-600 text-indigo-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                  className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id
+                      ? 'border-emerald-600 text-emerald-700 bg-emerald-50/20'
+                      : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-200'
                     }`}
                 >
-                  <Icon size={18} />
+                  <Icon size={14} />
                   {tab.name}
                 </button>
               );
@@ -1084,10 +1123,10 @@ const RetailerManagement: React.FC<RetailerManagementProps> = ({ isEmbedded = fa
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 pb-12">
         {loading && !analytics ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
           </div>
         ) : (
           <>

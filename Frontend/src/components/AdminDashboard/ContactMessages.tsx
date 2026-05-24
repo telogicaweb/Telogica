@@ -172,64 +172,72 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Contact Messages</h2>
-        <div className="flex items-center gap-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Messages</option>
-            <option value="new">New</option>
-            <option value="read">Read</option>
-            <option value="replied">Replied</option>
-          </select>
-          <button
-            onClick={exportMessages}
-            className="bg-white border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
-          >
-            <Download className="w-4 h-4" /> CSV
-          </button>
-          <button
-            onClick={exportMessagesPDF}
-            disabled={exporting}
-            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
-          >
-            <FileDown className="w-4 h-4" /> {exporting ? 'Exporting...' : 'PDF'}
-          </button>
+      {/* Header & Controls Card */}
+      <div className="bg-white border border-gray-200 rounded-none shadow-sm mb-6">
+        <div className="px-5 py-4 border-b border-gray-150 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
+          <div>
+            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Contact Messages</h2>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Manage customer inquiries and contact forms</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+            >
+              <option value="all">ALL MESSAGES</option>
+              <option value="new">NEW</option>
+              <option value="read">READ</option>
+              <option value="replied">REPLIED</option>
+            </select>
+            <button
+              onClick={exportMessages}
+              className="bg-white border border-gray-200 px-3 py-2 rounded-none hover:bg-gray-50 flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-gray-300 transition-colors"
+            >
+              <Download className="w-4 h-4" /> CSV
+            </button>
+            <button
+              onClick={exportMessagesPDF}
+              disabled={exporting}
+              className="bg-emerald-600 text-white px-3 py-2 rounded-none hover:bg-emerald-700 flex items-center gap-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50 transition-colors"
+            >
+              <FileDown className="w-4 h-4" /> {exporting ? 'EXPORTING...' : 'PDF'}
+            </button>
+          </div>
+        </div>
+        <div className="p-5">
+          <DateFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            label="Filter Messages by Date"
+            showPresets={true}
+            className="border-0 shadow-none p-0"
+          />
         </div>
       </div>
-
-      {/* Date Filter */}
-      <DateFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        label="Filter Messages by Date"
-      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredMessages.map((message) => (
           <div
             key={message._id}
-            className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500"
+            className="bg-white rounded-none border border-gray-200 shadow-sm p-5 border-l-4 border-l-blue-600 hover:shadow-md transition-shadow"
           >
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="font-semibold text-lg text-gray-800">
+                <h3 className="font-bold text-sm text-gray-900">
                   {message.name}
                 </h3>
-                <p className="text-sm text-gray-500">{message.email}</p>
+                <p className="text-xs text-gray-450 font-mono mt-0.5">{message.email}</p>
               </div>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border ${
                   message.status === 'new'
-                    ? 'bg-yellow-100 text-yellow-800'
+                    ? 'bg-yellow-50 text-yellow-700 border-yellow-250'
                     : message.status === 'read'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
+                      ? 'bg-blue-50 text-blue-700 border-blue-250'
+                      : 'bg-green-50 text-green-700 border-green-250'
                 }`}
               >
                 {message.status}
@@ -237,16 +245,16 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
             </div>
 
             <div className="mb-3">
-              <p className="text-sm text-gray-600">
-                <strong>Phone:</strong> {message.phone}
+              <p className="text-xs text-gray-600">
+                <strong className="font-bold uppercase tracking-wider text-[10px] text-gray-400">Phone:</strong> {message.phone}
               </p>
-              <p className="text-sm text-gray-600">
-                <strong>Subject:</strong> {message.subject}
+              <p className="text-xs text-gray-600 mt-0.5">
+                <strong className="font-bold uppercase tracking-wider text-[10px] text-gray-400">Subject:</strong> {message.subject}
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded p-3 mb-4">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            <div className="bg-gray-50 rounded-none border border-gray-150 p-3 mb-4">
+              <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">
                 {message.message}
               </p>
             </div>
@@ -258,7 +266,7 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
                   onChange={(e) =>
                     handleStatusChange(message._id, e.target.value)
                   }
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="new">New</option>
                   <option value="read">Read</option>
@@ -269,30 +277,31 @@ const ContactMessages: React.FC<ContactMessagesProps> = ({
               <div className="flex gap-2">
                 <a
                   href={`mailto:${message.email}`}
-                  className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-none hover:bg-blue-700 text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                   <Mail className="w-4 h-4" />
                   Reply
                 </a>
                 <button
                   onClick={() => handleDeleteMessage(message._id)}
-                  className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                  className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-none transition-colors"
+                  title="DELETE MESSAGE"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <p className="text-xs text-gray-400 mt-3">
-              {new Date(message.createdAt).toLocaleString()}
+            <p className="text-[10px] font-semibold text-gray-400 mt-3 uppercase tracking-wider">
+              {new Date(message.createdAt).toLocaleString('en-IN')}
             </p>
           </div>
         ))}
       </div>
 
       {filteredMessages.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No messages found</p>
+        <div className="text-center py-12 bg-white border border-gray-250 p-12 rounded-none">
+          <p className="text-gray-450 text-xs font-bold uppercase tracking-wider">No messages found</p>
         </div>
       )}
     </div>

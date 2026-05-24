@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { ArrowLeft, Save, RefreshCw, Calendar, Download } from 'lucide-react';
+import { ArrowLeft, Save, RefreshCw, Calendar, Download, X, FileText } from 'lucide-react';
 
 interface Content {
   _id?: string;
@@ -29,7 +29,12 @@ const sections = [
   { value: 'footer_about', label: 'Footer - About Us' }
 ];
 
-export default function PageContent() {
+interface PageContentProps {
+  isEmbedded?: boolean;
+  onBack?: () => void;
+}
+
+export default function PageContent({ isEmbedded = false, onBack }: PageContentProps = {}) {
   const navigate = useNavigate();
   const [contents, setContents] = useState<Content[]>([]);
   const [selectedSection, setSelectedSection] = useState('');
@@ -108,87 +113,77 @@ export default function PageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-20 md:pt-24 pb-8 md:pb-16">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
-          <button onClick={() => navigate('/admin')} className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft size={20} className="md:w-6 md:h-6" />
+    <div className={isEmbedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={isEmbedded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+        {/* Header with Back Navigation */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => onBack ? onBack() : navigate('/admin')}
+            className="p-2 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-colors"
+            title="Back to Admin Dashboard"
+          >
+            <ArrowLeft size={18} className="text-gray-600" />
           </button>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Page Content Editor</h1>
+          <div>
+            <h1 className="text-sm font-black text-gray-900 uppercase tracking-wider">Page Content Editor</h1>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Content Management → Pages</p>
+          </div>
         </div>
 
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        {/* Filter & Export Row */}
+        <div className="bg-white border border-gray-200 rounded-none p-4 mb-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Date:</span>
+              <input type="date" value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-50" />
+              <span className="text-gray-300 text-xs">—</span>
+              <input type="date" value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-50" />
               {(exportStartDate || exportEndDate) && (
-                <button
-                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                >
-                  Clear
+                <button onClick={() => { setExportStartDate(''); setExportEndDate(''); }} className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1">
+                  <X size={12} /> Clear
                 </button>
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => handleExport('pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-              >
-                <Download size={14} /> PDF
+              <button onClick={() => handleExport('pdf')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors">
+                <Download size={12} /> PDF
               </button>
-              <button
-                onClick={() => handleExport('csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-              >
-                <Download size={14} /> CSV
+              <button onClick={() => handleExport('csv')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors">
+                <Download size={12} /> CSV
               </button>
-              <button
-                onClick={() => handleExport('excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-              >
-                <Download size={14} /> Excel
+              <button onClick={() => handleExport('excel')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors">
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-5">
           {/* Section Selector */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4">Select Section</h2>
-            <div className="space-y-2">
+          <div className="bg-white rounded-none border border-gray-200 p-5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-4">Select Section</h2>
+            <div className="space-y-1.5">
               {sections.map((section) => {
                 const hasContent = contents.some(c => c.section === section.value);
                 return (
                   <button
                     key={section.value}
                     onClick={() => handleSectionSelect(section.value)}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                    className={`w-full text-left px-4 py-3 rounded-none transition-colors text-xs font-semibold uppercase tracking-wider border ${
                       selectedSection === section.value
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 hover:bg-gray-200'
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">{section.label}</span>
+                      <span>{section.label}</span>
                       {hasContent && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-bold ${
+                          selectedSection === section.value
+                            ? 'bg-white/20 text-white'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
                           ✓
                         </span>
                       )}
@@ -200,61 +195,61 @@ export default function PageContent() {
           </div>
 
           {/* Content Editor */}
-          <div className="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+          <div className="lg:col-span-2 bg-white rounded-none border border-gray-200 p-5">
             {selectedSection ? (
               <>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900">
                     {sections.find(s => s.value === selectedSection)?.label}
                   </h2>
                   <button
                     onClick={loadContents}
-                    className="text-gray-600 hover:text-gray-900"
+                    className="p-2 text-gray-400 hover:text-gray-600 bg-gray-50 border border-gray-200 rounded-none transition-colors"
                     title="Refresh"
                   >
-                    <RefreshCw size={20} />
+                    <RefreshCw size={14} />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Title</label>
                     <input
                       type="text"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Subtitle (Optional)</label>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Subtitle (Optional)</label>
                     <input
                       type="text"
                       value={formData.subtitle || ''}
                       onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Content</label>
                     <textarea
                       value={formData.content}
                       onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       rows={6}
                       required
                     />
                   </div>
 
-                  <div className="border-t pt-4">
-                    <h3 className="font-medium text-gray-900 mb-3">Additional Metadata</h3>
+                  <div className="border-t border-gray-200 pt-4">
+                    <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">Additional Metadata</h3>
                     
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Button Text</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Button Text</label>
                         <input
                           type="text"
                           value={formData.metadata?.buttonText || ''}
@@ -262,12 +257,12 @@ export default function PageContent() {
                             ...formData,
                             metadata: { ...formData.metadata, buttonText: e.target.value }
                           })}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Button Link</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Button Link</label>
                         <input
                           type="text"
                           value={formData.metadata?.buttonLink || ''}
@@ -275,12 +270,12 @@ export default function PageContent() {
                             ...formData,
                             metadata: { ...formData.metadata, buttonLink: e.target.value }
                           })}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Image URL</label>
                         <input
                           type="url"
                           value={formData.metadata?.imageUrl || ''}
@@ -288,12 +283,12 @@ export default function PageContent() {
                             ...formData,
                             metadata: { ...formData.metadata, imageUrl: e.target.value }
                           })}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Video URL</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Video URL</label>
                         <input
                           type="url"
                           value={formData.metadata?.videoUrl || ''}
@@ -301,7 +296,7 @@ export default function PageContent() {
                             ...formData,
                             metadata: { ...formData.metadata, videoUrl: e.target.value }
                           })}
-                          className="w-full px-4 py-2 border rounded-lg"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
                     </div>
@@ -310,16 +305,20 @@ export default function PageContent() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 disabled:bg-gray-400"
+                    className="w-full px-6 py-3 bg-indigo-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    <Save size={20} />
+                    <Save size={16} />
                     {loading ? 'Saving...' : 'Save Content'}
                   </button>
                 </form>
               </>
             ) : (
-              <div className="text-center py-16 text-gray-500">
-                <p>Select a section from the left to edit its content</p>
+              <div className="text-center py-16">
+                <div className="bg-gray-100 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Select a Section</h3>
+                <p className="text-xs text-gray-500">Choose a section from the left panel to edit its content</p>
               </div>
             )}
           </div>

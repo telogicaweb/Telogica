@@ -36,4 +36,10 @@ const warrantySchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Indexes for performance
+warrantySchema.index({ user: 1, createdAt: -1 });
+warrantySchema.index({ serialNumber: 1 });
+warrantySchema.index({ status: 1, createdAt: -1 });
+warrantySchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Warranty', warrantySchema);

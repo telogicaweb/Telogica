@@ -41,4 +41,9 @@ invoiceSchema.pre('save', async function() {
   }
 });
 
+// Indexes for performance
+invoiceSchema.index({ user: 1, createdAt: -1 });
+invoiceSchema.index({ order: 1 });
+invoiceSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Invoice', invoiceSchema);

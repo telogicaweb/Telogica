@@ -141,7 +141,7 @@ const UserDashboard = () => {
     try {
       // Filter out invalid products (e.g. deleted products)
       const validItems = quote.products.filter((item: any) => item.product && item.product._id);
-      
+
       if (validItems.length === 0) {
         alert('Cannot proceed: All products in this quote are no longer available.');
         setActionLoading(false);
@@ -179,15 +179,15 @@ const UserDashboard = () => {
 
   const handleAddressSubmit = async () => {
     // Validate address
-    if (!addressForm.fullName.trim() || !addressForm.phone.trim() || 
-        !addressForm.streetAddress.trim() || !addressForm.city.trim() || 
-        !addressForm.state.trim() || !addressForm.pincode.trim()) {
+    if (!addressForm.fullName.trim() || !addressForm.phone.trim() ||
+      !addressForm.streetAddress.trim() || !addressForm.city.trim() ||
+      !addressForm.state.trim() || !addressForm.pincode.trim()) {
       alert('Please fill in all required address fields');
       return;
     }
 
     const shippingAddress = `${addressForm.fullName}, ${addressForm.phone}\n${addressForm.streetAddress}${addressForm.landmark ? ', ' + addressForm.landmark : ''}\n${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`;
-    
+
     setActionLoading(true);
     try {
       const products = selectedQuote.products.map((item: { product: { _id: string }; quantity: number }) => ({
@@ -364,17 +364,15 @@ const UserDashboard = () => {
                 <button
                   key={item.key}
                   onClick={() => setActiveTab(item.key)}
-                  className={`w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200 border-l-[3px] ${
-                    activeTab === item.key
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-all duration-200 border-l-[3px] ${activeTab === item.key
                       ? 'bg-teal-50/60 text-teal-700 border-l-teal-600'
                       : 'text-gray-600 hover:bg-gray-50 border-l-transparent hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <item.icon size={18} className={activeTab === item.key ? 'text-teal-600' : 'text-gray-400'} />
                   <span className="flex-1 text-left">{item.label}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    activeTab === item.key ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === item.key ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
                     {item.count}
                   </span>
                 </button>
@@ -415,17 +413,15 @@ const UserDashboard = () => {
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-none text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
-                      activeTab === item.key
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-none text-sm font-semibold whitespace-nowrap transition-all duration-200 ${activeTab === item.key
                         ? 'bg-teal-600 text-white shadow-none'
                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <item.icon size={16} />
                     {item.label}
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                      activeTab === item.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                    }`}>
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === item.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
                       {item.count}
                     </span>
                   </button>
@@ -575,7 +571,7 @@ const UserDashboard = () => {
                                   <Package size={16} className="text-blue-600" />
                                   Tracking Information
                                 </h4>
-                                
+
                                 {order.trackingId && (
                                   <div className="mb-4">
                                     <p className="text-xs text-gray-600 mb-1.5">Tracking ID</p>
@@ -595,7 +591,7 @@ const UserDashboard = () => {
                                     </div>
                                   </div>
                                 )}
-                                
+
                                 {order.deliveryTrackingLink && (
                                   <a
                                     href={order.deliveryTrackingLink}
@@ -654,155 +650,156 @@ const UserDashboard = () => {
                       {filteredQuotes.filter(q => q.status !== 'completed').map(quote => {
                         const isExpanded = expandedQuotes.has(quote._id);
                         return (
-                        <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-none transition-shadow">
-                          <div className="p-6">
-                            {/* Quote Summary Row */}
-                            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                              <div className="flex items-center gap-4">
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold ${getStatusColor(quote.status)}`}>
-                                  {getStatusIcon(quote.status)}
-                                  {quote.status}
-                                </span>
-                                <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                              </div>
-                              {quote.adminResponse && (
-                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
-                              )}
-                            </div>
-
-                            {/* Product Preview */}
-                            <div className="mb-4">
-                              <p className="text-sm font-semibold text-gray-900">
-                                {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
-                              </p>
-                              {!isExpanded && quote.products.length > 0 && (
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                  {quote.products[0].product?.name || 'Product Unavailable'}
-                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Expand/Collapse */}
-                            <button
-                              onClick={() => toggleQuoteExpand(quote._id)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium border border-gray-200"
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp size={16} />
-                                  Hide Details
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown size={16} />
-                                  View Quote Details
-                                </>
-                              )}
-                            </button>
-
-                            {/* Expanded Content */}
-                            {isExpanded && (
-                              <div className="mt-5 pt-5 border-t border-gray-100 space-y-4">
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products</p>
-                                  <div className="space-y-2">
-                                    {quote.products.map((p: any) => (
-                                      <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
-                                        <span className="text-sm text-gray-700 font-medium">{p.product?.name || 'Product Unavailable'}</span>
-                                        <span className="text-xs text-gray-500 font-semibold bg-white px-2 py-1 rounded border border-gray-200">Qty: {p.quantity}</span>
-                                      </div>
-                                    ))}
-                                  </div>
+                          <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)] overflow-hidden hover:shadow-none transition-shadow">
+                            <div className="p-6">
+                              {/* Quote Summary Row */}
+                              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-4">
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold ${getStatusColor(quote.status)}`}>
+                                    {getStatusIcon(quote.status)}
+                                    {quote.status}
+                                  </span>
+                                  <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                 </div>
-
-                                {quote.message && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Message</p>
-                                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-none border border-gray-100 leading-relaxed">{quote.message}</p>
-                                  </div>
-                                )}
-
                                 {quote.adminResponse && (
-                                  <div className="bg-teal-50 p-5 rounded-none border border-teal-200">
-                                    <h4 className="text-sm font-bold text-teal-800 mb-3 flex items-center gap-2">
-                                      <Sparkles size={14} />
-                                      Admin Response
-                                    </h4>
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-sm text-teal-700">Offered Price</span>
-                                      <span className="text-lg font-bold text-teal-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
-                                    </div>
-                                    {quote.adminResponse.discountPercentage > 0 && (
-                                      <div className="flex justify-between items-center mb-2">
-                                        <span className="text-sm text-teal-700">Discount</span>
-                                        <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
-                                      </div>
-                                    )}
-                                    {quote.adminResponse.message && (
-                                      <p className="text-sm text-teal-800 mt-3 pt-3 border-t border-teal-200">{quote.adminResponse.message}</p>
-                                    )}
-                                  </div>
+                                  <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
                                 )}
                               </div>
-                            )}
 
-                            {/* Action Buttons */}
-                            {quote.status === 'responded' && (
-                              <div className="flex gap-3 mt-5">
-                                <button
-                                  onClick={() => acceptQuote(quote._id)}
-                                  disabled={actionLoading}
-                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-none hover:bg-emerald-700 disabled:bg-gray-300 transition-colors text-sm font-semibold shadow-none"
-                                >
-                                  <ThumbsUp size={16} />
-                                  Accept Quote
-                                </button>
-                                <button
-                                  onClick={() => rejectQuote(quote._id)}
-                                  disabled={actionLoading}
-                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border border-red-200 rounded-none hover:bg-red-50 disabled:bg-gray-100 transition-colors text-sm font-semibold"
-                                >
-                                  <ThumbsDown size={16} />
-                                  Decline
-                                </button>
+                              {/* Product Preview */}
+                              <div className="mb-4">
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Requested
+                                </p>
+                                {!isExpanded && quote.products.length > 0 && (
+                                  <p className="text-sm text-gray-500 mt-0.5">
+                                    {quote.products[0].product?.name || 'Product Unavailable'}
+                                    {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                  </p>
+                                )}
                               </div>
-                            )}
 
-                            {quote.status === 'accepted' && (
-                              <div className="mt-5">
-                                {quote.orderId ? (
-                                  <button
-                                    onClick={() => setActiveTab('orders')}
-                                    className="w-full px-4 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-none hover:bg-blue-100 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-                                  >
-                                    <CheckCircle size={16} />
-                                    Order Created — View in Orders
-                                  </button>
+                              {/* Expand/Collapse */}
+                              <button
+                                onClick={() => toggleQuoteExpand(quote._id)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium border border-gray-200"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    <ChevronUp size={16} />
+                                    Hide Details
+                                  </>
                                 ) : (
-                                  <button
-                                    onClick={() => proceedToCheckout(quote)}
-                                    disabled={actionLoading}
-                                    className="w-full px-4 py-2.5 bg-teal-600 text-white rounded-none hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-none"
-                                  >
-                                    {actionLoading ? (
-                                      <>
-                                        <Loader2 size={16} className="animate-spin" />
-                                        Processing...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ShoppingCart size={16} />
-                                        Proceed to Checkout
-                                      </>
-                                    )}
-                                  </button>
+                                  <>
+                                    <ChevronDown size={16} />
+                                    View Quote Details
+                                  </>
                                 )}
-                              </div>
-                            )}
+                              </button>
+
+                              {/* Expanded Content */}
+                              {isExpanded && (
+                                <div className="mt-5 pt-5 border-t border-gray-100 space-y-4">
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Products</p>
+                                    <div className="space-y-2">
+                                      {quote.products.map((p: any) => (
+                                        <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
+                                          <span className="text-sm text-gray-700 font-medium">{p.product?.name || 'Product Unavailable'}</span>
+                                          <span className="text-xs text-gray-500 font-semibold bg-white px-2 py-1 rounded border border-gray-200">Qty: {p.quantity}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {quote.message && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Your Message</p>
+                                      <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-none border border-gray-100 leading-relaxed">{quote.message}</p>
+                                    </div>
+                                  )}
+
+                                  {quote.adminResponse && (
+                                    <div className="bg-teal-50 p-5 rounded-none border border-teal-200">
+                                      <h4 className="text-sm font-bold text-teal-800 mb-3 flex items-center gap-2">
+                                        <Sparkles size={14} />
+                                        Admin Response
+                                      </h4>
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-teal-700">Offered Price</span>
+                                        <span className="text-lg font-bold text-teal-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
+                                      </div>
+                                      {quote.adminResponse.discountPercentage > 0 && (
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-sm text-teal-700">Discount</span>
+                                          <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                        </div>
+                                      )}
+                                      {quote.adminResponse.message && (
+                                        <p className="text-sm text-teal-800 mt-3 pt-3 border-t border-teal-200">{quote.adminResponse.message}</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Action Buttons */}
+                              {quote.status === 'responded' && (
+                                <div className="flex gap-3 mt-5">
+                                  <button
+                                    onClick={() => acceptQuote(quote._id)}
+                                    disabled={actionLoading}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-none hover:bg-emerald-700 disabled:bg-gray-300 transition-colors text-sm font-semibold shadow-none"
+                                  >
+                                    <ThumbsUp size={16} />
+                                    Accept Quote
+                                  </button>
+                                  <button
+                                    onClick={() => rejectQuote(quote._id)}
+                                    disabled={actionLoading}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border border-red-200 rounded-none hover:bg-red-50 disabled:bg-gray-100 transition-colors text-sm font-semibold"
+                                  >
+                                    <ThumbsDown size={16} />
+                                    Decline
+                                  </button>
+                                </div>
+                              )}
+
+                              {quote.status === 'accepted' && (
+                                <div className="mt-5">
+                                  {quote.orderId ? (
+                                    <button
+                                      onClick={() => setActiveTab('orders')}
+                                      className="w-full px-4 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-none hover:bg-blue-100 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                                    >
+                                      <CheckCircle size={16} />
+                                      Order Created — View in Orders
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => proceedToCheckout(quote)}
+                                      disabled={actionLoading}
+                                      className="w-full px-4 py-2.5 bg-teal-600 text-white rounded-none hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-semibold flex items-center justify-center gap-2 shadow-none"
+                                    >
+                                      {actionLoading ? (
+                                        <>
+                                          <Loader2 size={16} className="animate-spin" />
+                                          Processing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ShoppingCart size={16} />
+                                          Proceed to Checkout
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )})}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -823,65 +820,66 @@ const UserDashboard = () => {
                       {filteredQuotes.filter(q => q.status === 'completed').map(quote => {
                         const isExpanded = expandedQuotes.has(quote._id);
                         return (
-                        <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                          <div className="p-6">
-                            <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                              <div className="flex items-center gap-3">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
-                                  <CheckCircle size={14} />
-                                  Completed
-                                </span>
-                                <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                              </div>
-                              {quote.adminResponse && (
-                                <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
-                              )}
-                            </div>
-
-                            <p className="text-sm font-semibold text-gray-700 mb-3">
-                              {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
-                              {!isExpanded && quote.products.length > 0 && (
-                                <span className="text-gray-500 font-normal ml-2">
-                                  — {quote.products[0].product?.name || 'Product Unavailable'}
-                                  {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
-                                </span>
-                              )}
-                            </p>
-
-                            <button
-                              onClick={() => toggleQuoteExpand(quote._id)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium"
-                            >
-                              {isExpanded ? <><ChevronUp size={16} /> Hide</> : <><ChevronDown size={16} /> Details</>}
-                            </button>
-
-                            {isExpanded && (
-                              <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                                {quote.products.map((p: any) => (
-                                  <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
-                                    <span className="text-sm text-gray-700">{p.product?.name || 'Product Unavailable'}</span>
-                                    <span className="text-xs text-gray-500">Qty: {p.quantity}</span>
-                                  </div>
-                                ))}
+                          <div key={quote._id} className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                            <div className="p-6">
+                              <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                                    <CheckCircle size={14} />
+                                    Completed
+                                  </span>
+                                  <span className="text-xs text-gray-400">{new Date(quote.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                </div>
                                 {quote.adminResponse && (
-                                  <div className="bg-gray-50 p-4 rounded-none border border-gray-200">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm text-gray-600">Final Price</span>
-                                      <span className="text-base font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
-                                    </div>
-                                    {quote.adminResponse.discountPercentage > 0 && (
-                                      <div className="flex justify-between items-center mt-2">
-                                        <span className="text-sm text-gray-600">Discount</span>
-                                        <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
-                                      </div>
-                                    )}
-                                  </div>
+                                  <span className="text-lg font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
                                 )}
                               </div>
-                            )}
+
+                              <p className="text-sm font-semibold text-gray-700 mb-3">
+                                {quote.products.length} Product{quote.products.length > 1 ? 's' : ''} Purchased
+                                {!isExpanded && quote.products.length > 0 && (
+                                  <span className="text-gray-500 font-normal ml-2">
+                                    — {quote.products[0].product?.name || 'Product Unavailable'}
+                                    {quote.products.length > 1 && ` +${quote.products.length - 1} more`}
+                                  </span>
+                                )}
+                              </p>
+
+                              <button
+                                onClick={() => toggleQuoteExpand(quote._id)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none transition-colors text-sm font-medium"
+                              >
+                                {isExpanded ? <><ChevronUp size={16} /> Hide</> : <><ChevronDown size={16} /> Details</>}
+                              </button>
+
+                              {isExpanded && (
+                                <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                                  {quote.products.map((p: any) => (
+                                    <div key={p._id} className="flex justify-between items-center bg-gray-50 p-3 rounded-none">
+                                      <span className="text-sm text-gray-700">{p.product?.name || 'Product Unavailable'}</span>
+                                      <span className="text-xs text-gray-500">Qty: {p.quantity}</span>
+                                    </div>
+                                  ))}
+                                  {quote.adminResponse && (
+                                    <div className="bg-gray-50 p-4 rounded-none border border-gray-200">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-600">Final Price</span>
+                                        <span className="text-base font-bold text-gray-900">₹{quote.adminResponse.totalPrice?.toLocaleString()}</span>
+                                      </div>
+                                      {quote.adminResponse.discountPercentage > 0 && (
+                                        <div className="flex justify-between items-center mt-2">
+                                          <span className="text-sm text-gray-600">Discount</span>
+                                          <span className="text-sm font-bold text-emerald-600">{quote.adminResponse.discountPercentage}% OFF</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )})}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -960,11 +958,10 @@ const UserDashboard = () => {
                                         </div>
                                         <p className="text-xs text-gray-500 font-mono ml-7">S/N: {warranty.serialNumber}</p>
                                       </div>
-                                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-none ${
-                                        isExpired ? 'bg-red-100 text-red-700 border border-red-200' :
-                                        isExpiringSoon ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                                        'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                                      }`}>
+                                      <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-none ${isExpired ? 'bg-red-100 text-red-700 border border-red-200' :
+                                          isExpiringSoon ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                            'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                        }`}>
                                         {isExpired ? 'EXPIRED' : isExpiringSoon ? 'EXPIRING' : 'ACTIVE'}
                                       </span>
                                     </div>
@@ -990,17 +987,15 @@ const UserDashboard = () => {
                                           <Calendar size={12} />
                                           {warranty.warrantyPeriodMonths || 12} month warranty
                                         </p>
-                                        <p className={`text-xs font-bold ${
-                                          isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-emerald-600'
-                                        }`}>
+                                        <p className={`text-xs font-bold ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-emerald-600'
+                                          }`}>
                                           {isExpired ? 'Expired' : `${daysRemaining} days left`}
                                         </p>
                                       </div>
                                       <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                                         <div
-                                          className={`h-full rounded-full transition-all duration-500 ${
-                                            isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'
-                                          }`}
+                                          className={`h-full rounded-full transition-all duration-500 ${isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'
+                                            }`}
                                           style={{ width: `${isExpired ? 100 : progressPct}%` }}
                                         ></div>
                                       </div>
@@ -1165,13 +1160,12 @@ const UserDashboard = () => {
                               {new Date(invoice.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                             <span>
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${
-                                invoice.paymentStatus === 'completed'
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${invoice.paymentStatus === 'completed'
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : invoice.paymentStatus === 'pending'
                                     ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                     : 'bg-red-50 text-red-700 border border-red-200'
-                              }`}>
+                                }`}>
                                 {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
                               </span>
                             </span>
@@ -1204,13 +1198,12 @@ const UserDashboard = () => {
                               <span className="text-sm font-bold text-gray-900 font-mono">
                                 #{invoice.invoiceNumber || invoice._id.slice(-8).toUpperCase()}
                               </span>
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${
-                                invoice.paymentStatus === 'completed'
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-xs font-semibold ${invoice.paymentStatus === 'completed'
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : invoice.paymentStatus === 'pending'
                                     ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                     : 'bg-red-50 text-red-700 border border-red-200'
-                              }`}>
+                                }`}>
                                 {invoice.paymentStatus?.toUpperCase() || 'PENDING'}
                               </span>
                             </div>

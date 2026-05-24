@@ -46,5 +46,6 @@ retailerSaleSchema.pre('save', function() {
 // Index for efficient queries
 retailerSaleSchema.index({ retailer: 1, saleDate: -1 });
 retailerSaleSchema.index({ retailer: 1, createdAt: -1 });
+retailerSaleSchema.index({ saleDate: -1 });
 
 module.exports = mongoose.model('RetailerSale', retailerSaleSchema);

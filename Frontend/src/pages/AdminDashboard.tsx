@@ -43,10 +43,20 @@ import {
   Upload,
   Printer,
   Copy,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Menu,
+  Bell,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
+import BlogManagement from './admin/BlogManagement';
+import TeamManagement from './admin/TeamManagement';
+import EventManagement from './admin/EventManagement';
+import ReportManagement from './admin/ReportManagement';
+import PageContent from './admin/PageContent';
+import StatsManagement from './admin/StatsManagement';
 import ProductSelector from '../components/AdminDashboard/ProductSelector';
 import CategoryInput from '../components/AdminDashboard/CategoryInput';
 import WarrantyValidator from '../components/AdminDashboard/WarrantyValidator';
@@ -69,6 +79,7 @@ interface Product {
   name: string;
   description: string;
   category: string;
+  price?: number;
   normalPrice?: number;
   retailerPrice?: number;
   stockQuantity: number;
@@ -322,8 +333,11 @@ const AdminDashboard: React.FC = () => {
   const user = authContext?.user;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [contentSubPage, setContentSubPage] = useState<'blogs' | 'team' | 'events' | 'reports' | 'pages' | 'stats' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Constants
   const MAX_PRODUCT_IMAGES = 4;
@@ -486,6 +500,10 @@ const AdminDashboard: React.FC = () => {
     }
     loadDashboardData();
   }, [authContext?.loading, authContext?.user, navigate]);
+
+  useEffect(() => {
+    setContentSubPage(null);
+  }, [activeTab]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -1213,22 +1231,22 @@ const AdminDashboard: React.FC = () => {
 
   // Order Management
 
-  // Order Creation (address validation)
-  const handleCreateOrder = async (orderData: any) => {
-    // Validate delivery address
-    if (!orderData.customerDetails || !orderData.customerDetails.address || !orderData.customerDetails.address.trim()) {
-      alert('Please provide a valid delivery address before proceeding with the order.');
-      return;
-    }
-    // ...existing order creation logic...
-    try {
-      await api.post('/api/orders', orderData);
-      alert('Order created successfully');
-      loadOrders();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to create order');
-    }
-  };
+  // Order Creation (address validation) - Kept for future extension if Admin order creation is added
+  // const handleCreateOrder = async (orderData: any) => {
+  //   // Validate delivery address
+  //   if (!orderData.customerDetails || !orderData.customerDetails.address || !orderData.customerDetails.address.trim()) {
+  //     alert('Please provide a valid delivery address before proceeding with the order.');
+  //     return;
+  //   }
+  //   // ...existing order creation logic...
+  //   try {
+  //     await api.post('/api/orders', orderData);
+  //     alert('Order created successfully');
+  //     loadOrders();
+  //   } catch (error: any) {
+  //     alert(error.response?.data?.message || 'Failed to create order');
+  //   }
+  // };
 
   // Tracking Link Management
   const handleOpenTrackingModal = (id: string, type: 'order' | 'quote', currentLink?: string, email?: string, currentTrackingId?: string) => {
@@ -1339,9 +1357,7 @@ const AdminDashboard: React.FC = () => {
       console.error('Export failed:', error);
       alert('Failed to export data: ' + (error.response?.data?.message || error.message));
     }
-  };
-
-  // Render Dashboard/Analytics Tab
+  };  // Render Dashboard/Analytics Tab
   const renderDashboard = () => {
     const conversionRate =
       typeof analytics.quotes.conversionRate === 'number'
@@ -1358,519 +1374,411 @@ const AdminDashboard: React.FC = () => {
       { name: 'Quote Sales', value: analytics.sales.byUserType.retailer || 0 },
     ];
 
-    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
     const USER_COLORS = ['#3B82F6', '#10B981']; // Blue for Direct, Green for Quote
     const RETAILER_COLORS = ['#10B981']; // Green for Quote only
-
-    // orderStatusData is now computed at the top level
 
     const recentOrders = orders.slice(0, 5);
     const recentQuotes = quotes.slice(0, 5);
 
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex justify-between items-center">
-          <h2 className="text-3xl font-bold text-gray-800 tracking-tight">Dashboard Overview</h2>
-          <div className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-200 pb-4">
+          <div>
+            <p className="text-xs text-gray-500 mt-0.5">Real-time business performance and analytics</p>
+          </div>
+          <div className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 px-2.5 py-1 border border-gray-200">
             Last updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-1 bg-blue-500 group-hover:w-2 transition-all duration-200"></div>
-            <div className="flex items-center justify-between mb-4">
+          {/* Total Sales */}
+          <div className="bg-white p-6 border-t-4 border-t-blue-600 border-x border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] transition-all duration-300 rounded-none flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Sales</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{formatCurrency(analytics.sales.total)}</p>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Sales</p>
+                <p className="text-2xl font-black text-gray-900 mt-1">{formatCurrency(analytics.sales.total)}</p>
               </div>
-              <div className="p-3 bg-blue-50 rounded-full text-blue-600">
-                <DollarSign className="w-6 h-6" />
+              <div className="p-2.5 bg-gray-50 border border-gray-100 text-gray-700 rounded-none">
+                <DollarSign className="w-5 h-5" />
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <span className="text-green-500 flex items-center font-medium mr-2">
-                <TrendingUp className="w-4 h-4 mr-1" /> +12%
+            <div className="flex items-center mt-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-none">
+                <TrendingUp className="w-3 h-3" /> +12%
               </span>
-              <span>from last month</span>
+              <span className="text-[11px] text-gray-400 ml-2 font-medium">from last month</span>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-1 bg-green-500 group-hover:w-2 transition-all duration-200"></div>
-            <div className="flex items-center justify-between mb-4">
+          {/* Total Orders */}
+          <div className="bg-white p-6 border-t-4 border-t-emerald-600 border-x border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] transition-all duration-300 rounded-none flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Orders</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.orders.total)}</p>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Orders</p>
+                <p className="text-2xl font-black text-gray-900 mt-1">{formatNumber(analytics.orders.total)}</p>
               </div>
-              <div className="p-3 bg-green-50 rounded-full text-green-600">
-                <ShoppingCart className="w-6 h-6" />
+              <div className="p-2.5 bg-gray-50 border border-gray-100 text-gray-700 rounded-none">
+                <ShoppingCart className="w-5 h-5" />
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <span className="text-green-500 flex items-center font-medium mr-2">
-                <TrendingUp className="w-4 h-4 mr-1" /> +5%
+            <div className="flex items-center mt-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-none">
+                <TrendingUp className="w-3 h-3" /> +5%
               </span>
-              <span>new orders today</span>
+              <span className="text-[11px] text-gray-400 ml-2 font-medium">new orders today</span>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-1 bg-yellow-500 group-hover:w-2 transition-all duration-200"></div>
-            <div className="flex items-center justify-between mb-4">
+          {/* Pending Quotes */}
+          <div className="bg-white p-6 border-t-4 border-t-amber-500 border-x border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] transition-all duration-300 rounded-none flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Pending Quotes</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.quotes.pending)}</p>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Pending Quotes</p>
+                <p className="text-2xl font-black text-gray-900 mt-1">{formatNumber(analytics.quotes.pending)}</p>
               </div>
-              <div className="p-3 bg-yellow-50 rounded-full text-yellow-600">
-                <FileText className="w-6 h-6" />
+              <div className="p-2.5 bg-gray-50 border border-gray-100 text-gray-700 rounded-none">
+                <FileText className="w-5 h-5" />
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <span className="text-yellow-600 font-medium mr-2">
+            <div className="flex items-center mt-2">
+              <span className="inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-100 rounded-none">
                 {conversionRate}%
               </span>
-              <span>conversion rate</span>
+              <span className="text-[11px] text-gray-400 ml-2 font-medium">conversion rate</span>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 relative overflow-hidden group">
-            <div className="absolute right-0 top-0 h-full w-1 bg-purple-500 group-hover:w-2 transition-all duration-200"></div>
-            <div className="flex items-center justify-between mb-4">
+          {/* Total Users */}
+          <div className="bg-white p-6 border-t-4 border-t-purple-600 border-x border-b border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] transition-all duration-300 rounded-none flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-gray-500 text-sm font-medium uppercase tracking-wider">Total Users</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{formatNumber(analytics.users.total)}</p>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Total Users</p>
+                <p className="text-2xl font-black text-gray-900 mt-1">{formatNumber(analytics.users.total)}</p>
               </div>
-              <div className="p-3 bg-purple-50 rounded-full text-purple-600">
-                <Users className="w-6 h-6" />
+              <div className="p-2.5 bg-gray-50 border border-gray-100 text-gray-700 rounded-none">
+                <Users className="w-5 h-5" />
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <span className="text-purple-600 font-medium mr-2">
+            <div className="flex items-center mt-2">
+              <span className="inline-flex items-center px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100 rounded-none">
                 {analytics.users.pendingRetailers}
               </span>
-              <span>pending retailers</span>
+              <span className="text-[11px] text-gray-400 ml-2 font-medium">pending retailers</span>
             </div>
           </div>
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* User Sales Distribution */}
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            {/* Premium Header with Gradient */}
-            <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <ShoppingCart className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">User Sales Distribution</h3>
-                  </div>
-                  <p className="text-blue-100 text-sm font-medium flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Regular Customers
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-                    <div className="w-2 h-2 bg-green-900 rounded-full animate-pulse"></div>
-                    LIVE
-                  </div>
-                  <div className="text-white/80 text-xs">Real-time data</div>
-                </div>
+          <div className="bg-white border border-gray-200 rounded-none shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] p-6">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-blue-600" />
+                  User Sales Distribution
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Regular Customers Analytics</p>
               </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100/30 rounded-none">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                LIVE
+              </span>
             </div>
 
-            {/* Premium Sales Type Breakdown */}
-            <div className="p-6 space-y-4">
-              {/* Direct Orders Card */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur"></div>
-                <div className="relative bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl p-5 hover:shadow-xl transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
-                        <ShoppingCart className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-blue-700 uppercase tracking-wider">Direct Orders</p>
-                        <p className="text-xs text-blue-600 mt-0.5">Instant purchase transactions</p>
-                      </div>
+            {/* Sales Type Breakdown */}
+            <div className="space-y-4 mb-6">
+              {/* Direct Orders Panel */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-none p-5 shadow-sm hover:shadow-md transition-all duration-300 border-t-2 border-t-blue-500">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-none">
+                      <ShoppingCart className="w-5 h-5" />
                     </div>
-                    <TrendingUp className="w-5 h-5 text-blue-500" />
+                    <div>
+                      <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Direct Orders</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Instant purchase transactions</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-4xl font-black text-blue-900">{formatCurrency(analytics.sales.direct)}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="px-2.5 py-1 bg-blue-200 text-blue-800 rounded-lg font-bold">
-                          {analytics.orders.direct}
-                        </div>
-                        <span className="text-blue-700 font-medium">{analytics.orders.direct === 1 ? 'order' : 'orders'}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-blue-600 font-medium">Avg Value</p>
-                        <p className="text-sm font-bold text-blue-800">
-                          {analytics.orders.direct > 0 ? formatCurrency(analytics.sales.direct / analytics.orders.direct) : '₹0'}
-                        </p>
-                      </div>
+                  <TrendingUp className="w-4 h-4 text-blue-500" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-3xl font-black text-gray-900">{formatCurrency(analytics.sales.direct)}</p>
+                  <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-200/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 text-[10px]">
+                        {analytics.orders.direct}
+                      </span>
+                      <span className="text-gray-500 font-medium">{analytics.orders.direct === 1 ? 'order' : 'orders'}</span>
                     </div>
+                    <span className="text-gray-500">Avg: <strong className="text-gray-900">{analytics.orders.direct > 0 ? formatCurrency(analytics.sales.direct / analytics.orders.direct) : '₹0'}</strong></span>
                   </div>
                 </div>
               </div>
 
-              {/* Quote Sales Card */}
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur"></div>
-                <div className="relative bg-gradient-to-br from-emerald-50 to-green-100 border-2 border-emerald-200 rounded-2xl p-5 hover:shadow-xl transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-emerald-500 rounded-xl shadow-lg">
-                        <FileText className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-700 uppercase tracking-wider">Quote Sales</p>
-                        <p className="text-xs text-emerald-600 mt-0.5">Approved quotation orders</p>
-                      </div>
+              {/* Quote Sales Panel */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-none p-5 shadow-sm hover:shadow-md transition-all duration-300 border-t-2 border-t-emerald-500">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-600 text-white rounded-none">
+                      <FileText className="w-5 h-5" />
                     </div>
-                    <BarChart3 className="w-5 h-5 text-emerald-500" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Quote Sales</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Approved quotation orders</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-4xl font-black text-emerald-900">{formatCurrency(analytics.sales.quote)}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className="px-2.5 py-1 bg-emerald-200 text-emerald-800 rounded-lg font-bold">
-                          {analytics.orders.quote}
-                        </div>
-                        <span className="text-emerald-700 font-medium">{analytics.orders.quote === 1 ? 'order' : 'orders'}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-emerald-600 font-medium">Avg Value</p>
-                        <p className="text-sm font-bold text-emerald-800">
-                          {analytics.orders.quote > 0 ? formatCurrency(analytics.sales.quote / analytics.orders.quote) : '₹0'}
-                        </p>
-                      </div>
+                  <BarChart3 className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-3xl font-black text-gray-900">{formatCurrency(analytics.sales.quote)}</p>
+                  <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-200/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[10px]">
+                        {analytics.orders.quote}
+                      </span>
+                      <span className="text-gray-500 font-medium">{analytics.orders.quote === 1 ? 'order' : 'orders'}</span>
                     </div>
+                    <span className="text-gray-500">Avg: <strong className="text-gray-900">{analytics.orders.quote > 0 ? formatCurrency(analytics.sales.quote / analytics.orders.quote) : '₹0'}</strong></span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Premium Chart Section */}
-            <div className="px-6 pb-4">
+            {/* Chart */}
+            <div className="bg-gray-50/40 rounded-none p-4 border border-gray-200 mb-6">
               {userSalesData[0].value > 0 || userSalesData[1].value > 0 ? (
-                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-4 border border-gray-200 shadow-inner">
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={userSalesData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        fill="#8884d8"
-                        paddingAngle={8}
-                        dataKey="value"
-                        label={(entry) => {
-                          const total = analytics.sales.direct + analytics.sales.quote;
-                          const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
-                          return `${percent}%`;
-                        }}
-                        labelLine={{ stroke: '#64748b', strokeWidth: 2 }}
-                      >
-                        {userSalesData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={USER_COLORS[index]} stroke="#fff" strokeWidth={3} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                          borderRadius: '12px',
-                          border: '2px solid #3b82f6',
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-                          padding: '12px'
-                        }}
-                        labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
-                      />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={40}
-                        iconType="circle"
-                        wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={userSalesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      fill="#8884d8"
+                      paddingAngle={6}
+                      dataKey="value"
+                      label={(entry) => {
+                        const total = analytics.sales.direct + analytics.sales.quote;
+                        const percent = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0.0';
+                        return `${percent}%`;
+                      }}
+                      labelLine={{ stroke: '#64748b', strokeWidth: 1.5 }}
+                    >
+                      {userSalesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={USER_COLORS[index]} stroke="#fff" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        borderRadius: '0px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        padding: '8px 12px'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="rect"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               ) : (
-                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-8 border border-gray-200 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="p-4 bg-gray-200 rounded-full inline-flex mb-3">
-                      <ShoppingCart className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <p className="text-gray-600 font-semibold">No user sales data yet</p>
-                    <p className="text-gray-500 text-sm mt-1">Data will appear when orders are placed</p>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <ShoppingCart className="w-8 h-8 text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-500 font-medium">No sales data available yet</p>
                 </div>
               )}
             </div>
 
-            {/* Premium Summary Footer */}
-            <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50 border-t-2 border-blue-200">
+            {/* Summary Footer */}
+            <div className="border-t border-gray-100 pt-6 mt-6">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-blue-500 hover:scale-105 transition-transform">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Sales</p>
-                    <DollarSign className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <p className="text-3xl font-black text-blue-600">{formatCurrency(analytics.sales.byUserType.user)}</p>
-                  <p className="text-xs text-gray-600 mt-1">Revenue generated</p>
+                <div className="bg-white rounded-none p-4 shadow-sm border border-gray-200 border-l-4 border-l-blue-500 hover:scale-[1.01] transition-transform">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total Sales</p>
+                  <p className="text-lg font-black text-gray-900">{formatCurrency(analytics.sales.byUserType.user)}</p>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">User Segment</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-indigo-500 hover:scale-105 transition-transform">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Orders</p>
-                    <Package className="w-4 h-4 text-indigo-500" />
-                  </div>
-                  <p className="text-3xl font-black text-gray-800">{formatNumber(analytics.orders.byUserType.user)}</p>
-                  <p className="text-xs text-gray-600 mt-1">Completed transactions</p>
+                <div className="bg-white rounded-none p-4 shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 hover:scale-[1.01] transition-transform">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total Orders</p>
+                  <p className="text-lg font-black text-gray-900">{formatNumber(analytics.orders.byUserType.user)}</p>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">B2C Grid</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl p-4 border border-blue-300 shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <Info className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-blue-700 font-semibold">Sales Insight</p>
-                      <p className="text-xs text-blue-600">Direct purchase & quote acceptance</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-blue-700 font-semibold mb-0.5">Average Order Value</p>
-                    <p className="text-xl font-black text-blue-900">
-                      {analytics.orders.byUserType.user > 0
-                        ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
-                        : formatCurrency(0)
-                      }
-                    </p>
-                  </div>
-                </div>
+              <div className="bg-gray-50/70 border border-gray-200 rounded-none p-3.5 flex justify-between items-center text-xs">
+                <span className="font-semibold text-gray-700">Average Order Value:</span>
+                <span className="font-bold text-gray-900">
+                  {analytics.orders.byUserType.user > 0
+                    ? formatCurrency(analytics.sales.byUserType.user / analytics.orders.byUserType.user)
+                    : formatCurrency(0)
+                  }
+                </span>
               </div>
             </div>
           </div>
 
           {/* Retailer Sales Distribution */}
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            {/* Premium Header with Gradient */}
-            <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <Store className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Retailer Sales Distribution</h3>
-                  </div>
-                  <p className="text-emerald-100 text-sm font-medium flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" />
-                    Business Partners
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-                    <div className="w-2 h-2 bg-green-900 rounded-full animate-pulse"></div>
-                    LIVE
-                  </div>
-                  <div className="text-white/80 text-xs">Real-time data</div>
-                </div>
+          <div className="bg-white border border-gray-200 rounded-none shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] p-6">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                  <Store className="w-4 h-4 text-emerald-600" />
+                  Retailer Sales Distribution
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">B2B Channel Partners Analytics</p>
               </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100/30 rounded-none">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                LIVE
+              </span>
             </div>
 
-            {/* Premium Quote Sales Section */}
-            <div className="p-6">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-xl"></div>
-                <div className="relative bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all">
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-4">
-                      <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl">
-                        <FileText className="w-8 h-8 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-2">
-                          Quote Sales Only
-                          <span className="px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded-full text-xs">100%</span>
-                        </p>
-                        <p className="text-xs text-emerald-600 mt-1">Exclusive quotation-based purchasing</p>
-                      </div>
+            {/* Sales Type Breakdown */}
+            <div className="space-y-4 mb-6">
+              {/* Quote Sales Only Panel */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-none p-5 shadow-sm hover:shadow-md transition-all duration-300 border-t-2 border-t-emerald-500">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-600 text-white rounded-none">
+                      <FileText className="w-5 h-5" />
                     </div>
-                    <BarChart3 className="w-6 h-6 text-emerald-500" />
-                  </div>
-
-                  <div className="space-y-4">
                     <div>
-                      <p className="text-5xl font-black text-emerald-900 mb-2">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-emerald-200 px-3 py-1.5 rounded-lg">
-                          <CheckCircle className="w-4 h-4 text-emerald-700" />
-                          <span className="text-sm font-bold text-emerald-900">
-                            {analytics.orders.byUserType.retailer} {analytics.orders.byUserType.retailer === 1 ? 'quote order' : 'quote orders'}
-                          </span>
-                        </div>
-                      </div>
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Quote Sales Only</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Exclusive quotation-based purchasing</p>
                     </div>
-
-                    <div className="pt-4 border-t-2 border-emerald-300 bg-white/50 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-emerald-100 rounded-lg">
-                          <Shield className="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-emerald-900 uppercase mb-1">Business Model</p>
-                          <p className="text-sm text-emerald-700 font-medium">Retailers can only purchase through quotes</p>
-                          <p className="text-xs text-emerald-600 mt-1">Ensures custom pricing & bulk negotiations</p>
-                        </div>
-                      </div>
+                  </div>
+                  <BarChart3 className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-3xl font-black text-gray-900">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                  <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-200/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 text-[10px]">
+                        {analytics.orders.byUserType.retailer}
+                      </span>
+                      <span className="text-gray-500 font-medium">{analytics.orders.byUserType.retailer === 1 ? 'quote order' : 'quote orders'}</span>
                     </div>
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 border border-emerald-100">B2B Core Model</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Premium Chart Section */}
-            <div className="px-6 pb-4">
+            {/* Chart */}
+            <div className="bg-gray-50/40 rounded-none p-4 border border-gray-200 mb-6">
               {retailerSalesData[0].value > 0 ? (
-                <div className="bg-gradient-to-br from-gray-50 to-emerald-50 rounded-2xl p-4 border border-gray-200 shadow-inner">
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={retailerSalesData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        fill="#10B981"
-                        paddingAngle={0}
-                        dataKey="value"
-                        label={() => '100%'}
-                        labelLine={{ stroke: '#10b981', strokeWidth: 2 }}
-                      >
-                        {retailerSalesData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} stroke="#fff" strokeWidth={3} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                          borderRadius: '12px',
-                          border: '2px solid #10b981',
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-                          padding: '12px'
-                        }}
-                        labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
-                      />
-                      <Legend
-                        verticalAlign="bottom"
-                        height={40}
-                        iconType="circle"
-                        wrapperStyle={{ paddingTop: '16px', fontWeight: '600' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={retailerSalesData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={75}
+                      fill="#10B981"
+                      paddingAngle={0}
+                      dataKey="value"
+                      label={() => '100%'}
+                      labelLine={{ stroke: '#10b981', strokeWidth: 1.5 }}
+                    >
+                      {retailerSalesData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={RETAILER_COLORS[index]} stroke="#fff" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                        borderRadius: '0px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        padding: '8px 12px'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="rect"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               ) : (
-                <div className="bg-gradient-to-br from-gray-50 to-emerald-50 rounded-2xl p-8 border border-gray-200 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="p-4 bg-gray-200 rounded-full inline-flex mb-3">
-                      <Store className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <p className="text-gray-600 font-semibold">No retailer sales data yet</p>
-                    <p className="text-gray-500 text-sm mt-1">Data will appear when quotes are approved</p>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Store className="w-8 h-8 text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-500 font-medium">No B2B sales data available yet</p>
                 </div>
               )}
             </div>
 
-            {/* Premium Summary Footer */}
-            <div className="p-6 bg-gradient-to-br from-slate-50 to-emerald-50 border-t-2 border-emerald-200">
+            {/* Summary Footer */}
+            <div className="border-t border-gray-100 pt-6 mt-6">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-emerald-500 hover:scale-105 transition-transform">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Sales</p>
-                    <DollarSign className="w-4 h-4 text-emerald-500" />
-                  </div>
-                  <p className="text-3xl font-black text-emerald-600">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
-                  <p className="text-xs text-gray-600 mt-1">B2B revenue generated</p>
+                <div className="bg-white rounded-none p-4 shadow-sm border border-gray-200 border-l-4 border-l-emerald-500 hover:scale-[1.01] transition-transform">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total Sales</p>
+                  <p className="text-lg font-black text-gray-900">{formatCurrency(analytics.sales.byUserType.retailer)}</p>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Retailer Segment</p>
                 </div>
-                <div className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-teal-500 hover:scale-105 transition-transform">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Orders</p>
-                    <Package className="w-4 h-4 text-teal-500" />
-                  </div>
-                  <p className="text-3xl font-black text-gray-800">{formatNumber(analytics.orders.byUserType.retailer)}</p>
-                  <p className="text-xs text-gray-600 mt-1">Quote-based orders</p>
+                <div className="bg-white rounded-none p-4 shadow-sm border border-gray-200 border-l-4 border-l-teal-500 hover:scale-[1.01] transition-transform">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total Orders</p>
+                  <p className="text-lg font-black text-gray-900">{formatNumber(analytics.orders.byUserType.retailer)}</p>
+                  <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">B2B Grid</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-r from-emerald-100 to-teal-100 rounded-xl p-4 border border-emerald-300 shadow-md">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <Info className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-emerald-700 font-semibold">Sales Insight</p>
-                      <p className="text-xs text-emerald-600">All sales through quote system</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-emerald-700 font-semibold mb-0.5">Average Order Value</p>
-                    <p className="text-xl font-black text-emerald-900">
-                      {analytics.orders.byUserType.retailer > 0
-                        ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
-                        : formatCurrency(0)
-                      }
-                    </p>
-                  </div>
-                </div>
+              <div className="bg-gray-50/70 border border-gray-200 rounded-none p-3.5 flex justify-between items-center text-xs">
+                <span className="font-semibold text-gray-700">Average Quote Value:</span>
+                <span className="font-bold text-gray-900">
+                  {analytics.orders.byUserType.retailer > 0
+                    ? formatCurrency(analytics.sales.byUserType.retailer / analytics.orders.byUserType.retailer)
+                    : formatCurrency(0)
+                  }
+                </span>
               </div>
             </div>
           </div>
-
         </div>
 
         {/* Recent Activity Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Orders */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-800">Recent Orders</h3>
-              <button onClick={() => setActiveTab('orders')} className="text-blue-600 text-sm hover:underline">View All</button>
+          <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Recent Orders</h3>
+              <button
+                onClick={() => setActiveTab('orders')}
+                className="text-xs font-bold text-gray-900 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
+              >
+                <span>View All</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px] border-b border-slate-950">
                   <tr>
-                    <th className="px-6 py-3">Order ID</th>
-                    <th className="px-6 py-3">Customer</th>
-                    <th className="px-6 py-3">Amount</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider">Order ID</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider">Customer</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider text-right">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 font-medium text-gray-600">
                   {recentOrders.map((order) => (
                     <tr key={order._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">#{order._id.slice(-6)}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-gray-900">#{order._id.slice(-6).toUpperCase()}</td>
                       <td className="px-6 py-4">{order.user?.name || order.userId?.name || 'Unknown'}</td>
-                      <td className="px-6 py-4">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-gray-900">{formatCurrency(order.totalAmount)}</td>
                     </tr>
                   ))}
                   {recentOrders.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500">No recent orders found</td>
+                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500 font-medium">No recent orders found</td>
                     </tr>
                   )}
                 </tbody>
@@ -1879,43 +1787,50 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Recent Quotes */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-800">Recent Quotes</h3>
-              <button onClick={() => setActiveTab('quotes')} className="text-blue-600 text-sm hover:underline">View All</button>
+          <div className="bg-white rounded-none border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Recent Quotes</h3>
+              <button
+                onClick={() => setActiveTab('quotes')}
+                className="text-xs font-bold text-gray-900 hover:text-indigo-600 transition-colors uppercase tracking-wider flex items-center gap-1"
+              >
+                <span>View All</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-medium">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px] border-b border-slate-950">
                   <tr>
-                    <th className="px-6 py-3">Customer</th>
-                    <th className="px-6 py-3">Items</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3">Date</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider">Customer</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider">Items</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider">Status</th>
+                    <th className="px-6 py-3.5 font-bold tracking-wider text-right">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 font-medium text-gray-600">
                   {recentQuotes.map((quote) => (
                     <tr key={quote._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">{quote.user?.name || 'Unknown'}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">{quote.user?.name || 'Unknown'}</td>
                       <td className="px-6 py-4">{quote.products?.length || 0} items</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${quote.status === 'accepted' ? 'bg-green-100 text-green-700' :
-                          quote.status === 'responded' ? 'bg-blue-100 text-blue-700' :
-                            quote.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                              'bg-yellow-100 text-yellow-700'
-                          }`}>
+                        <span className={`inline-flex px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border rounded-none ${
+                          quote.status === 'accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          quote.status === 'responded' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          quote.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
                           {quote.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {new Date(quote.createdAt || '').toLocaleDateString()}
+                      <td className="px-6 py-4 text-right text-gray-500">
+                        {new Date(quote.createdAt || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </td>
                     </tr>
                   ))}
                   {recentQuotes.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No recent quotes found</td>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500 font-medium">No recent quotes found</td>
                     </tr>
                   )}
                 </tbody>
@@ -1925,43 +1840,43 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {/* System Data Export Section */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-              <Download className="w-6 h-6" />
+        <div className="bg-white p-6 border border-gray-200 rounded-none shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+            <div className="p-2.5 bg-gray-50 border border-gray-100 text-gray-700 rounded-none">
+              <Download className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-800">System Data Export</h3>
-              <p className="text-sm text-gray-500">Export comprehensive reports for all system data (Supports up to 100MB)</p>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">System Data Export</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Generate and download comprehensive analytical reports</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100 items-center">
+          <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 border border-gray-200 rounded-none items-center">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Filter by Date Range:</span>
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="date"
                 value={exportStartDate}
                 onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3.5 py-1.5 bg-white border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
-              <span className="text-gray-400">-</span>
+              <span className="text-gray-400 font-semibold">-</span>
               <input
                 type="date"
                 value={exportEndDate}
                 onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3.5 py-1.5 bg-white border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
               />
             </div>
             {(exportStartDate || exportEndDate) && (
               <button
                 onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                className="text-sm text-red-600 hover:text-red-800 underline"
+                className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider hover:underline"
               >
-                Clear Filter
+                Clear Range
               </button>
             )}
           </div>
@@ -1977,29 +1892,29 @@ const AdminDashboard: React.FC = () => {
               { label: 'Sales Report', entity: 'sales-report', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
               { label: 'Product Units', entity: 'product-units', icon: CheckCircle, color: 'text-orange-600', bg: 'bg-orange-50' },
             ].map((item) => (
-              <div key={item.entity} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors group">
+              <div key={item.entity} className="border border-gray-200 rounded-none p-4 hover:bg-gray-50 transition-colors group flex flex-col justify-between">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-2 rounded-lg ${item.bg}`}>
-                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                  <div className={`p-2 rounded-none border border-gray-100 ${item.bg}`}>
+                    <item.icon className={`w-4 h-4 ${item.color}`} />
                   </div>
-                  <span className="font-medium text-gray-700">{item.label}</span>
+                  <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">{item.label}</span>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleServerExport(item.entity, 'pdf')}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                    className="flex-1 py-1.5 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors uppercase tracking-wider"
                   >
                     PDF
                   </button>
                   <button
                     onClick={() => handleServerExport(item.entity, 'csv')}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                    className="flex-1 py-1.5 text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors uppercase tracking-wider"
                   >
                     CSV
                   </button>
                   <button
                     onClick={() => handleServerExport(item.entity, 'excel')}
-                    className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                    className="flex-1 py-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors uppercase tracking-wider"
                   >
                     Excel
                   </button>
@@ -2109,71 +2024,68 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Product Management</h2>
-              <p className="text-indigo-100 max-w-2xl">
-                Manage your entire product catalog efficiently. Add new products, update inventory, set pricing, and configure warranty options.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/admin/add-product')}
-              className="bg-white text-indigo-600 px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-indigo-50 transition-colors font-semibold shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Add New Product
-            </button>
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex flex-col md:flex-row gap-4 md:items-center md:justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">
+              Add new products, update inventory stock, set price levels, and configure warranty options.
+            </p>
           </div>
+          <button
+            onClick={() => navigate('/admin/add-product')}
+            className="bg-white text-gray-900 px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors flex items-center gap-2 rounded-none border border-white"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Product
+          </button>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white p-5 border-t-2 border-t-indigo-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Total Products</p>
-              <Package className="w-5 h-5 text-indigo-500" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Products</p>
+              <Package className="w-4 h-4 text-indigo-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{products.length}</p>
-            <p className="text-xs text-gray-500 mt-1">Active in catalog</p>
+            <p className="text-2xl font-black text-gray-900">{products.length}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Active items</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 border-t-2 border-t-emerald-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Total Stock</p>
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Stock</p>
+              <CheckCircle className="w-4 h-4 text-green-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{totalStock.toLocaleString()}</p>
-            <p className="text-xs text-gray-500 mt-1">Units available</p>
+            <p className="text-2xl font-black text-gray-900">{totalStock.toLocaleString()}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Units available</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 border-t-2 border-t-orange-500 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Low Stock</p>
-              <AlertCircle className="w-5 h-5 text-orange-500" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Low Stock</p>
+              <AlertCircle className="w-4 h-4 text-orange-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{lowStockCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Need restock</p>
+            <p className="text-2xl font-black text-orange-600">{lowStockCount}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Needs Restock</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 border-t-2 border-t-red-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Out of Stock</p>
-              <Package className="w-5 h-5 text-red-500" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Out of Stock</p>
+              <Package className="w-4 h-4 text-red-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{outOfStockCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Unavailable</p>
+            <p className="text-2xl font-black text-red-600">{outOfStockCount}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Unavailable</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 border-t-2 border-t-blue-500 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-600">Quote Required</p>
-              <FileText className="w-5 h-5 text-blue-500" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quote Required</p>
+              <FileText className="w-4 h-4 text-blue-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{quoteOnlyCount}</p>
-            <p className="text-xs text-gray-500 mt-1">Custom pricing</p>
+            <p className="text-2xl font-black text-blue-600">{quoteOnlyCount}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Custom pricing</p>
           </div>
         </div>
 
         {/* Filters and Controls */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
-          <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
+        <div className="bg-white p-5 border border-gray-200 rounded-none shadow-sm space-y-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <div className="flex flex-wrap items-center gap-3 flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -2182,21 +2094,21 @@ const AdminDashboard: React.FC = () => {
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
                   placeholder="Search products..."
-                  className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                  className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all w-64"
                 />
               </div>
 
               <select
                 value={productSortBy}
                 onChange={(e) => setProductSortBy(e.target.value as any)}
-                className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
                 title="Sort by"
               >
-                <option value="recent">Sort: Most recent</option>
-                <option value="name">Sort: Name (A-Z)</option>
-                <option value="priceAsc">Sort: Price (low → high)</option>
-                <option value="priceDesc">Sort: Price (high → low)</option>
-                <option value="stock">Sort: Stock (high → low)</option>
+                <option value="recent">Sort by: Recent</option>
+                <option value="name">Sort by: Name</option>
+                <option value="priceAsc">Sort by: Price Asc</option>
+                <option value="priceDesc">Sort by: Price Desc</option>
+                <option value="stock">Sort by: Stock</option>
               </select>
 
               {(productSearch || productFilterCategory !== 'all' || productFilterStatus !== 'all') && (
@@ -2206,7 +2118,7 @@ const AdminDashboard: React.FC = () => {
                     setProductFilterCategory('all');
                     setProductFilterStatus('all');
                   }}
-                  className="px-3 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider hover:underline"
                 >
                   Clear filters
                 </button>
@@ -2214,21 +2126,21 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <div className="flex bg-gray-100 rounded-none p-0.5">
                 <button
                   onClick={() => setProductViewMode('table')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${productViewMode === 'table'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                  className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors rounded-none ${productViewMode === 'table'
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-500 hover:text-gray-900'
                     }`}
                 >
                   Table
                 </button>
                 <button
                   onClick={() => setProductViewMode('grid')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${productViewMode === 'grid'
-                    ? 'bg-white text-indigo-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                  className={`px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors rounded-none ${productViewMode === 'grid'
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-500 hover:text-gray-900'
                     }`}
                 >
                   Grid
@@ -2237,17 +2149,17 @@ const AdminDashboard: React.FC = () => {
 
               <button
                 onClick={() => navigate('/admin/home-page-products')}
-                className="px-4 py-2.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors flex items-center gap-2 font-medium"
+                className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-none hover:bg-amber-100 transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
               >
-                <Star className="w-4 h-4" />
+                <Star className="w-3.5 h-3.5" />
                 Featured
               </button>
             </div>
           </div>
 
           {/* Category chips */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold mr-1">Category</span>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-2">Category:</span>
             {['all', ...uniqueCategories].map((cat) => {
               const active = productFilterCategory === cat;
               return (
@@ -2255,10 +2167,10 @@ const AdminDashboard: React.FC = () => {
                   key={cat}
                   type="button"
                   onClick={() => setProductFilterCategory(cat)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border rounded-none transition-colors ${
                     active
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-700'
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {cat === 'all' ? 'All' : cat}
@@ -2268,8 +2180,8 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Status chips */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold mr-1">Status</span>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-2">Status:</span>
             {[
               { v: 'all', label: 'All' },
               { v: 'in_stock', label: 'In stock' },
@@ -2284,10 +2196,10 @@ const AdminDashboard: React.FC = () => {
                   key={v}
                   type="button"
                   onClick={() => setProductFilterStatus(v)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border rounded-none transition-colors ${
                     active
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:text-indigo-700'
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {label}
@@ -2299,193 +2211,185 @@ const AdminDashboard: React.FC = () => {
 
         {/* Bulk action bar */}
         {selectedProductIds.length > 0 && (
-          <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
-            <div className="text-sm text-indigo-900 font-medium">
+          <div className="bg-red-50 border border-red-200 rounded-none px-4 py-3 flex items-center justify-between">
+            <div className="text-xs font-bold text-red-900 uppercase tracking-wider">
               {selectedProductIds.length} product{selectedProductIds.length === 1 ? '' : 's'} selected
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={clearSelection}
-                className="px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-100 rounded-lg"
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-100 rounded-none"
               >
-                Clear
+                Clear Selection
               </button>
               <button
                 type="button"
                 onClick={() => setBulkDeleteOpen(true)}
                 disabled={bulkDeleting}
-                className="px-3 py-1.5 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-1.5 disabled:opacity-60"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-none flex items-center gap-1.5 disabled:opacity-60"
               >
-                <Trash2 className="w-4 h-4" /> Delete selected
+                <Trash2 className="w-3.5 h-3.5" /> Delete Selected
               </button>
             </div>
           </div>
         )}
 
         {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-5 rounded-none border border-gray-200 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Export Filters:</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={exportStartDate}
+                  onChange={(e) => setExportStartDate(e.target.value)}
+                  className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
+                />
+                <span className="text-gray-400 font-semibold">-</span>
+                <input
+                  type="date"
+                  value={exportEndDate}
+                  onChange={(e) => setExportEndDate(e.target.value)}
+                  className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
+                />
+              </div>
               {(exportStartDate || exportEndDate) && (
                 <button
                   onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider hover:underline"
                 >
-                  Clear
+                  Clear Range
                 </button>
               )}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleServerExport('products', 'pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 uppercase tracking-wider"
               >
-                <Download size={14} /> PDF
+                <Download size={13} /> PDF
               </button>
               <button
                 onClick={() => handleServerExport('products', 'csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 uppercase tracking-wider"
               >
-                <Download size={14} /> CSV
+                <Download size={13} /> CSV
               </button>
               <button
                 onClick={() => handleServerExport('products', 'excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 uppercase tracking-wider"
               >
-                <Download size={14} /> Excel
+                <Download size={13} /> Excel
               </button>
             </div>
           </div>
         </div>
 
         {/* Export Options */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <Download className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Export Product Catalog</h3>
-                <p className="text-sm text-gray-600">Download complete product list with pricing and stock info</p>
-              </div>
+        <div className="bg-gray-50 border border-gray-200 p-5 rounded-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-900 text-white p-2.5 rounded-none">
+              <Download className="w-5 h-5" />
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleExportProducts('pdf')}
-                disabled={loading || products.length === 0}
-                className="bg-white text-blue-700 px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as PDF
-              </button>
-              <button
-                onClick={() => handleExportProducts('excel')}
-                disabled={loading || products.length === 0}
-                className="bg-white text-green-700 px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as Excel
-              </button>
-              <button
-                onClick={() => handleExportProducts('csv')}
-                disabled={loading || products.length === 0}
-                className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as CSV
-              </button>
+            <div>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Export Product Catalog</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Download the complete product list with pricing and stock details</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleExportProducts('pdf')}
+              disabled={loading || products.length === 0}
+              className="bg-white text-blue-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-blue-200 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> PDF
+            </button>
+            <button
+              onClick={() => handleExportProducts('excel')}
+              disabled={loading || products.length === 0}
+              className="bg-white text-green-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-green-200 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> Excel
+            </button>
+            <button
+              onClick={() => handleExportProducts('csv')}
+              disabled={loading || products.length === 0}
+              className="bg-white text-purple-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-purple-200 hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
           </div>
         </div>
 
         {/* Product Units Export */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-600 p-2 rounded-lg">
-                <Package className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Export Product Units & Serial Numbers</h3>
-                <p className="text-sm text-gray-600">Download detailed inventory with all serial numbers and model info</p>
-              </div>
+        <div className="bg-gray-50 border border-gray-200 p-5 rounded-none flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-slate-900 text-white p-2.5 rounded-none">
+              <Package className="w-5 h-5" />
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleExportProductUnits('pdf')}
-                disabled={loading}
-                className="bg-white text-blue-700 px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as PDF
-              </button>
-              <button
-                onClick={() => handleExportProductUnits('excel')}
-                disabled={loading}
-                className="bg-white text-green-700 px-4 py-2 rounded-lg border border-green-200 hover:bg-green-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as Excel
-              </button>
-              <button
-                onClick={() => handleExportProductUnits('csv')}
-                disabled={loading}
-                className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 flex items-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-4 h-4" />
-                Export as CSV
-              </button>
+            <div>
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Export Product Units & Serial Numbers</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Download detailed inventory lists with matching serial numbers and models</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleExportProductUnits('pdf')}
+              disabled={loading}
+              className="bg-white text-blue-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-blue-200 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> PDF
+            </button>
+            <button
+              onClick={() => handleExportProductUnits('excel')}
+              disabled={loading}
+              className="bg-white text-green-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-green-200 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> Excel
+            </button>
+            <button
+              onClick={() => handleExportProductUnits('csv')}
+              disabled={loading}
+              className="bg-white text-purple-700 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-purple-200 hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
           </div>
         </div>
 
         {showProductForm && (
-          <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white p-6 border border-gray-200 rounded-none shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)]">
+            <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
               <div>
-                <h3 className="text-xl font-semibold">
+                <h3 className="text-base font-bold text-gray-900 uppercase tracking-wider">
                   {editingProduct ? 'Edit Product' : 'Create New Product'}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-400 mt-0.5">
                   {editingProduct
-                    ? 'Update product details and pricing.'
-                    : `Add up to ${MAX_PRODUCT_IMAGES} images, serial numbers, and pricing.`}
+                    ? 'Update product details and pricing tiers.'
+                    : `Add up to ${MAX_PRODUCT_IMAGES} images, serial numbers, and B2C/B2B pricing.`}
                 </p>
               </div>
-              <Sparkles className="text-indigo-600" />
+              <Sparkles className="text-indigo-600 w-5 h-5" />
             </div>
             <form onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Product Name *</label>
                   <input
                     type="text"
                     value={productForm.name}
                     onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
                     placeholder="Enter product name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
                   <CategoryInput
                     value={productForm.category}
                     onChange={(value) => setProductForm({ ...productForm, category: value })}
@@ -2493,38 +2397,38 @@ const AdminDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Normal Price (₹)</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Normal Price (₹)</label>
                   <input
                     type="number"
                     value={productForm.normalPrice}
                     onChange={(e) => setProductForm({ ...productForm, normalPrice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
                     placeholder="Enter price"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Retailer Price (₹)</label>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Retailer Price (₹)</label>
                   <input
                     type="number"
                     value={productForm.retailerPrice}
                     onChange={(e) => setProductForm({ ...productForm, retailerPrice: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
                     placeholder="Enter price"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
                 <textarea
                   value={productForm.description}
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all resize-none"
                   placeholder="Enter product description"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Images *</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Product Images *</label>
                 <input
                   type="file"
                   multiple
@@ -2546,12 +2450,12 @@ const AdminDashboard: React.FC = () => {
                     });
                     e.target.value = '';
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none"
                 />
                 <div className="flex flex-wrap gap-2 mt-3">
                   {productForm.images.map((img, idx) => (
-                    <div key={idx} className="relative">
-                      <img src={img} alt={`preview-${idx}`} className="w-20 h-20 rounded object-cover" />
+                    <div key={idx} className="relative border border-gray-200 p-1">
+                      <img src={img} alt={`preview-${idx}`} className="w-16 h-16 object-cover rounded-none" />
                       <button
                         type="button"
                         onClick={() => {
@@ -2560,16 +2464,16 @@ const AdminDashboard: React.FC = () => {
                             images: prev.images.filter((_, i) => i !== idx)
                           }));
                         }}
-                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 -mt-2 -mr-2"
+                        className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 transition-colors shadow"
                       >
-                        <X size={12} />
+                        <X size={10} />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                   Recommended Products
                 </label>
                 <ProductSelector
@@ -2580,11 +2484,11 @@ const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Warranty Configuration */}
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Warranty Options</h3>
+              <div className="border-t border-gray-150 pt-4">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">Warranty Options</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                       Standard Warranty (months) *
                     </label>
                     <input
@@ -2592,28 +2496,28 @@ const AdminDashboard: React.FC = () => {
                       min="0"
                       value={productForm.warrantyPeriodMonths}
                       onChange={(e) => setProductForm({ ...productForm, warrantyPeriodMonths: parseInt(e.target.value) || 12 })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
                       placeholder="12"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Free warranty period (default: 12 months)</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Free warranty period (default: 12 months)</p>
                   </div>
-                  <div>
-                    <label className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-2 cursor-pointer mt-4">
                       <input
                         type="checkbox"
                         checked={productForm.extendedWarrantyAvailable}
                         onChange={(e) => setProductForm({ ...productForm, extendedWarrantyAvailable: e.target.checked })}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        className="w-4 h-4 text-gray-900 border-gray-300 rounded-none focus:ring-0"
                       />
-                      <span className="text-sm font-medium text-gray-700">Offer Extended Warranty</span>
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Offer Extended Warranty</span>
                     </label>
                   </div>
                 </div>
 
                 {productForm.extendedWarrantyAvailable && (
-                  <div className="grid md:grid-cols-2 gap-4 mt-3">
+                  <div className="grid md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-100">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                         Extended Warranty (months) *
                       </label>
                       <input
@@ -2621,13 +2525,13 @@ const AdminDashboard: React.FC = () => {
                         min="0"
                         value={productForm.extendedWarrantyMonths}
                         onChange={(e) => setProductForm({ ...productForm, extendedWarrantyMonths: parseInt(e.target.value) || 24 })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs focus:outline-none"
                         placeholder="24"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Extended warranty period (default: 24 months)</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Extended warranty period (default: 24 months)</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                         Extended Warranty Price (₹) *
                       </label>
                       <input
@@ -2636,31 +2540,31 @@ const AdminDashboard: React.FC = () => {
                         step="0.01"
                         value={productForm.extendedWarrantyPrice}
                         onChange={(e) => setProductForm({ ...productForm, extendedWarrantyPrice: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter additional price"
+                        className="w-full px-3.5 py-2.5 bg-gray-50/50 border border-gray-200 rounded-none text-xs focus:outline-none"
+                        placeholder="Enter price"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Additional cost for extended warranty</p>
+                      <p className="text-[10px] text-gray-400 mt-1">Additional cost for extended warranty</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-2">
                 <input
                   type="checkbox"
                   id="isRecommended"
                   checked={productForm.isRecommended}
                   onChange={(e) => setProductForm({ ...productForm, isRecommended: e.target.checked })}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  className="w-4 h-4 text-gray-900 border-gray-300 rounded-none focus:ring-0"
                 />
-                <label htmlFor="isRecommended" className="text-sm font-medium text-gray-700 cursor-pointer">
+                <label htmlFor="isRecommended" className="text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer">
                   Mark as Recommended Product
                 </label>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-3 border-t border-gray-100">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-medium"
+                  className="flex-1 bg-gray-900 text-white py-3 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors rounded-none"
                 >
                   {editingProduct ? 'Update Product' : 'Create Product'}
                 </button>
@@ -2672,7 +2576,7 @@ const AdminDashboard: React.FC = () => {
                     setProductForm(getFreshProductFormState());
                     setProductUnitsForm([]);
                   }}
-                  className="flex-1 bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 font-medium"
+                  className="flex-1 bg-gray-100 text-gray-700 py-3 text-xs font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors rounded-none"
                 >
                   Cancel
                 </button>
@@ -2682,52 +2586,40 @@ const AdminDashboard: React.FC = () => {
         )}
 
         {/* Products List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px] border-b border-slate-950">
                 <tr>
-                  <th className="px-4 py-3 text-left">
+                  <th className="px-4 py-3.5 text-left">
                     <input
                       type="checkbox"
                       checked={allFilteredSelected}
                       onChange={toggleSelectAllFiltered}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      className="w-4 h-4 text-gray-900 border-gray-300 rounded-none focus:ring-0"
                       title="Select all on this view"
                     />
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Product
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Normal Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Retailer Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Stock
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Product</th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Category</th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Normal Price</th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Retailer Price</th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Stock</th>
+                  <th className="px-6 py-3.5 text-left font-bold tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100 font-medium text-gray-600">
                 {filteredProducts.map((product) => {
                   const thumbnail = product.images?.[0] || product.imageUrl;
                   const isSelected = selectedProductIds.includes(product._id);
                   return (
-                    <tr key={product._id} className={`hover:bg-gray-50 ${isSelected ? 'bg-indigo-50/40' : ''}`}>
+                    <tr key={product._id} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50/20' : ''}`}>
                       <td className="px-4 py-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleProductSelected(product._id)}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          className="w-4 h-4 text-gray-900 border-gray-300 rounded-none focus:ring-0"
                         />
                       </td>
                       <td className="px-6 py-4">
@@ -2736,19 +2628,19 @@ const AdminDashboard: React.FC = () => {
                             <img
                               src={thumbnail}
                               alt={product.name}
-                              className="w-12 h-12 rounded object-cover mr-3"
+                              className="w-10 h-10 object-cover border border-gray-200 mr-3 rounded-none"
                             />
                           )}
                           <div>
-                            <div className="font-medium text-gray-900">{product.name}</div>
+                            <div className="font-bold text-gray-900">{product.name}</div>
                             <div className="flex gap-2 mt-1">
                               {product.requiresQuote && (
-                                <span className="text-xs text-blue-600 font-medium">
+                                <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">
                                   Quote Required
                                 </span>
                               )}
                               {product.isRecommended && (
-                                <span className="text-xs text-yellow-600 font-medium flex items-center gap-1">
+                                <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider flex items-center gap-1">
                                   <Sparkles className="w-3 h-3" />
                                   Recommended
                                 </span>
@@ -2757,53 +2649,53 @@ const AdminDashboard: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 font-bold text-gray-900">
                         {product.category}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {product.normalPrice ? `₹${product.normalPrice}` : '-'}
+                      <td className="px-6 py-4 text-gray-900 font-semibold">
+                        {product.normalPrice ? `₹${product.normalPrice.toLocaleString()}` : '-'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {product.retailerPrice ? `₹${product.retailerPrice}` : '-'}
+                      <td className="px-6 py-4 text-gray-900 font-semibold">
+                        {product.retailerPrice ? `₹${product.retailerPrice.toLocaleString()}` : '-'}
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${(product.stock || product.stockQuantity || 0) > 10
-                            ? 'bg-green-100 text-green-800'
+                          className={`inline-flex px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border rounded-none ${(product.stock || product.stockQuantity || 0) > 10
+                            ? 'bg-green-50 text-green-700 border-green-200'
                             : (product.stock || product.stockQuantity || 0) > 0
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                         >
                           {product.stock || product.stockQuantity || 0}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex gap-2">
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2.5">
                           <button
                             onClick={() => handleToggleRecommended(product._id, product.isRecommended || false)}
-                            className={`${product.isRecommended ? 'text-yellow-600 hover:text-yellow-800' : 'text-gray-400 hover:text-yellow-600'}`}
+                            className={`${product.isRecommended ? 'text-amber-500 hover:text-amber-700' : 'text-gray-400 hover:text-amber-500'} transition-colors`}
                             title="Toggle Recommended"
                           >
                             <Sparkles className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditProduct(product)}
-                            className="text-indigo-600 hover:text-indigo-800"
+                            className="text-gray-600 hover:text-gray-900 transition-colors"
                             title="Edit Product"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => loadProductUnits(product._id)}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-gray-600 hover:text-gray-900 transition-colors"
                             title="View Units"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product)}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-500 hover:text-red-700 transition-colors"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2884,97 +2776,79 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">User Management</h2>
-              <p className="text-purple-100">Manage user accounts, roles, and permissions efficiently</p>
-            </div>
-            <Users className="w-16 h-16 text-purple-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Manage user accounts, roles, approvals, and B2C/B2B permissions.</p>
           </div>
+          <Users className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{totalUsers}</p>
-              </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <Users className="w-6 h-6 text-indigo-600" />
-              </div>
+          <div className="bg-white p-5 border-t-2 border-t-indigo-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Users</p>
+              <Users className="w-4 h-4 text-indigo-500" />
             </div>
+            <p className="text-2xl font-black text-gray-900">{totalUsers}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Platform members</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Active Users</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{activeUsers}</p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Check className="w-6 h-6 text-green-600" />
-              </div>
+          <div className="bg-white p-5 border-t-2 border-t-green-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Users</p>
+              <Check className="w-4 h-4 text-green-500" />
             </div>
+            <p className="text-2xl font-black text-green-600">{activeUsers}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Authorized access</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending</p>
-                <p className="text-2xl font-bold text-orange-600 mt-1">{pendingUsers}</p>
-              </div>
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
-              </div>
+          <div className="bg-white p-5 border-t-2 border-t-orange-500 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending</p>
+              <AlertCircle className="w-4 h-4 text-orange-500" />
             </div>
+            <p className="text-2xl font-black text-orange-600">{pendingUsers}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Awaiting approval</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Admins</p>
-                <p className="text-2xl font-bold text-purple-600 mt-1">{adminUsers}</p>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <Shield className="w-6 h-6 text-purple-600" />
-              </div>
+          <div className="bg-white p-5 border-t-2 border-t-purple-600 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admins</p>
+              <Shield className="w-4 h-4 text-purple-500" />
             </div>
+            <p className="text-2xl font-black text-purple-600">{adminUsers}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">System managers</p>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Retailers</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">{retailerUsers}</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Store className="w-6 h-6 text-blue-600" />
-              </div>
+          <div className="bg-white p-5 border-t-2 border-t-blue-500 border-x border-b border-gray-200 shadow-sm rounded-none hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Retailers</p>
+              <Store className="w-4 h-4 text-blue-500" />
             </div>
+            <p className="text-2xl font-black text-blue-600">{retailerUsers}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">B2B Partners</p>
           </div>
         </div>
 
         {/* Advanced Filters */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-5 border border-gray-200 rounded-none shadow-sm space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-gray-400" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search by name or email..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent w-64"
+                className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all w-64"
               />
             </div>
 
             <select
               value={userFilterRole}
               onChange={(e) => setUserFilterRole(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
@@ -2985,7 +2859,7 @@ const AdminDashboard: React.FC = () => {
             <select
               value={userFilterStatus}
               onChange={(e) => setUserFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400 focus:bg-white transition-all"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -2999,31 +2873,28 @@ const AdminDashboard: React.FC = () => {
                   setUserFilterRole('all');
                   setUserFilterStatus('all');
                 }}
-                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                className="text-xs font-bold text-red-600 hover:text-red-800 uppercase tracking-wider hover:underline"
               >
-                <X className="w-4 h-4" />
                 Clear Filters
               </button>
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('users', 'pdf')}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-2 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors uppercase tracking-wider"
               >
                 PDF
               </button>
               <button
                 onClick={() => handleServerExport('users', 'csv')}
-                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-2 text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors uppercase tracking-wider"
               >
                 CSV
               </button>
               <button
                 onClick={() => handleServerExport('users', 'excel')}
-                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-2 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors uppercase tracking-wider"
               >
                 Excel
               </button>
@@ -3033,35 +2904,35 @@ const AdminDashboard: React.FC = () => {
 
         {/* Results Summary */}
         {hasActiveFilters && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-none p-4 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-blue-800">
             <Info className="w-5 h-5 text-blue-600" />
-            <p className="text-sm text-blue-800">
-              Showing <span className="font-semibold">{filteredUsers.length}</span> of <span className="font-semibold">{totalUsers}</span> users
+            <p>
+              Showing <span className="font-bold">{filteredUsers.length}</span> of <span className="font-bold">{totalUsers}</span> users
             </p>
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[22%] px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     User Details
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[22%] px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[14%] px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[14%] px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[14%] px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Member Since
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <th className="w-[14%] px-6 py-3.5 text-right text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -3079,38 +2950,35 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 ) : (
                   filteredUsers.map((user) => (
-                    <tr key={user._id} className="hover:bg-purple-50 transition-colors group">
+                    <tr key={user._id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-white ${user.role === 'admin' ? 'bg-purple-500' :
-                            user.role === 'retailer' ? 'bg-blue-500' :
-                              'bg-gray-400'
+                          <div className={`w-10 h-10 rounded-none flex items-center justify-center font-bold text-white shadow-sm text-sm ${user.role === 'admin' ? 'bg-purple-600' :
+                            user.role === 'retailer' ? 'bg-blue-600' :
+                              'bg-slate-500'
                             }`}>
                             {user.name?.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{user.name}</p>
-                            <p className="text-xs text-gray-500">ID: {user._id.slice(-8)}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate" title={user.name}>{user.name}</p>
+                            <p className="text-xs text-gray-400 font-mono">ID: {user._id.slice(-8)}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-900">{user.email}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-600 truncate" title={user.email}>{user.email}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {user.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
-                          {user.role === 'retailer' && <Store className="w-4 h-4 text-blue-600" />}
-                          {user.role === 'user' && <Users className="w-4 h-4 text-gray-600" />}
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
-                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider ${user.role === 'admin'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
                               : user.role === 'retailer'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-gray-50 text-gray-700 border border-gray-200'
                               }`}
                           >
                             {user.role.toUpperCase()}
@@ -3119,26 +2987,20 @@ const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         {user.role === 'retailer' && !user.isApproved ? (
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-orange-500" />
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
-                              PENDING APPROVAL
-                            </span>
-                          </div>
+                          <span className="px-2.5 py-1 rounded-none text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 uppercase tracking-wider">
+                            PENDING APPROVAL
+                          </span>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <Check className="w-4 h-4 text-green-500" />
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                              ACTIVE
-                            </span>
-                          </div>
+                          <span className="px-2.5 py-1 rounded-none text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
+                            ACTIVE
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-900">
-                            {new Date(user.createdAt).toLocaleDateString('en-US', {
+                          <span className="text-sm text-gray-600">
+                            {new Date(user.createdAt).toLocaleDateString('en-IN', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric'
@@ -3147,59 +3009,53 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1.5">
                           {user.role === 'retailer' && !user.isApproved && (
                             <button
                               onClick={() => handleApproveRetailer(user._id)}
-                              className="text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 flex items-center gap-1.5 px-3 py-2 border border-green-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              className="text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 p-2 rounded-none transition-colors"
                               title="Approve Retailer Access"
                             >
                               <Check className="w-4 h-4" />
-                              <span className="text-xs">Approve</span>
                             </button>
                           )}
                           <button
                             onClick={() => handleView360User(user)}
-                            className="text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 flex items-center gap-1.5 px-3 py-2 border border-indigo-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            className="text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 p-2 rounded-none transition-colors"
                             title="View 360° User Profile"
                           >
                             <Eye className="w-4 h-4" />
-                            <span className="text-xs">360 View</span>
                           </button>
                           <button
                             onClick={() => handleViewUserWarranties(user._id)}
-                            className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 flex items-center gap-1.5 px-3 py-2 border border-purple-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            className="text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 p-2 rounded-none transition-colors"
                             title="View Warranty PDFs"
                           >
                             <FileText className="w-4 h-4" />
-                            <span className="text-xs">Warranty</span>
                           </button>
                           {user.role === 'retailer' && (
                             <button
                               onClick={() => handleViewUserInventory(user._id)}
-                              className="text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 flex items-center gap-1.5 px-3 py-2 border border-teal-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              className="text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 p-2 rounded-none transition-colors"
                               title="View Inventory PDFs"
                             >
                               <Package className="w-4 h-4" />
-                              <span className="text-xs">Inventory</span>
                             </button>
                           )}
                           <button
                             onClick={() => handleChangeUserRole(user._id, user.role)}
-                            className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 px-3 py-2 border border-blue-300 rounded-lg hover:shadow-md transition-all font-medium"
+                            className="text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 p-2 rounded-none transition-colors"
                             title={`Change role from ${user.role} to ${['user', 'retailer', 'admin'][((['user', 'retailer', 'admin'].indexOf(user.role)) + 1) % 3]}`}
                           >
                             <Edit className="w-4 h-4" />
-                            <span className="text-xs">Role</span>
                           </button>
                           {user.role !== 'admin' && (
                             <button
                               onClick={() => handleDeleteUser(user._id)}
-                              className="text-red-700 hover:text-red-900 bg-red-50 hover:bg-red-100 flex items-center gap-1.5 px-3 py-2 border border-red-300 rounded-lg hover:shadow-md transition-all font-medium"
+                              className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 p-2 rounded-none transition-colors"
                               title="Delete User Account"
                             >
                               <Trash2 className="w-4 h-4" />
-                              <span className="text-xs">Delete</span>
                             </button>
                           )}
                         </div>
@@ -3254,69 +3110,66 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Quote Management</h2>
-              <p className="text-blue-100">Manage customer quote requests and provide competitive pricing</p>
-            </div>
-            <FileText className="w-16 h-16 text-blue-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Manage customer quote requests and configure custom business price tiers.</p>
           </div>
+          <FileText className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-orange-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Review</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending Review</p>
                 <p className="text-2xl font-bold text-orange-600 mt-1">{pendingQuotes}</p>
               </div>
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="bg-orange-50 p-2.5 rounded-none border border-orange-200/50">
+                <Clock className="w-5 h-5 text-orange-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-blue-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Responded</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Responded</p>
                 <p className="text-2xl font-bold text-blue-600 mt-1">{respondedQuotes}</p>
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <MessageSquare className="w-6 h-6 text-blue-600" />
+              <div className="bg-blue-50 p-2.5 rounded-none border border-blue-200/50">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Accepted</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Accepted</p>
                 <p className="text-2xl font-bold text-green-600 mt-1">{acceptedQuotes}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="bg-green-50 p-2.5 rounded-none border border-green-200/50">
+                <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Quotes</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Quotes</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{quotes.length}</p>
               </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <FileText className="w-6 h-6 text-indigo-600" />
+              <div className="bg-indigo-50 p-2.5 rounded-none border border-indigo-200/50">
+                <FileText className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Advanced Filters */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-4 rounded-none border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-gray-400" />
@@ -3325,14 +3178,14 @@ const AdminDashboard: React.FC = () => {
                 placeholder="Search by customer name, email, or product..."
                 value={quoteSearch}
                 onChange={(e) => setQuoteSearch(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50 w-80"
               />
             </div>
 
             <select
               value={quoteFilterStatus}
               onChange={(e) => setQuoteFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -3348,7 +3201,7 @@ const AdminDashboard: React.FC = () => {
                 type="date"
                 value={quoteStartDate}
                 onChange={(e) => setQuoteStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
                 placeholder="Start Date"
               />
               <span className="text-gray-500 text-sm">to</span>
@@ -3356,7 +3209,7 @@ const AdminDashboard: React.FC = () => {
                 type="date"
                 value={quoteEndDate}
                 onChange={(e) => setQuoteEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-gray-50"
                 placeholder="End Date"
               />
             </div>
@@ -3369,7 +3222,7 @@ const AdminDashboard: React.FC = () => {
                   setQuoteStartDate('');
                   setQuoteEndDate('');
                 }}
-                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
               >
                 <X className="w-4 h-4" />
                 Clear Filters
@@ -3377,25 +3230,23 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('quotes', 'pdf')}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1.5"
               >
-                PDF
+                <Download size={12} /> PDF
               </button>
               <button
                 onClick={() => handleServerExport('quotes', 'csv')}
-                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors flex items-center gap-1.5"
               >
-                CSV
+                <Download size={12} /> CSV
               </button>
               <button
                 onClick={() => handleServerExport('quotes', 'excel')}
-                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors flex items-center gap-1.5"
               >
-                Excel
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
@@ -3403,7 +3254,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Results Summary */}
         {hasActiveFilters && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-none p-3 flex items-center gap-2">
             <Info className="w-5 h-5 text-blue-600" />
             <p className="text-sm text-blue-800">
               Showing <span className="font-semibold">{filteredQuotes.length}</span> of <span className="font-semibold">{quotes.length}</span> quotes
@@ -3411,200 +3262,236 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="space-y-4">
-          {filteredQuotes.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No quotes found</h3>
-              <p className="text-sm text-gray-500">
-                {hasActiveFilters ? 'Try adjusting your filters' : 'No quote requests available'}
-              </p>
+        {/* Quotes List */}
+        {filteredQuotes.length === 0 ? (
+          <div className="bg-white rounded-none border border-gray-200 p-12 text-center">
+            <div className="bg-gray-50 border border-gray-200 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <FileText className="w-8 h-8 text-gray-400" />
             </div>
-          ) : (
-            filteredQuotes.map((quote) => (
-              <div
-                key={quote._id}
-                className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">
+              {hasActiveFilters ? 'No quotes match your filters' : 'No quote requests found'}
+            </h3>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-6">
+              {hasActiveFilters
+                ? 'Try adjusting your search criteria or clear the filters'
+                : 'Quote requests will appear here once customers submit quotes'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setQuoteSearch('');
+                  setQuoteFilterStatus('all');
+                  setQuoteStartDate('');
+                  setQuoteEndDate('');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-colors"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {quote.user?.name || quote.userId?.name || 'Unknown User'}
-                    </h3>
-                    <p className="text-sm text-gray-600">{quote.user?.email || quote.userId?.email}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {quote.createdAt ? new Date(quote.createdAt).toLocaleString() : ''}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${quote.type === 'bulk_order'
-                        ? 'bg-purple-50 text-purple-700 border-purple-200'
-                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                      }`}>
-                      {quote.type === 'bulk_order' ? 'Bulk Order' : 'Price Request'}
-                    </span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${quote.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : quote.status === 'responded'
-                          ? 'bg-blue-100 text-blue-800'
-                          : quote.status === 'accepted' || quote.status === 'approved'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                    >
-                      {quote.status}
-                    </span>
-                  </div>
-                </div>
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredQuotes.map((quote) => {
+              const status = quote.status || 'pending';
+              const user = quote.user || quote.userId;
+              const dateStr = quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : '';
+              const timeStr = quote.createdAt ? new Date(quote.createdAt).toLocaleTimeString() : '';
 
-                <div className="mb-4">
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Products:</h4>
-                  <ul className="space-y-1">
-                    {quote.products.map((item, idx) => (
-                      <li key={idx} className="text-sm text-gray-600">
-                        • {(item.product?.name || item.productId?.name) || 'Unknown Product'} (Qty: {item.quantity})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {quote.message && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-sm text-gray-700 mb-1">Message:</h4>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                      {quote.message}
-                    </p>
-                  </div>
-                )}
-
-                {(quote.adminResponse || (quote.adminResponse && typeof quote.adminResponse === 'string')) && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-sm text-gray-700 mb-1">
-                      Admin Response:
-                    </h4>
-                    <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                      {typeof quote.adminResponse === 'string' ? quote.adminResponse : quote.adminResponse?.message}
-                    </p>
-                    {(quote.adminResponse?.totalPrice || quote.quotedPrice) && (
-                      <p className="text-sm font-semibold text-gray-800 mt-2">
-                        Quoted Price: ₹{quote.adminResponse?.totalPrice || quote.quotedPrice}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {quote.status === 'pending' && (
-                  <div className="mt-4 border-t pt-4">
-                    <h4 className="font-medium text-sm text-gray-700 mb-2">Provide Quote Response:</h4>
-
-                    {/* Product Pricing Table */}
-                    <div className="mb-4 overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Product</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Qty</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Original Price</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Offered Price (Per Unit)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {quote.products.map((item, idx) => {
-                            const productId = item.product?._id || item.productId?._id || `unknown-${idx}`;
-                            const productName = item.product?.name || item.productId?.name || 'Unknown Product';
-                            // @ts-ignore
-                            const originalPrice = item.product?.price || item.product?.normalPrice || item.originalPrice || 0;
-
-                            return (
-                              <tr key={idx}>
-                                <td className="px-3 py-2">{productName}</td>
-                                <td className="px-3 py-2">{item.quantity}</td>
-                                <td className="px-3 py-2">₹{originalPrice}</td>
-                                <td className="px-3 py-2">
-                                  <input
-                                    type="number"
-                                    value={quoteResponse.id === quote._id ? (quoteResponse.products[productId] ?? '') : ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setQuoteResponse(prev => ({
-                                        ...prev,
-                                        id: quote._id,
-                                        products: {
-                                          ...prev.products,
-                                          [productId]: val
-                                        }
-                                      }));
-                                    }}
-                                    className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Enter Price"
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Calculated Total Display */}
-                    <div className="mb-4 flex justify-end bg-gray-50 p-3 rounded border border-gray-200">
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">Calculated Total Amount</p>
-                        <p className="text-xl font-bold text-green-600">
-                          ₹{quote.products.reduce((sum, item) => {
-                            const productId = item.product?._id || item.productId?._id;
-                            // @ts-ignore
-                            const price = (quoteResponse.id === quote._id && quoteResponse.products[productId]) ? Number(quoteResponse.products[productId]) : 0;
-                            return sum + (price * item.quantity);
-                          }, 0).toLocaleString('en-IN')}
+              return (
+                <div
+                  key={quote._id}
+                  className={`bg-white p-6 rounded-none border border-gray-200 border-l-4 ${
+                    status === 'pending'
+                      ? 'border-l-yellow-500'
+                      : status === 'responded'
+                        ? 'border-l-blue-500'
+                        : status === 'rejected'
+                          ? 'border-l-red-500'
+                          : 'border-l-green-500'
+                  } hover:shadow-md transition-shadow`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-indigo-50 border border-indigo-200 rounded-none w-10 h-10 flex items-center justify-center">
+                        <span className="text-sm font-bold text-indigo-700">
+                          {(user?.name || 'U').charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-gray-900">
+                          {user?.name || 'Unknown User'}
+                        </h3>
+                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+                          {user?.email}
                         </p>
+                        {quote.createdAt && (
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            <Calendar className="w-3.5 h-3.5" />
+                            Requested: {dateStr} {timeStr}
+                          </div>
+                        )}
                       </div>
                     </div>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border rounded-none ${
+                        status === 'pending'
+                          ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                          : status === 'responded'
+                            ? 'bg-blue-50 border-blue-200 text-blue-800'
+                            : status === 'rejected'
+                              ? 'bg-red-50 border-red-200 text-red-800'
+                              : 'bg-green-50 border-green-200 text-green-800'
+                      }`}
+                    >
+                      {status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                      {status === 'responded' && <MessageSquare className="w-3 h-3 mr-1" />}
+                      {status === 'rejected' && <X className="w-3 h-3 mr-1" />}
+                      {(status === 'accepted' || status === 'approved') && <CheckCircle className="w-3 h-3 mr-1" />}
+                      {status}
+                    </span>
+                  </div>
 
-                    <div className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Admin Response Message
-                        </label>
-                        <textarea
-                          value={
-                            quoteResponse.id === quote._id ? quoteResponse.response : ''
-                          }
-                          onChange={(e) =>
-                            setQuoteResponse(prev => ({
-                              ...prev,
-                              id: quote._id,
-                              response: e.target.value,
-                              products: prev.products // Keep products
-                            }))
-                          }
-                          rows={2}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter your response message to the customer..."
-                        />
-                      </div>
-                      <button
-                        onClick={() => handleRespondToQuote(quote._id)}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
-                      >
-                        <Check className="w-4 h-4" />
-                        Approve Quote
-                      </button>
-                      <button
-                        onClick={() => handleRejectQuote(quote._id)}
-                        className="bg-gradient-to-r from-red-600 to-rose-600 text-white px-6 py-2 rounded-lg hover:from-red-700 hover:to-rose-700 flex items-center gap-2 h-10 font-medium shadow-md hover:shadow-lg transition-all"
-                      >
-                        <X className="w-4 h-4" />
-                        Reject Quote
-                      </button>
+                  {/* Customer message if exists */}
+                  {quote.message && (
+                    <div className="bg-gray-50 rounded-none border border-gray-200 p-3 mb-4 text-xs text-gray-600">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer Message</p>
+                      <p className="italic">"{quote.message}"</p>
+                    </div>
+                  )}
+
+                  {/* Requested Products */}
+                  <div className="bg-gray-50 rounded-none border border-gray-200 p-4">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-200 pb-2 mb-2">
+                      Requested Products
+                    </p>
+                    <div className="space-y-3">
+                      {quote.products.map((p) => {
+                        const productObj = p.product || p.productId;
+                        const prodId = productObj?._id || '';
+                        const prodName = productObj?.name || 'Unknown Product';
+
+                        return (
+                          <div
+                            key={prodId}
+                            className="flex justify-between items-center py-1 border-b border-gray-100 last:border-0"
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">{prodName}</p>
+                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Qty: {p.quantity}</p>
+                            </div>
+                            {status === 'pending' ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-400">₹</span>
+                                <input
+                                  type="number"
+                                  placeholder="Offered Price"
+                                  value={quoteResponse.id === quote._id ? (quoteResponse.products[prodId] || '') : ''}
+                                  onChange={(e) => {
+                                    setQuoteResponse((prev) => ({
+                                      ...prev,
+                                      id: quote._id,
+                                      products: {
+                                        ...prev.products,
+                                        [prodId]: e.target.value
+                                      }
+                                    }));
+                                  }}
+                                  className="w-32 px-2 py-1 bg-white border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-xs font-bold text-gray-900">
+                                ₹{(p as any).offeredPrice ? (p as any).offeredPrice.toLocaleString() : 'N/A'}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+
+                  {/* Composer/Response Details */}
+                  {status === 'pending' ? (
+                    <div className="mt-4 border-t border-gray-100 pt-4">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                        Response Message
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Type response details or terms..."
+                        value={quoteResponse.id === quote._id ? quoteResponse.response : ''}
+                        onChange={(e) => {
+                          setQuoteResponse((prev) => ({
+                            ...prev,
+                            id: quote._id,
+                            response: e.target.value
+                          }));
+                        }}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <div className="flex justify-end gap-2 mt-3">
+                        <button
+                          onClick={() => handleRejectQuote(quote._id)}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-none transition-colors"
+                        >
+                          Reject Quote
+                        </button>
+                        <button
+                          onClick={() => handleRespondToQuote(quote._id)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-none transition-colors"
+                        >
+                          Send Response
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {quote.adminResponse && (
+                        <div className="mt-4 bg-blue-50/50 border border-blue-200/50 p-4">
+                          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Admin Response</p>
+                          <p className="text-xs text-gray-700 mt-1">
+                            {typeof quote.adminResponse === 'object' ? quote.adminResponse.message : quote.adminResponse}
+                          </p>
+                          {quote.quotedPrice && (
+                            <p className="text-xs font-bold text-gray-900 mt-2">
+                              Quoted Price: {formatCurrency(quote.quotedPrice)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {status !== 'rejected' && (
+                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                          <div>
+                            {quote.deliveryTrackingLink ? (
+                              <div className="flex items-center gap-1.5 text-[10px] text-green-700 font-bold uppercase tracking-wider bg-green-50 px-2 py-1 border border-green-200">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Tracking: <a href={quote.deliveryTrackingLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-900">{quote.deliveryTrackingLink}</a>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">No tracking link added</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleOpenTrackingModal(quote._id, 'quote', quote.deliveryTrackingLink, user?.email)}
+                            className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-none border border-indigo-200 transition-colors flex items-center gap-1"
+                          >
+                            <LinkIcon className="w-3 h-3" />
+                            {quote.deliveryTrackingLink ? 'Update Tracking' : 'Add Tracking'}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+
       </div>
     );
   };
@@ -3661,69 +3548,66 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Order Management</h2>
-              <p className="text-emerald-100">Track, manage, and fulfill customer orders efficiently</p>
-            </div>
-            <ShoppingCart className="w-16 h-16 text-emerald-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Track, manage, print delivery labels, and fulfill customer orders.</p>
           </div>
+          <ShoppingCart className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Orders</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Orders</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{totalOrders}</p>
               </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <ShoppingCart className="w-6 h-6 text-indigo-600" />
+              <div className="bg-indigo-50 p-2.5 rounded-none border border-indigo-200/50">
+                <ShoppingCart className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Revenue</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
                 <p className="text-2xl font-bold text-green-600 mt-1">₹{totalRevenue.toLocaleString()}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-green-600" />
+              <div className="bg-green-50 p-2.5 rounded-none border border-green-200/50">
+                <DollarSign className="w-5 h-5 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-orange-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Payment</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending Payment</p>
                 <p className="text-2xl font-bold text-orange-600 mt-1">{pendingPayments}</p>
               </div>
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="bg-orange-50 p-2.5 rounded-none border border-orange-200/50">
+                <Clock className="w-5 h-5 text-orange-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-emerald-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Completed</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Completed</p>
                 <p className="text-2xl font-bold text-green-600 mt-1">{completedPayments}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="bg-emerald-50 p-2.5 rounded-none border border-emerald-200/50">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Advanced Filters */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-4 rounded-none border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-gray-400" />
@@ -3732,14 +3616,14 @@ const AdminDashboard: React.FC = () => {
                 placeholder="Search by customer, order ID, or product..."
                 value={orderSearch}
                 onChange={(e) => setOrderSearch(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-80"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-gray-50 w-80"
               />
             </div>
 
             <select
               value={orderFilterPayment}
               onChange={(e) => setOrderFilterPayment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-gray-50 font-semibold"
             >
               <option value="all">All Payment Status</option>
               <option value="pending">Pending</option>
@@ -3754,7 +3638,7 @@ const AdminDashboard: React.FC = () => {
                 type="date"
                 value={orderStartDate}
                 onChange={(e) => setOrderStartDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-gray-50"
                 placeholder="Start Date"
               />
               <span className="text-gray-500 text-sm">to</span>
@@ -3762,7 +3646,7 @@ const AdminDashboard: React.FC = () => {
                 type="date"
                 value={orderEndDate}
                 onChange={(e) => setOrderEndDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-gray-50"
                 placeholder="End Date"
               />
             </div>
@@ -3775,7 +3659,7 @@ const AdminDashboard: React.FC = () => {
                   setOrderStartDate('');
                   setOrderEndDate('');
                 }}
-                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
               >
                 <X className="w-4 h-4" />
                 Clear Filters
@@ -3783,25 +3667,23 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('orders', 'pdf')}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1.5"
               >
-                PDF
+                <Download size={12} /> PDF
               </button>
               <button
                 onClick={() => handleServerExport('orders', 'csv')}
-                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors flex items-center gap-1.5"
               >
-                CSV
+                <Download size={12} /> CSV
               </button>
               <button
                 onClick={() => handleServerExport('orders', 'excel')}
-                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors flex items-center gap-1.5"
               >
-                Excel
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
@@ -3809,7 +3691,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Results Summary */}
         {hasActiveFilters && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-none p-3 flex items-center gap-2">
             <Info className="w-5 h-5 text-blue-600" />
             <p className="text-sm text-blue-800">
               Showing <span className="font-semibold">{filteredOrders.length}</span> of <span className="font-semibold">{totalOrders}</span> orders
@@ -3819,15 +3701,15 @@ const AdminDashboard: React.FC = () => {
 
         {/* Orders Table */}
         {filteredOrders.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+          <div className="bg-white rounded-none border border-gray-200 p-12">
             <div className="text-center">
-              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                <ShoppingCart className="w-10 h-10 text-gray-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <ShoppingCart className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">
                 {hasActiveFilters ? 'No orders match your filters' : 'No orders found'}
               </h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-6">
                 {hasActiveFilters
                   ? 'Try adjusting your search criteria or clear the filters'
                   : 'Orders will appear here once customers start placing orders'}
@@ -3838,7 +3720,7 @@ const AdminDashboard: React.FC = () => {
                     setOrderSearch('');
                     setOrderFilterPayment('all');
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-emerald-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Clear Filters
@@ -3847,66 +3729,63 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-none border border-gray-200 overflow-hidden shadow-none">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-emerald-50 to-green-50">
+                <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Order ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Products
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Payment Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-[10px] font-bold uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
-                    <tr key={order._id} className="hover:bg-emerald-50/30 transition-colors">
+                    <tr key={order._id} className="hover:bg-emerald-50/20 transition-colors">
                       <td className="px-6 py-4 text-sm">
-                        <span className="font-mono font-medium text-indigo-600">
-                          #{order.orderNumber || order._id.slice(-8)}
+                        <span className="font-mono font-bold text-indigo-600">
+                          #{order.orderNumber || order._id.slice(-8).toUpperCase()}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full w-10 h-10 flex items-center justify-center">
-                            <span className="text-sm font-semibold text-indigo-700">
+                          <div className="bg-indigo-50 border border-indigo-200 rounded-none w-10 h-10 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-700">
                               {(order.user?.name || order.userId?.name || 'U').charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">
-                              {/* Display Retailer Name */}
+                            <div className="font-bold text-gray-900 text-sm">
                               {order.user?.name || order.userId?.name || 'Unknown User'}
-                              {/* If Dropship, show explicit tag and End Customer Name */}
                               {order.isDropship && (
-                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider bg-blue-50 border border-blue-200 text-blue-800">
                                   Dropship
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-gray-600">{order.user?.email || order.userId?.email}</div>
-                            {/* Dropship Customer Info */}
+                            <div className="text-xs text-gray-500 font-semibold">{order.user?.email || order.userId?.email}</div>
                             {order.isDropship && order.customerDetails && (
-                              <div className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                              <div className="mt-1 text-[10px] text-blue-600 font-bold uppercase tracking-wider flex items-center gap-1">
                                 <Truck size={12} />
-                                <span>Ship to: <strong>{order.customerDetails.name}</strong></span>
+                                <span>Ship to: <strong className="text-blue-800">{order.customerDetails.name}</strong></span>
                               </div>
                             )}
                           </div>
@@ -3915,20 +3794,20 @@ const AdminDashboard: React.FC = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-900 font-medium">
+                          <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
                             {order.products.length} item{order.products.length !== 1 ? 's' : ''}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1 truncate max-w-[180px]">
                           {order.products.slice(0, 2).map((p) => {
                             const product = p.productId || (p as any).product;
                             return product?.name || 'Unknown Product';
                           }).join(', ')}
-                          {order.products.length > 2 && ` +${order.products.length - 2} more`}
+                          {order.products.length > 2 && ` +${order.products.length - 2} MORE`}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-base font-bold text-gray-900">
+                        <span className="text-sm font-bold text-gray-950">
                           ₹{order.totalAmount.toLocaleString()}
                         </span>
                       </td>
@@ -3936,12 +3815,13 @@ const AdminDashboard: React.FC = () => {
                         <select
                           value={order.paymentStatus || 'pending'}
                           onChange={(e) => handleUpdatePaymentStatus(order._id, e.target.value)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-colors ${order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : order.paymentStatus === 'failed'
-                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                            }`}
+                          className={`px-2 py-1 rounded-none border border-gray-200 font-bold uppercase text-[10px] tracking-wider cursor-pointer bg-gray-50 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors ${
+                            order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
+                              ? 'text-green-800 hover:bg-green-100'
+                              : order.paymentStatus === 'failed'
+                                ? 'text-red-800 hover:bg-red-100'
+                                : 'text-yellow-800 hover:bg-yellow-100'
+                          }`}
                         >
                           <option value="pending">Pending</option>
                           <option value="completed">Completed</option>
@@ -3950,11 +3830,11 @@ const AdminDashboard: React.FC = () => {
                         </select>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-900">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-900 font-semibold">
                           <Calendar className="w-4 h-4 text-gray-400" />
                           {new Date(order.createdAt).toLocaleDateString()}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
                           {new Date(order.createdAt).toLocaleTimeString()}
                         </div>
                       </td>
@@ -3965,7 +3845,7 @@ const AdminDashboard: React.FC = () => {
                               setSelectedOrder(order);
                               setShowOrderDetailsModal(true);
                             }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 hover:bg-blue-50 border border-blue-200/50 bg-blue-50/30 rounded-none transition-colors"
                             title="View Order Details"
                           >
                             <Eye className="w-4 h-4" />
@@ -3975,7 +3855,7 @@ const AdminDashboard: React.FC = () => {
                               href={order.invoiceUrl || order.customerInvoiceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              className="p-2 text-purple-600 hover:bg-purple-50 border border-purple-200/50 bg-purple-50/30 rounded-none transition-colors"
                               title="View Invoice PDF"
                             >
                               <Download className="w-4 h-4" />
@@ -3983,17 +3863,18 @@ const AdminDashboard: React.FC = () => {
                           )}
                           <button
                             onClick={() => handlePrintDeliveryLabel(order)}
-                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 border border-indigo-200/50 bg-indigo-50/30 rounded-none transition-colors"
                             title="Print Delivery Label"
                           >
                             <Printer className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, undefined, order.trackingId)}
-                            className={`p-2 rounded-lg transition-colors ${order.deliveryTrackingLink
-                              ? 'text-green-600 hover:bg-green-50'
-                              : 'text-orange-600 hover:bg-orange-50'
-                              }`}
+                            className={`p-2 rounded-none border transition-colors ${
+                              order.deliveryTrackingLink
+                                ? 'text-green-600 bg-green-50/30 border-green-200/50 hover:bg-green-50'
+                                : 'text-orange-600 bg-orange-50/30 border-orange-200/50 hover:bg-orange-50'
+                            }`}
                             title={order.deliveryTrackingLink ? 'Update Tracking Link' : 'Add Tracking Link'}
                           >
                             <LinkIcon className="w-4 h-4" />
@@ -4050,14 +3931,11 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Warranty Management</h2>
-              <p className="text-purple-100">Review and manage product warranty registrations</p>
-            </div>
-            <Shield className="w-16 h-16 text-purple-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Review, approve, and validate customer product warranty claims.</p>
           </div>
+          <Shield className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Warranty Validation Tool */}
@@ -4065,57 +3943,57 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-indigo-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Warranties</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Warranties</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{totalWarranties}</p>
               </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <Shield className="w-6 h-6 text-indigo-600" />
+              <div className="bg-indigo-50 p-2.5 rounded-none border border-indigo-200/50">
+                <Shield className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-yellow-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pending</p>
                 <p className="text-2xl font-bold text-yellow-600 mt-1">{pendingWarranties}</p>
               </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-600" />
+              <div className="bg-yellow-50 p-2.5 rounded-none border border-yellow-200/50">
+                <Clock className="w-5 h-5 text-yellow-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-green-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Approved</p>
                 <p className="text-2xl font-bold text-green-600 mt-1">{approvedWarranties}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="bg-green-50 p-2.5 rounded-none border border-green-200/50">
+                <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white p-5 rounded-none border border-gray-200 border-t-4 border-t-red-500 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rejected</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rejected</p>
                 <p className="text-2xl font-bold text-red-600 mt-1">{rejectedWarranties}</p>
               </div>
-              <div className="bg-red-100 p-3 rounded-lg">
-                <X className="w-6 h-6 text-red-600" />
+              <div className="bg-red-50 p-2.5 rounded-none border border-red-200/50">
+                <X className="w-5 h-5 text-red-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Advanced Filters */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-4 rounded-none border border-gray-200">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-gray-400" />
@@ -4124,14 +4002,14 @@ const AdminDashboard: React.FC = () => {
                 placeholder="Search by product, customer, serial, or model..."
                 value={warrantySearch}
                 onChange={(e) => setWarrantySearch(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent w-80"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-gray-50 w-80"
               />
             </div>
 
             <select
               value={warrantyFilterStatus}
               onChange={(e) => setWarrantyFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-gray-50"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -4145,7 +4023,7 @@ const AdminDashboard: React.FC = () => {
                   setWarrantySearch('');
                   setWarrantyFilterStatus('all');
                 }}
-                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
               >
                 <X className="w-4 h-4" />
                 Clear Filters
@@ -4153,25 +4031,23 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('warranties', 'pdf')}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1.5"
               >
-                PDF
+                <Download size={12} /> PDF
               </button>
               <button
                 onClick={() => handleServerExport('warranties', 'csv')}
-                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors flex items-center gap-1.5"
               >
-                CSV
+                <Download size={12} /> CSV
               </button>
               <button
                 onClick={() => handleServerExport('warranties', 'excel')}
-                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors flex items-center gap-1.5"
               >
-                Excel
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
@@ -4189,15 +4065,15 @@ const AdminDashboard: React.FC = () => {
 
         {/* Warranty Cards */}
         {filteredWarranties.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+          <div className="bg-white rounded-none border border-gray-200 p-12">
             <div className="text-center">
-              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                <Shield className="w-10 h-10 text-gray-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Shield className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">
                 {hasActiveFilters ? 'No warranties match your filters' : 'No warranty registrations found'}
               </h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-6">
                 {hasActiveFilters
                   ? 'Try adjusting your search criteria or clear the filters'
                   : 'Warranty registrations will appear here once customers register their products'}
@@ -4208,7 +4084,7 @@ const AdminDashboard: React.FC = () => {
                     setWarrantySearch('');
                     setWarrantyFilterStatus('all');
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Clear Filters
@@ -4221,66 +4097,69 @@ const AdminDashboard: React.FC = () => {
             {filteredWarranties.map((warranty) => (
               <div
                 key={warranty._id}
-                className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                className={`bg-white p-6 rounded-none border border-gray-200 border-l-4 ${
+                  warranty.status === 'pending' ? 'border-l-yellow-500' : warranty.status === 'approved' ? 'border-l-green-500' : 'border-l-red-500'
+                } hover:shadow-md transition-shadow`}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-start gap-4">
-                    <div className="bg-purple-100 p-3 rounded-lg">
-                      <Shield className="w-6 h-6 text-purple-600" />
+                    <div className="bg-purple-50 p-2.5 rounded-none border border-purple-200/50">
+                      <Shield className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-lg text-gray-900">{warranty.productName}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full w-8 h-8 flex items-center justify-center">
-                          <span className="text-xs font-semibold text-indigo-700">
+                      <h3 className="font-bold text-base text-gray-900">{warranty.productName}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="bg-indigo-50 border border-indigo-200 rounded-none w-8 h-8 flex items-center justify-center">
+                          <span className="text-xs font-bold text-indigo-700">
                             {(warranty.userId?.name || 'U').charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{warranty.userId?.name}</p>
-                          <p className="text-xs text-gray-600">{warranty.userId?.email}</p>
+                          <p className="text-xs font-bold text-gray-900 uppercase tracking-wider">{warranty.userId?.name}</p>
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{warranty.userId?.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
+                      <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                        <Calendar className="w-3.5 h-3.5" />
                         Registered: {new Date(warranty.createdAt).toLocaleString()}
                       </div>
                     </div>
                   </div>
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${warranty.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : warranty.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                      }`}
+                    className={`inline-flex items-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-none ${
+                      warranty.status === 'pending'
+                        ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                        : warranty.status === 'approved'
+                          ? 'bg-green-50 border-green-200 text-green-800'
+                          : 'bg-red-50 border-red-200 text-red-800'
+                    }`}
                   >
-                    {warranty.status === 'pending' && <Clock className="w-4 h-4 mr-1" />}
-                    {warranty.status === 'approved' && <CheckCircle className="w-4 h-4 mr-1" />}
-                    {warranty.status === 'rejected' && <X className="w-4 h-4 mr-1" />}
+                    {warranty.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+                    {warranty.status === 'approved' && <CheckCircle className="w-3 h-3 mr-1" />}
+                    {warranty.status === 'rejected' && <X className="w-3 h-3 mr-1" />}
                     {warranty.status}
                   </span>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="bg-gray-50 rounded-none border border-gray-200 p-4 mb-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Serial Number</p>
-                      <p className="font-semibold text-gray-900 mt-1">{warranty.serialNumber}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Serial Number</p>
+                      <p className="font-bold text-gray-900 mt-1 text-sm uppercase">{warranty.serialNumber}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Model Number</p>
-                      <p className="font-semibold text-gray-900 mt-1">{warranty.modelNumber}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Model Number</p>
+                      <p className="font-bold text-gray-900 mt-1 text-sm uppercase">{warranty.modelNumber}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Purchase Date</p>
-                      <p className="font-semibold text-gray-900 mt-1">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Purchase Date</p>
+                      <p className="font-bold text-gray-900 mt-1 text-sm">
                         {new Date(warranty.purchaseDate).toLocaleDateString()}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Purchase Type</p>
-                      <p className="font-semibold text-gray-900 mt-1 capitalize">{warranty.purchaseType}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Purchase Type</p>
+                      <p className="font-bold text-gray-900 mt-1 text-sm capitalize">{warranty.purchaseType}</p>
                     </div>
                   </div>
                 </div>
@@ -4292,9 +4171,9 @@ const AdminDashboard: React.FC = () => {
                         href={warranty.invoiceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1.5 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors border border-blue-200 hover:border-blue-300"
+                        className="text-blue-600 hover:text-blue-800 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-none transition-colors border border-blue-200 hover:border-blue-300"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-3 h-3" />
                         Invoice PDF
                       </a>
                     )}
@@ -4303,9 +4182,9 @@ const AdminDashboard: React.FC = () => {
                         href={warranty.warrantyCertificateUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center gap-1.5 hover:bg-purple-50 px-3 py-2 rounded-lg transition-colors border border-purple-200 hover:border-purple-300"
+                        className="text-purple-600 hover:text-purple-800 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 bg-purple-50 px-3 py-1.5 rounded-none transition-colors border border-purple-200 hover:border-purple-300"
                       >
-                        <Shield className="w-4 h-4" />
+                        <Shield className="w-3 h-3" />
                         Warranty Certificate PDF
                       </a>
                     )}
@@ -4314,16 +4193,16 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex gap-3 ml-auto">
                       <button
                         onClick={() => handleWarrantyAction(warranty._id, 'approved')}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
+                        className="bg-green-600 text-white px-4 py-2 rounded-none font-bold uppercase tracking-wider text-xs hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm"
                       >
-                        <CheckCircle className="w-4 h-4" />
+                        <CheckCircle className="w-3.5 h-3.5" />
                         Approve
                       </button>
                       <button
                         onClick={() => handleWarrantyAction(warranty._id, 'rejected')}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm"
+                        className="bg-red-600 text-white px-4 py-2 rounded-none font-bold uppercase tracking-wider text-xs hover:bg-red-700 transition-colors flex items-center gap-2 shadow-sm"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                         Reject
                       </button>
                     </div>
@@ -4466,14 +4345,11 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Investor Documents</h2>
-              <p className="text-green-100">Manage reports, presentations, and investor materials</p>
-            </div>
-            <FileText className="w-16 h-16 text-green-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Manage report publication, shareholdings, and official investor materials.</p>
           </div>
+          <FileText className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Filters and Actions */}
@@ -4836,87 +4712,68 @@ const AdminDashboard: React.FC = () => {
     const uniqueTypes = [...new Set(emailLogs.map(e => e.emailType))].length;
 
     return (
-      <div className="space-y-6">
-        {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Email Logs</h2>
-              <p className="text-cyan-100">Track and monitor all system email communications</p>
-            </div>
-            <Mail className="w-16 h-16 text-cyan-200 opacity-50" />
-          </div>
-        </div>
-
-        {/* Quick Stats */}
+      <div className="space-y-5">
+        {/* Stats Cards - border-t-4 accent style */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white border border-gray-200 border-t-4 border-t-indigo-500 rounded-none p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Emails</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{totalEmails}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Emails</p>
+                <p className="text-2xl font-black text-gray-900 mt-1">{totalEmails}</p>
               </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <Mail className="w-6 h-6 text-indigo-600" />
-              </div>
+              <Mail className="w-5 h-5 text-indigo-500" />
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white border border-gray-200 border-t-4 border-t-emerald-500 rounded-none p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sent Successfully</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{sentEmails}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Sent Successfully</p>
+                <p className="text-2xl font-black text-emerald-600 mt-1">{sentEmails}</p>
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white border border-gray-200 border-t-4 border-t-red-500 rounded-none p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Failed</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">{failedEmails}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Failed</p>
+                <p className="text-2xl font-black text-red-600 mt-1">{failedEmails}</p>
               </div>
-              <div className="bg-red-100 p-3 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
+              <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white border border-gray-200 border-t-4 border-t-blue-500 rounded-none p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Types</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">{uniqueTypes}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email Types</p>
+                <p className="text-2xl font-black text-blue-600 mt-1">{uniqueTypes}</p>
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
+              <FileText className="w-5 h-5 text-blue-500" />
             </div>
           </div>
         </div>
 
-        {/* Advanced Filters */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        {/* Filters & Export Row */}
+        <div className="bg-white border border-gray-200 rounded-none p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-[250px] max-w-sm">
               <Search className="w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search by recipient, subject, or type..."
                 value={emailSearch}
                 onChange={(e) => setEmailSearch(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent w-80"
+                className="w-full px-3 py-2 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50"
               />
             </div>
 
             <select
               value={emailFilterStatus}
               onChange={(e) => setEmailFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-50 font-medium"
             >
               <option value="all">All Status</option>
               <option value="sent">Sent</option>
@@ -4926,7 +4783,7 @@ const AdminDashboard: React.FC = () => {
             <select
               value={emailFilterType}
               onChange={(e) => setEmailFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-gray-50 font-medium"
             >
               <option value="all">All Types</option>
               {[...new Set(emailLogs.map(e => e.emailType))].map(type => (
@@ -4941,31 +4798,31 @@ const AdminDashboard: React.FC = () => {
                   setEmailFilterStatus('all');
                   setEmailFilterType('all');
                 }}
-                className="px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1"
+                className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
               >
-                <X className="w-4 h-4" />
-                Clear Filters
+                <X className="w-3.5 h-3.5" />
+                Clear
               </button>
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
+              <Download className="w-4 h-4 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Export:</span>
               <button
                 onClick={() => handleServerExport('email-logs', 'pdf')}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors"
               >
                 PDF
               </button>
               <button
                 onClick={() => handleServerExport('email-logs', 'csv')}
-                className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors"
               >
                 CSV
               </button>
               <button
                 onClick={() => handleServerExport('email-logs', 'excel')}
-                className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors"
               >
                 Excel
               </button>
@@ -4975,25 +4832,25 @@ const AdminDashboard: React.FC = () => {
 
         {/* Results Summary */}
         {hasActiveFilters && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
-            <Info className="w-5 h-5 text-blue-600" />
-            <p className="text-sm text-blue-800">
-              Showing <span className="font-semibold">{filteredEmailLogs.length}</span> of <span className="font-semibold">{totalEmails}</span> email logs
+          <div className="bg-indigo-50 border-l-4 border-l-indigo-500 border border-indigo-200 rounded-none px-4 py-3 flex items-center gap-2">
+            <Info className="w-4 h-4 text-indigo-600" />
+            <p className="text-xs font-semibold text-indigo-800">
+              Showing <span className="font-black">{filteredEmailLogs.length}</span> of <span className="font-black">{totalEmails}</span> email logs
             </p>
           </div>
         )}
 
         {/* Email Logs Table */}
         {filteredEmailLogs.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+          <div className="bg-white rounded-none border border-gray-200 p-16">
             <div className="text-center">
-              <div className="bg-gray-100 rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                <Mail className="w-10 h-10 text-gray-400" />
+              <div className="bg-gray-100 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Mail className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">
                 {hasActiveFilters ? 'No email logs match your filters' : 'No email logs found'}
               </h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-xs text-gray-500 mb-6">
                 {hasActiveFilters
                   ? 'Try adjusting your search criteria or clear the filters'
                   : 'Email logs will appear here once the system sends emails'}
@@ -5005,83 +4862,82 @@ const AdminDashboard: React.FC = () => {
                     setEmailFilterStatus('all');
                     setEmailFilterType('all');
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-indigo-700 transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                   Clear Filters
                 </button>
               )}
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+          <div className="bg-white rounded-none overflow-hidden border border-gray-200">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-cyan-50 to-blue-50">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Recipient
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Subject
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Sent At
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <th className="px-6 py-3.5 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-gray-100">
                   {filteredEmailLogs.map((log) => (
-                    <tr key={log._id} className="hover:bg-cyan-50/30 transition-colors">
+                    <tr key={log._id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-900">{log.recipient}</span>
+                          <Mail className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-sm font-semibold text-gray-900">{log.recipient}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">
                         <span className="line-clamp-2">{log.subject}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
                           {log.emailType}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${log.status === 'sent'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border ${log.status === 'sent'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                         >
-                          {log.status === 'sent' && <CheckCircle className="w-3 h-3 mr-1" />}
-                          {log.status === 'failed' && <AlertCircle className="w-3 h-3 mr-1" />}
+                          {log.status === 'sent' && <CheckCircle className="w-3 h-3" />}
+                          {log.status === 'failed' && <AlertCircle className="w-3 h-3" />}
                           {log.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-sm text-gray-900">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          {log.sentAt ? new Date(log.sentAt).toLocaleDateString() : 'Not sent'}
+                        <div className="text-xs font-semibold text-gray-900">
+                          {log.sentAt ? new Date(log.sentAt).toLocaleDateString('en-IN') : 'Not sent'}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {log.sentAt ? new Date(log.sentAt).toLocaleTimeString() : 'Pending'}
+                        <div className="text-[10px] text-gray-500 mt-0.5 font-medium">
+                          {log.sentAt ? new Date(log.sentAt).toLocaleTimeString('en-IN') : 'Pending'}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         {log.status === 'failed' && (
                           <button
                             onClick={() => handleResendEmail(log._id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors"
                             title="Resend Email"
                           >
                             <RefreshCw className="w-4 h-4" />
@@ -5136,14 +4992,11 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Enhanced Header */}
-        <div className="bg-gradient-to-r from-pink-600 to-rose-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Contact Messages</h2>
-              <p className="text-pink-100">Manage and respond to customer inquiries</p>
-            </div>
-            <MessageSquare className="w-16 h-16 text-pink-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Manage and respond to customer inquiries.</p>
           </div>
+          <MessageSquare className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Quick Stats */}
@@ -5236,8 +5089,6 @@ const AdminDashboard: React.FC = () => {
             )}
 
             <div className="ml-auto flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Export:</span>
               <button
                 onClick={() => handleServerExport('contacts', 'pdf')}
                 className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
@@ -5382,115 +5233,157 @@ const AdminDashboard: React.FC = () => {
   // Render Content Management Tab
   const renderContentManagement = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Content Management</h2>
-        <div className="flex gap-2">
-          <button onClick={() => navigate('/admin/blog-management')} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">📝 Blogs</button>
-          <button onClick={() => navigate('/admin/team-management')} className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">👥 Team</button>
-          <button onClick={() => navigate('/admin/event-management')} className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">📅 Events</button>
-          <button onClick={() => navigate('/admin/report-management')} className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700">📊 Reports</button>
-          <button onClick={() => navigate('/admin/page-content')} className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">📄 Pages</button>
-          <button onClick={() => navigate('/admin/stats-management')} className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">📈 Stats</button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <h2 className="text-2xl font-bold text-gray-900">Content Management</h2>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setContentSubPage('blogs')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#2563eb] text-white text-xs font-semibold rounded-lg hover:bg-[#1d4ed8] transition-colors shadow-sm"
+          >
+            <Edit size={14} /> Blogs
+          </button>
+          <button
+            onClick={() => setContentSubPage('team')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0f8a48] text-white text-xs font-semibold rounded-lg hover:bg-[#0d763e] transition-colors shadow-sm"
+          >
+            <Users size={14} /> Team
+          </button>
+          <button
+            onClick={() => setContentSubPage('events')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#9333ea] text-white text-xs font-semibold rounded-lg hover:bg-[#7e22ce] transition-colors shadow-sm"
+          >
+            <Clock size={14} /> Events
+          </button>
+          <button
+            onClick={() => setContentSubPage('reports')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#ea580c] text-white text-xs font-semibold rounded-lg hover:bg-[#c2410c] transition-colors shadow-sm"
+          >
+            <FileText size={14} /> Reports
+          </button>
+          <button
+            onClick={() => setContentSubPage('pages')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#4f46e5] text-white text-xs font-semibold rounded-lg hover:bg-[#3730a3] transition-colors shadow-sm"
+          >
+            <FileText size={14} /> Pages
+          </button>
+          <button
+            onClick={() => setContentSubPage('stats')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#dc2626] text-white text-xs font-semibold rounded-lg hover:bg-[#b91c1c] transition-colors shadow-sm"
+          >
+            <TrendingUp size={14} /> Stats
+          </button>
         </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Blog Posts */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Blog Posts</h3>
-            <Edit size={20} className="text-blue-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Blog Posts</h3>
+              <Edit size={18} className="text-blue-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Manage blog articles and publications</p>
           </div>
-          <p className="text-gray-600 mb-4">Manage blog articles and publications</p>
           <button
-            onClick={() => navigate('/admin/blog-management')}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setContentSubPage('blogs')}
+            className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors"
           >
             Manage Blogs
           </button>
         </div>
 
         {/* Team Members */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Team Members</h3>
-            <Users size={20} className="text-green-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Team Members</h3>
+              <Users size={18} className="text-green-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Manage leadership and team profiles</p>
           </div>
-          <p className="text-gray-600 mb-4">Manage leadership and team profiles</p>
           <button
-            onClick={() => navigate('/admin/team-management')}
-            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+            onClick={() => setContentSubPage('team')}
+            className="w-full py-2.5 bg-[#0f8a48] text-white rounded-xl font-semibold text-sm hover:bg-[#0d763e] transition-colors"
           >
             Manage Team
           </button>
         </div>
 
         {/* Events */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Events</h3>
-            <Clock size={20} className="text-purple-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Events</h3>
+              <Clock size={18} className="text-purple-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Manage investor events and webinars</p>
           </div>
-          <p className="text-gray-600 mb-4">Manage investor events and webinars</p>
           <button
-            onClick={() => navigate('/admin/event-management')}
-            className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+            onClick={() => setContentSubPage('events')}
+            className="w-full py-2.5 bg-[#9333ea] text-white rounded-xl font-semibold text-sm hover:bg-[#7e22ce] transition-colors"
           >
             Manage Events
           </button>
         </div>
 
         {/* Reports */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Reports</h3>
-            <FileText size={20} className="text-orange-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Reports</h3>
+              <FileText size={18} className="text-orange-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Manage financial and investor reports</p>
           </div>
-          <p className="text-gray-600 mb-4">Manage financial and investor reports</p>
           <button
-            onClick={() => navigate('/admin/report-management')}
-            className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors"
+            onClick={() => setContentSubPage('reports')}
+            className="w-full py-2.5 bg-[#ea580c] text-white rounded-xl font-semibold text-sm hover:bg-[#c2410c] transition-colors"
           >
             Manage Reports
           </button>
         </div>
 
         {/* Page Content */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Page Content</h3>
-            <FileText size={20} className="text-indigo-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Page Content</h3>
+              <FileText size={18} className="text-indigo-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Edit About, Mission, Vision, etc.</p>
           </div>
-          <p className="text-gray-600 mb-4">Edit About, Mission, Vision, etc.</p>
           <button
-            onClick={() => navigate('/admin/page-content')}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+            onClick={() => setContentSubPage('pages')}
+            className="w-full py-2.5 bg-[#4f46e5] text-white rounded-xl font-semibold text-sm hover:bg-[#3730a3] transition-colors"
           >
             Edit Content
           </button>
         </div>
 
         {/* Home Stats */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Home Stats</h3>
-            <TrendingUp size={20} className="text-red-600" />
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Home Stats</h3>
+              <TrendingUp size={18} className="text-red-500" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Update homepage statistics</p>
           </div>
-          <p className="text-gray-600 mb-4">Update homepage statistics</p>
           <button
-            onClick={() => navigate('/admin/stats-management')}
-            className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+            onClick={() => setContentSubPage('stats')}
+            className="w-full py-2.5 bg-[#dc2626] text-white rounded-xl font-semibold text-sm hover:bg-[#b91c1c] transition-colors"
           >
             Update Stats
           </button>
         </div>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
-        <div className="flex items-start">
-          <AlertCircle className="text-blue-600 mt-1" size={20} />
-          <div className="ml-3">
-            <h4 className="text-sm font-medium text-blue-900">Content Management System</h4>
+      <div className="bg-[#eff6ff] border-l-4 border-l-blue-600 border border-blue-100 rounded-2xl p-5">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+          <div>
+            <h4 className="text-sm font-bold text-blue-900">Content Management System</h4>
             <p className="text-sm text-blue-700 mt-1">
               Use these tools to dynamically manage all website content. Changes will be reflected immediately on the live site.
               All content sections support rich text editing, images, and multimedia.
@@ -5514,18 +5407,15 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Retailer Shipments ({filteredDropshipOrders.length})</h2>
-              <p className="text-purple-100">Manage direct shipments from retailers to their customers</p>
-            </div>
-            <Package className="w-16 h-16 text-purple-200 opacity-50" />
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs">Manage direct dropshipments from business partners to final customers. Total shipments: {filteredDropshipOrders.length}.</p>
           </div>
+          <Package className="w-10 h-10 text-gray-500" />
         </div>
 
         {/* Filter */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-4 rounded-none border border-gray-200">
           <div className="flex items-center gap-2">
             <Search className="w-4 h-4 text-gray-400" />
             <input
@@ -5533,61 +5423,66 @@ const AdminDashboard: React.FC = () => {
               placeholder="Search by retailer, customer, or Order ID..."
               value={dropshipSearch}
               onChange={(e) => setDropshipSearch(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 w-80"
+              className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-gray-50 w-80"
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-none border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 text-gray-500 font-medium">
+              <thead className="bg-gray-50 text-gray-500 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4">Order ID</th>
-                  <th className="px-6 py-4">Retailer</th>
-                  <th className="px-6 py-4">Customer</th>
-                  <th className="px-6 py-4">Items</th>
-                  <th className="px-6 py-4">Payment</th>
-                  <th className="px-6 py-4">Tracking</th>
-                  <th className="px-6 py-4">Invoice</th>
-                  <th className="px-6 py-4">Actions</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Order ID</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Retailer</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Items</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Tracking</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Invoice</th>
+                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredDropshipOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-8 text-center text-xs text-gray-400 font-bold uppercase tracking-wider">
                       No shipments found
                     </td>
                   </tr>
                 ) : (
                   filteredDropshipOrders.map((order) => (
-                    <tr key={order._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium">
-                        {order.orderNumber || order._id.slice(-6)}
-                        <div className="text-xs text-gray-400">
+                    <tr key={order._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="font-mono font-bold text-indigo-600">
+                          #{order.orderNumber || order._id.slice(-6).toUpperCase()}
+                        </span>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">
                           {new Date(order.createdAt).toLocaleDateString()}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{order.user?.name || order.userId?.name || 'Unknown'}</div>
-                        <div className="text-xs text-gray-500">{order.user?.email || order.userId?.email}</div>
+                        <div className="font-bold text-gray-900 text-sm">{order.user?.name || order.userId?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500 font-semibold">{order.user?.email || order.userId?.email}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-blue-700 text-base">{order.customerDetails?.name || 'Unknown'}</div>
-                        <div className="text-xs text-gray-500">{order.customerDetails?.phone}</div>
-                        <div className="text-xs text-gray-400 truncate max-w-[150px]" title={order.customerDetails?.address}>
+                        <div className="font-bold text-blue-700 text-sm">{order.customerDetails?.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500 font-semibold">{order.customerDetails?.phone}</div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate max-w-[150px] mt-1" title={order.customerDetails?.address}>
                           {order.customerDetails?.address}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        {order.products.length} Items
+                      <td className="px-6 py-4 text-xs font-bold text-gray-900 uppercase tracking-wider">
+                        {order.products.length} Item{order.products.length !== 1 ? 's' : ''}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' :
-                          order.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
+                        <span className={`px-2 py-0.5 rounded-none border text-[10px] font-bold uppercase tracking-wider ${
+                          order.paymentStatus === 'completed' || order.paymentStatus === 'paid'
+                            ? 'bg-green-50 border-green-200 text-green-800'
+                            : order.paymentStatus === 'pending'
+                              ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+                              : 'bg-red-50 border-red-200 text-red-800'
+                        }`}>
                           {order.paymentStatus}
                         </span>
                       </td>
@@ -5596,18 +5491,18 @@ const AdminDashboard: React.FC = () => {
                         {order.deliveryTrackingLink ? (
                           <button
                             onClick={() => handleOpenTrackingModal(order._id, 'order', order.deliveryTrackingLink, order.customerDetails?.email, order.trackingId)}
-                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 border border-blue-200 transition-colors"
                             title={order.deliveryTrackingLink}
                           >
-                            <LinkIcon className="w-3 h-3" />
+                            <LinkIcon className="w-3.5 h-3.5" />
                             Edit Link
                           </button>
                         ) : (
                           <button
                             onClick={() => handleOpenTrackingModal(order._id, 'order', undefined, order.customerDetails?.email, order.trackingId)}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs transition-colors"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-none border border-gray-200 text-[10px] font-bold uppercase tracking-wider transition-colors"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-3.5 h-3.5" />
                             Add Link
                           </button>
                         )}
@@ -5619,13 +5514,13 @@ const AdminDashboard: React.FC = () => {
                             href={order.customerInvoiceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            className="text-xs font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 border border-blue-200 transition-colors"
                           >
                             <FileText size={14} />
-                            Customer Invoice
+                            Invoice PDF
                           </a>
                         ) : (
-                          <span className="text-gray-400 text-xs">Not generated</span>
+                          <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Not generated</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -5635,7 +5530,7 @@ const AdminDashboard: React.FC = () => {
                               setSelectedDropshipOrder(order);
                               setShowDropshipModal(true);
                             }}
-                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-none text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
                           >
                             View Details
                           </button>
@@ -5690,19 +5585,22 @@ const AdminDashboard: React.FC = () => {
   const renderSettings = () => {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">System Settings</h2>
+        <div className="bg-slate-900 border border-slate-850 p-6 text-white rounded-none flex items-center justify-between shadow-md">
+          <div>
+            <p className="text-gray-400 text-xs mt-1">Configure global parameters, pricing adjustments, tax levels, and system parameters.</p>
+          </div>
+          <SettingsIcon className="w-10 h-10 text-gray-500" />
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4">
           {/* Tax Percentage */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white rounded-none border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Tax Percentage</h3>
-                <p className="text-sm text-gray-600">GST/Tax percentage applied to orders</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900">Tax Percentage</h3>
+                <p className="text-xs text-gray-400 font-semibold uppercase mt-0.5">GST/Tax percentage applied to orders</p>
               </div>
-              <DollarSign className="w-8 h-8 text-blue-600" />
+              <DollarSign className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex items-center gap-4">
               <input
@@ -5712,13 +5610,13 @@ const AdminDashboard: React.FC = () => {
                 step="0.01"
                 value={settings.taxPercentage}
                 onChange={(e) => setSettings({ ...settings, taxPercentage: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <span className="text-gray-600 font-medium">%</span>
+              <span className="text-gray-500 font-bold">%</span>
               <button
                 onClick={() => updateSetting('taxPercentage', settings.taxPercentage)}
                 disabled={settingsLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-blue-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {settingsLoading ? 'Saving...' : 'Save'}
               </button>
@@ -5726,28 +5624,28 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Shipping Charge */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white rounded-none border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Shipping Charge</h3>
-                <p className="text-sm text-gray-600">Default shipping charge for orders</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900">Shipping Charge</h3>
+                <p className="text-xs text-gray-400 font-semibold uppercase mt-0.5">Default shipping charge for orders</p>
               </div>
-              <Truck className="w-8 h-8 text-green-600" />
+              <Truck className="w-6 h-6 text-green-600" />
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600 font-medium">₹</span>
+              <span className="text-gray-500 font-bold">₹</span>
               <input
                 type="number"
                 min="0"
                 step="1"
                 value={settings.shippingCharge}
                 onChange={(e) => setSettings({ ...settings, shippingCharge: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-green-500"
               />
               <button
                 onClick={() => updateSetting('shippingCharge', settings.shippingCharge)}
                 disabled={settingsLoading}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-green-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {settingsLoading ? 'Saving...' : 'Save'}
               </button>
@@ -5755,28 +5653,28 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Minimum Order Value */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white rounded-none border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Minimum Order Value</h3>
-                <p className="text-sm text-gray-600">Minimum order value required for checkout</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900">Minimum Order Value</h3>
+                <p className="text-xs text-gray-400 font-semibold uppercase mt-0.5">Minimum order value required for checkout</p>
               </div>
-              <ShoppingCart className="w-8 h-8 text-purple-600" />
+              <ShoppingCart className="w-6 h-6 text-purple-600" />
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600 font-medium">₹</span>
+              <span className="text-gray-500 font-bold">₹</span>
               <input
                 type="number"
                 min="0"
                 step="1"
                 value={settings.minOrderValue}
                 onChange={(e) => setSettings({ ...settings, minOrderValue: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-none text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
               <button
                 onClick={() => updateSetting('minOrderValue', settings.minOrderValue)}
                 disabled={settingsLoading}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {settingsLoading ? 'Saving...' : 'Save'}
               </button>
@@ -5788,20 +5686,20 @@ const AdminDashboard: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
-    { id: 'products', name: 'Products', icon: Package },
-    { id: 'users', name: 'Users', icon: Users },
-    { id: 'retailers', name: 'Retailers', icon: Store },
-    { id: 'quotes', name: 'Quotes', icon: FileText },
-    { id: 'orders', name: 'Orders', icon: ShoppingCart },
-    { id: 'shipments', name: 'Retailer-Customer Shipments', icon: Package },
-    { id: 'warranties', name: 'Warranties', icon: Shield },
-    { id: 'investors', name: 'Investor Documents', icon: FileText },
-    { id: 'messages', name: 'Messages', icon: MessageSquare },
-    { id: 'content', name: 'Content', icon: Edit },
-    { id: 'emails', name: 'Email Logs', icon: Mail },
-    { id: 'logs', name: 'Activity Logs', icon: ClipboardList },
-    { id: 'settings', name: 'Settings', icon: SettingsIcon },
+    { id: 'dashboard', name: 'Dashboard', pageName: 'Dashboard Overview', icon: BarChart3 },
+    { id: 'products', name: 'Products', pageName: 'Product Catalog', icon: Package },
+    { id: 'users', name: 'Users', pageName: 'User Management', icon: Users },
+    { id: 'retailers', name: 'Retailers', pageName: 'Retailer Management', icon: Store },
+    { id: 'quotes', name: 'Quotes', pageName: 'Quote Management', icon: FileText },
+    { id: 'orders', name: 'Orders', pageName: 'Order Management', icon: ShoppingCart },
+    { id: 'shipments', name: 'Retailer-Customer Shipments', pageName: 'Retailer Shipments', icon: Package },
+    { id: 'warranties', name: 'Warranties', pageName: 'Warranty Management', icon: Shield },
+    { id: 'investors', name: 'Investor Documents', pageName: 'Investor Documents', icon: FileText },
+    { id: 'messages', name: 'Messages', pageName: 'Contact Messages', icon: MessageSquare },
+    { id: 'content', name: 'Content', pageName: 'Content Management', icon: Edit },
+    { id: 'emails', name: 'Email Logs', pageName: 'Email Logs', icon: Mail },
+    { id: 'logs', name: 'Activity Logs', pageName: 'Activity Logs', icon: ClipboardList },
+    { id: 'settings', name: 'Settings', pageName: 'System Settings', icon: SettingsIcon },
   ];
   // Render Dropship Order Details Modal
   const renderDropshipOrderDetails = () => {
@@ -6100,150 +5998,310 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Tabs */}
-      <div className="bg-white shadow-md sticky top-0 z-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-          <div className="flex space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-3 transition-all ${activeTab === tab.id
-                    ? 'border-emerald-600 text-emerald-700 bg-emerald-50'
-                    : 'border-transparent text-gray-600 hover:text-emerald-600 hover:bg-gray-50'
-                    }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 shadow-lg sticky top-[57px] z-40">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-            {/* Left Section - Logo & Title */}
-            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <div className="bg-white rounded-lg p-1.5 sm:p-2 shadow-md flex-shrink-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {/* --- DESKTOP COLLAPSIBLE LEFT SIDEBAR --- */}
+      <aside className={`bg-slate-900 text-slate-300 flex-shrink-0 transition-all duration-300 border-r border-slate-800 hidden lg:flex flex-col sticky top-0 h-screen ${
+        sidebarCollapsed ? 'w-[78px]' : 'w-[280px]'
+      }`}>
+        {/* Brand Header */}
+        <div className="h-[70px] border-b border-slate-800 flex items-center justify-between px-4">
+          {!sidebarCollapsed ? (
+            <div className="flex items-center flex-1 mr-4">
+              <div className="bg-white rounded-lg p-2 w-full flex justify-center items-center">
                 <img
                   src="https://aishwaryatechtele.com/images/telogica_logo.png"
                   alt="Telogica Logo"
-                  className="h-6 sm:h-8 w-auto"
+                  className="h-10 w-auto max-w-full"
                 />
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-2xl font-bold text-white truncate">Admin Dashboard</h1>
-                <p className="text-emerald-100 text-xs sm:text-sm truncate">Welcome back, {user?.name || 'Admin'}</p>
-              </div>
             </div>
+          ) : (
+            <div className="bg-white rounded-lg p-1 mx-auto">
+              <img
+                src="https://aishwaryatechtele.com/images/telogica_logo.png"
+                alt="Telogica Logo"
+                className="h-6 w-auto"
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+        </div>
 
-            {/* Right Section - Actions */}
-            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
-              {/* Notification Badge */}
+        {/* Sidebar Nav Items */}
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            // Retrieve quick indicators / counts
+            let count = 0;
+            if (tab.id === 'messages') {
+              count = contacts.filter(c => c.status === 'new').length;
+            } else if (tab.id === 'retailers') {
+              count = users.filter(u => u.role === 'retailer' && !u.isApproved).length;
+            } else if (tab.id === 'warranties') {
+              count = warranties.filter(w => w.status === 'pending').length;
+            } else if (tab.id === 'quotes') {
+              count = quotes.filter(q => q.status === 'pending').length;
+            }
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center rounded-xl transition-all duration-150 py-3 ${
+                  sidebarCollapsed ? 'justify-center px-0' : 'px-4'
+                } ${
+                  active
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/10 font-bold'
+                    : 'hover:bg-slate-800/60 hover:text-white text-slate-400'
+                }`}
+                title={tab.name}
+              >
+                <Icon size={18} className={active ? 'text-white' : 'text-slate-400'} />
+                {!sidebarCollapsed && (
+                  <>
+                    <span className="ml-3 text-sm truncate flex-1 text-left">{tab.name}</span>
+                    {count > 0 && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        active ? 'bg-white text-emerald-700' : 'bg-red-500 text-white'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </>
+                )}
+                {sidebarCollapsed && count > 0 && (
+                  <span className="absolute ml-6 mb-4 w-2 h-2 rounded-full bg-red-500 ring-2 ring-slate-900"></span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Profile Card & Logout */}
+        <div className="p-4 border-t border-slate-800 bg-slate-950/20">
+          {!sidebarCollapsed ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-emerald-600/15 text-emerald-500 rounded-xl p-2 font-bold w-10 h-10 flex items-center justify-center border border-emerald-500/20">
+                  {user?.name?.charAt(0).toUpperCase() || 'A'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-bold text-xs uppercase tracking-wider truncate">{user?.name || 'Admin User'}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 rounded-xl font-bold transition-all text-xs uppercase tracking-wider"
+              >
+                <LogOut size={14} />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="w-10 h-10 mx-auto flex items-center justify-center bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 rounded-xl transition-all"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* --- MOBILE SIDEBAR NAVIGATION --- */}
+      <div className="lg:hidden sticky top-0 z-50 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 h-[60px] w-full">
+        <div className="flex items-center gap-2">
+          <div className="bg-white rounded-lg p-1 flex-shrink-0">
+            <img
+              src="https://aishwaryatechtele.com/images/telogica_logo.png"
+              alt="Telogica Logo"
+              className="h-6 w-auto"
+            />
+          </div>
+          <span className="font-extrabold text-sm text-white uppercase tracking-wider">Admin</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => loadDashboardData()}
+            className="p-2 text-slate-400 hover:text-white transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw size={18} />
+          </button>
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="p-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
+
+        {/* Mobile Dropdown Panel */}
+        {mobileSidebarOpen && (
+          <div className="absolute top-[60px] left-0 w-full bg-slate-950 border-b border-slate-800 shadow-2xl p-4 space-y-1 max-h-[75vh] overflow-y-auto z-50 animate-in slide-in-from-top duration-200">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-xl transition-all ${
+                    active
+                      ? 'bg-emerald-600 text-white font-bold'
+                      : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="ml-3 text-sm">{tab.name}</span>
+                </button>
+              );
+            })}
+            <div className="border-t border-slate-800 pt-3 mt-3 flex justify-between items-center px-4">
+              <div className="text-left min-w-0 flex-1 mr-2">
+                <p className="text-white font-semibold text-xs truncate">{user?.name}</p>
+                <p className="text-slate-500 text-[10px] truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600 hover:text-white text-xs font-bold rounded-xl uppercase tracking-wider transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* --- MAIN ANALYTICAL VIEWPORT --- */}
+      <main className="flex-1 min-w-0 flex flex-col">
+        {/* Top Header Bar on Desktop */}
+        <header className="h-[70px] bg-white border-b border-slate-200 px-8 items-center justify-between hidden lg:flex sticky top-0 z-30">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-black text-slate-800 uppercase tracking-wider font-sans">
+              {tabs.find(t => t.id === activeTab)?.pageName || tabs.find(t => t.id === activeTab)?.name || 'Admin'}
+            </h2>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2">
+              {/* Refresh button */}
+              <button
+                onClick={loadDashboardData}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
+                title="Sync Dashboard Data"
+              >
+                <RefreshCw size={18} />
+              </button>
+
+              {/* Notification Button */}
               <div className="relative">
                 <button
-                  className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm"
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-200"
                   title="Notifications"
                 >
-                  <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Bell size={18} />
                   {contacts.filter(c => c.status === 'new').length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center">
-                      {contacts.filter(c => c.status === 'new').length}
-                    </span>
+                    <span className="absolute top-1.5 right-1.5 bg-red-500 w-2.5 h-2.5 rounded-full ring-2 ring-white"></span>
                   )}
                 </button>
               </div>
+            </div>
 
-              {/* Refresh Button */}
-              <button
-                onClick={loadDashboardData}
-                className="p-2 sm:p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm"
-                title="Refresh Data"
-              >
-                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+            <div className="h-6 w-px bg-slate-200"></div>
 
-              {/* User Menu */}
-              <div className="hidden sm:flex items-center gap-2 sm:gap-3 bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-4 py-1.5 sm:py-2">
-                <div className="text-right hidden lg:block">
-                  <p className="text-white font-semibold text-xs sm:text-sm truncate max-w-[120px]">{user?.name || 'Admin'}</p>
-                  <p className="text-emerald-100 text-xs truncate max-w-[120px]">{user?.email}</p>
-                </div>
-                <div className="bg-white rounded-lg p-1.5 sm:p-2">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
-                </div>
+            {/* Profile Avatar info */}
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-bold text-slate-800 leading-none">{user?.name || 'Administrator'}</p>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Control Center</p>
               </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 hover:bg-red-500 text-white rounded-lg transition-all font-medium backdrop-blur-sm text-sm"
-                title="Logout"
-              >
-                <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Logout</span>
-              </button>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white font-bold flex items-center justify-center shadow-md">
+                {user?.name?.slice(0, 2).toUpperCase() || 'AD'}
+              </div>
             </div>
           </div>
+        </header>
+
+        {/* Viewport Content */}
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+          {error ? (
+            <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-xl">
+              <div className="flex items-start">
+                <AlertCircle className="text-red-500 mt-1 flex-shrink-0" size={24} />
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">
+                    Error Loading Dashboard
+                  </h3>
+                  <p className="text-red-700 mb-4">{error}</p>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      loadDashboardData();
+                    }}
+                    className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <RefreshCw size={16} />
+                    Retry Loading
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : loading ? (
+            <div className="flex justify-center items-center h-96">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+            </div>
+          ) : (
+            <>
+              {activeTab === 'dashboard' && renderDashboard()}
+              {activeTab === 'products' && renderProducts()}
+              {activeTab === 'users' && renderUsers()}
+              {activeTab === 'retailers' && (
+                <RetailerManagement isEmbedded={true} />
+              )}
+              {activeTab === 'quotes' && renderQuotes()}
+              {activeTab === 'orders' && renderOrders()}
+              {activeTab === 'shipments' && renderDropshipOrders()}
+              {activeTab === 'warranties' && renderWarranties()}
+              {activeTab === 'investors' && renderInvestorDocuments()}
+              {activeTab === 'messages' && renderContacts()}
+              {activeTab === 'content' && (
+                contentSubPage === 'blogs' ? (
+                  <BlogManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'team' ? (
+                  <TeamManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'events' ? (
+                  <EventManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'reports' ? (
+                  <ReportManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'pages' ? (
+                  <PageContent isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'stats' ? (
+                  <StatsManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : (
+                  renderContentManagement()
+                )
+              )}
+              {activeTab === 'emails' && renderEmailLogs()}
+              {activeTab === 'logs' && <AdminLogs />}
+              {activeTab === 'settings' && renderSettings()}
+            </>
+          )}
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error ? (
-          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
-            <div className="flex items-start">
-              <AlertCircle className="text-red-500 mt-1 flex-shrink-0" size={24} />
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">
-                  Error Loading Dashboard
-                </h3>
-                <p className="text-red-700 mb-4">{error}</p>
-                <button
-                  onClick={() => {
-                    setError(null);
-                    loadDashboardData();
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                >
-                  <RefreshCw size={16} />
-                  Retry Loading
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <>
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'products' && renderProducts()}
-            {activeTab === 'users' && renderUsers()}
-            {activeTab === 'retailers' && (
-              <RetailerManagement isEmbedded={true} />
-            )}
-            {activeTab === 'quotes' && renderQuotes()}
-            {activeTab === 'orders' && renderOrders()}
-            {activeTab === 'shipments' && renderDropshipOrders()}
-            {activeTab === 'warranties' && renderWarranties()}
-            {activeTab === 'investors' && renderInvestorDocuments()}
-            {activeTab === 'messages' && renderContacts()}
-            {activeTab === 'content' && renderContentManagement()}
-            {activeTab === 'emails' && renderEmailLogs()}
-            {activeTab === 'logs' && <AdminLogs />}
-            {activeTab === 'settings' && renderSettings()}
-          </>
-        )}
-      </div>
+      </main>
 
       {/* Product Units Modal */}
       {showUnitsModal && selectedProductForUnits && (
@@ -6264,12 +6322,12 @@ const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-4 flex items-center justify-between">
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <ShoppingCart className="w-8 h-8" />
+                <ShoppingCart className="w-6 h-6 text-gray-400" />
                 <div>
-                  <h2 className="text-2xl font-bold">Order Details</h2>
-                  <p className="text-emerald-100 text-sm">Order #{selectedOrder.orderNumber || selectedOrder._id.slice(-8)}</p>
+                  <h2 className="text-sm font-bold uppercase tracking-wider">Order Details</h2>
+                  <p className="text-gray-400 text-[10px] uppercase font-bold tracking-wider mt-0.5">Order #{selectedOrder.orderNumber || selectedOrder._id.slice(-8)}</p>
                 </div>
               </div>
               <button
@@ -6277,9 +6335,9 @@ const AdminDashboard: React.FC = () => {
                   setShowOrderDetailsModal(false);
                   setSelectedOrder(null);
                 }}
-                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors"
+                className="text-gray-400 hover:text-white p-1 rounded-none transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 

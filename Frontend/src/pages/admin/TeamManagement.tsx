@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar, Download, X, Users } from 'lucide-react';
 
 interface TeamMember {
   _id?: string;
@@ -16,7 +16,12 @@ interface TeamMember {
   isActive: boolean;
 }
 
-export default function TeamManagement() {
+interface TeamManagementProps {
+  isEmbedded?: boolean;
+  onBack?: () => void;
+}
+
+export default function TeamManagement({ isEmbedded = false, onBack }: TeamManagementProps = {}) {
   const navigate = useNavigate();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -111,108 +116,86 @@ export default function TeamManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-20 md:pt-24 pb-8 md:pb-16">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
-          <div className="flex items-center gap-3 md:gap-4">
-            <button onClick={() => navigate('/admin')} className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={20} className="md:w-6 md:h-6" />
+    <div className={isEmbedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={isEmbedded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+        {/* Header with Back Navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onBack ? onBack() : navigate('/admin')}
+              className="p-2 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-colors"
+              title="Back to Admin Dashboard"
+            >
+              <ArrowLeft size={18} className="text-gray-600" />
             </button>
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Team Management</h1>
+            <div>
+              <h1 className="text-sm font-black text-gray-900 uppercase tracking-wider">Team Management</h1>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Content Management → Team</p>
+            </div>
           </div>
           <button
             onClick={() => { resetForm(); setEditingMember(null); setShowForm(true); }}
-            className="bg-green-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 text-sm md:text-base w-full sm:w-auto justify-center"
+            className="px-5 py-2.5 bg-green-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-green-700 transition-colors flex items-center gap-2"
           >
-            <Plus size={18} className="md:w-5 md:h-5" /> Add Member
+            <Plus size={16} /> Add Member
           </button>
         </div>
 
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        {/* Filter & Export Row */}
+        <div className="bg-white border border-gray-200 rounded-none p-4 mb-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
-              <input
-                type="date"
-                value={exportStartDate}
-                onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <span className="text-gray-400">-</span>
-              <input
-                type="date"
-                value={exportEndDate}
-                onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Date:</span>
+              <input type="date" value={exportStartDate} onChange={(e) => setExportStartDate(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-green-500 bg-gray-50" />
+              <span className="text-gray-300 text-xs">—</span>
+              <input type="date" value={exportEndDate} onChange={(e) => setExportEndDate(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-green-500 bg-gray-50" />
               {(exportStartDate || exportEndDate) && (
-                <button
-                  onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
-                >
-                  Clear
+                <button onClick={() => { setExportStartDate(''); setExportEndDate(''); }} className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1">
+                  <X size={12} /> Clear
                 </button>
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => handleExport('pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-              >
-                <Download size={14} /> PDF
+              <button onClick={() => handleExport('pdf')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors">
+                <Download size={12} /> PDF
               </button>
-              <button
-                onClick={() => handleExport('csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-              >
-                <Download size={14} /> CSV
+              <button onClick={() => handleExport('csv')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors">
+                <Download size={12} /> CSV
               </button>
-              <button
-                onClick={() => handleExport('excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-              >
-                <Download size={14} /> Excel
+              <button onClick={() => handleExport('excel')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors">
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
         </div>
 
+        {/* Form */}
         {showForm && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">{editingMember ? 'Edit Team Member' : 'New Team Member'}</h2>
+          <div className="bg-white rounded-none border border-gray-200 p-6 mb-5">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                {editingMember ? 'Edit Team Member' : 'New Team Member'}
+              </h2>
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1.5 text-gray-400 hover:text-gray-600 bg-gray-50 border border-gray-200 rounded-none">
+                <X size={16} />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Name</label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Role</label>
+                  <input type="text" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" required />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                  <select
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  >
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Department</label>
+                  <select value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500">
                     <option value="Leadership">Leadership</option>
                     <option value="Engineering">Engineering</option>
                     <option value="Sales">Sales</option>
@@ -221,68 +204,37 @@ export default function TeamManagement() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Order</label>
-                  <input
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) => setFormData({ ...formData, order: Number(e.target.value) })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Order</label>
+                  <input type="number" value={formData.order} onChange={(e) => setFormData({ ...formData, order: Number(e.target.value) })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+                  <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
-                  <input
-                    type="url"
-                    value={formData.linkedin}
-                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">LinkedIn</label>
+                  <input type="url" value={formData.linkedin} onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                <input
-                  type="url"
-                  value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  required
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Image URL</label>
+                <input type="url" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  rows={3}
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Bio</label>
+                <textarea value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-green-500" rows={3} />
               </div>
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-700">Active</span>
+                <input type="checkbox" checked={formData.isActive} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })} className="rounded-none" />
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Active</span>
               </label>
-              <div className="flex gap-4">
-                <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2">
-                  <Save size={20} /> Save
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="px-6 py-2.5 bg-green-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-green-700 transition-colors flex items-center gap-2">
+                  <Save size={16} /> Save
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-none font-bold uppercase tracking-wider text-xs hover:bg-gray-200 border border-gray-200 transition-colors">
                   Cancel
                 </button>
               </div>
@@ -290,26 +242,43 @@ export default function TeamManagement() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {members.map((member) => (
-            <div key={member._id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <img src={member.image} alt={member.name} className="w-full h-48 object-cover" />
-              <div className="p-4">
-                <h3 className="font-bold text-lg">{member.name}</h3>
-                <p className="text-sm text-gray-600">{member.role}</p>
-                <p className="text-xs text-gray-500 mb-4">{member.department}</p>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(member)} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 flex items-center justify-center gap-1">
-                    <Edit size={14} /> Edit
-                  </button>
-                  <button onClick={() => handleDelete(member._id!)} className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700 flex items-center justify-center gap-1">
-                    <Trash2 size={14} /> Delete
-                  </button>
+        {/* Team Grid */}
+        {members.length === 0 ? (
+          <div className="bg-white rounded-none border border-gray-200 p-16 text-center">
+            <div className="bg-gray-100 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Users className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">No Team Members Found</h3>
+            <p className="text-xs text-gray-500 mb-6">Add your first team member to get started</p>
+            <button
+              onClick={() => { resetForm(); setEditingMember(null); setShowForm(true); }}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-green-700 transition-colors"
+            >
+              <Plus size={14} /> Add Member
+            </button>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {members.map((member) => (
+              <div key={member._id} className="bg-white rounded-none border border-gray-200 overflow-hidden">
+                <img src={member.image} alt={member.name} className="w-full h-44 object-cover" />
+                <div className="p-4">
+                  <h3 className="text-sm font-bold text-gray-900">{member.name}</h3>
+                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">{member.role}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5 mb-3">{member.department}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEdit(member)} className="flex-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors flex items-center justify-center gap-1">
+                      <Edit size={12} /> Edit
+                    </button>
+                    <button onClick={() => handleDelete(member._id!)} className="flex-1 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-none transition-colors flex items-center justify-center gap-1">
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

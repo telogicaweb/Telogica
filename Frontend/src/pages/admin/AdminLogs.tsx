@@ -13,7 +13,8 @@ import {
   Shield,
   DollarSign,
   User,
-  FileText
+  FileText,
+  XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -121,12 +122,12 @@ const AdminLogs = () => {
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case 'CREATE': return 'text-green-600 bg-green-50';
-      case 'UPDATE': return 'text-blue-600 bg-blue-50';
-      case 'DELETE': return 'text-red-600 bg-red-50';
-      case 'APPROVE': return 'text-emerald-600 bg-emerald-50';
-      case 'REJECT': return 'text-orange-600 bg-orange-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'CREATE': return 'text-green-700 bg-green-50 border-green-200';
+      case 'UPDATE': return 'text-blue-700 bg-blue-50 border-blue-200';
+      case 'DELETE': return 'text-red-700 bg-red-50 border-red-200';
+      case 'APPROVE': return 'text-emerald-700 bg-emerald-50 border-emerald-250';
+      case 'REJECT': return 'text-orange-700 bg-orange-50 border-orange-200';
+      default: return 'text-gray-700 bg-gray-50 border-gray-200';
     }
   };
 
@@ -144,209 +145,191 @@ const AdminLogs = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Admin Activity Logs</h2>
-          <p className="text-gray-600 mt-1">
-            Track all admin CRUD operations on Products, Orders, Warranty, Payments, Users, and Invoices
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={fetchLogs}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Export PDF
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Header & Export Card */}
+      <div className="bg-white border border-gray-200 rounded-none shadow-sm mb-6">
+        <div className="px-5 py-4 border-b border-gray-150 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Calendar className="w-4 h-4 inline mr-1" />
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Admin Activity Logs</h2>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">
+              Track all admin CRUD operations on Products, Orders, Warranty, Payments, Users, and Invoices
+            </p>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Calendar className="w-4 h-4 inline mr-1" />
-              End Date
-            </label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Entity Type</label>
-            <select
-              value={filters.entity}
-              onChange={(e) => setFilters({ ...filters, entity: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={fetchLogs}
+              disabled={loading}
+              className="px-3 py-2 bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
             >
-              <option value="">All Entities</option>
-              {allowedEntities.map(entity => (
-                <option key={entity} value={entity}>{entity}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Action</label>
-            <select
-              value={filters.action}
-              onChange={(e) => setFilters({ ...filters, action: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button
+              onClick={() => handleExport('csv')}
+              className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-none hover:bg-gray-50 transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-gray-300"
             >
-              <option value="">All Actions</option>
-              {allowedActions.map(action => (
-                <option key={action} value={action}>{action}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Search className="w-4 h-4 inline mr-1" />
-              Search
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search logs..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+              <Download className="w-4 h-4" />
+              CSV
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="px-3 py-2 bg-white border border-gray-200 text-gray-750 rounded-none hover:bg-gray-50 transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-gray-300"
+            >
+              <Download className="w-4 h-4" />
+              Excel
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="px-3 py-2 bg-emerald-600 text-white rounded-none hover:bg-emerald-700 transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-wider"
+            >
+              <Download className="w-4 h-4" />
+              PDF
+            </button>
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={() => {
-              setFilters({
-                startDate: '',
-                endDate: '',
-                adminId: '',
-                action: '',
-                entity: ''
-              });
-              setSearchQuery('');
-              setPage(1);
-            }}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            Clear Filters
-          </button>
+        {/* Filters Panel */}
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <Calendar className="w-3.5 h-3.5 inline mr-1 text-gray-550" />
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <Calendar className="w-3.5 h-3.5 inline mr-1 text-gray-550" />
+                End Date
+              </label>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Entity Type</label>
+              <select
+                value={filters.entity}
+                onChange={(e) => setFilters({ ...filters, entity: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">All Entities</option>
+                {allowedEntities.map(entity => (
+                  <option key={entity} value={entity}>{entity}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Action</label>
+              <select
+                value={filters.action}
+                onChange={(e) => setFilters({ ...filters, action: e.target.value })}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">All Actions</option>
+                {allowedActions.map(action => (
+                  <option key={action} value={action}>{action}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                <Search className="w-3.5 h-3.5 inline mr-1 text-gray-550" />
+                Search
+              </label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search logs..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-none text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => {
+                setFilters({
+                  startDate: '',
+                  endDate: '',
+                  adminId: '',
+                  action: '',
+                  entity: ''
+                });
+                setSearchQuery('');
+                setPage(1);
+              }}
+              className="px-4 py-2 text-gray-755 bg-gray-100 rounded-none hover:bg-gray-200 transition-colors text-xs font-bold uppercase tracking-wider"
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Logs</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">{totalLogs}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[{
+          label: 'Total Logs',
+          value: totalLogs,
+          icon: Users,
+          color: 'text-blue-600',
+          accent: 'border-t-blue-600'
+        }, {
+          label: 'Products',
+          value: logs.filter(l => l.entity === 'Product').length,
+          icon: Package,
+          color: 'text-green-600',
+          accent: 'border-t-green-600'
+        }, {
+          label: 'Orders',
+          value: logs.filter(l => l.entity === 'Order').length,
+          icon: ShoppingCart,
+          color: 'text-purple-600',
+          accent: 'border-t-purple-600'
+        }, {
+          label: 'Warranty & Payment',
+          value: logs.filter(l => l.entity === 'Warranty' || l.entity === 'Payment').length,
+          icon: Shield,
+          color: 'text-orange-600',
+          accent: 'border-t-orange-600'
+        }].map((stat, idx) => (
+          <div key={idx} className={`bg-white rounded-none shadow-sm border border-gray-200 border-t-4 ${stat.accent} p-5 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-2xl font-black text-gray-950 mt-1">{stat.value}</p>
+              </div>
+              <stat.icon className={`w-8 h-8 ${stat.color}`} />
             </div>
-            <Users className="w-8 h-8 text-blue-500" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Products</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">
-                {logs.filter(l => l.entity === 'Product').length}
-              </p>
-            </div>
-            <Package className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Orders</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">
-                {logs.filter(l => l.entity === 'Order').length}
-              </p>
-            </div>
-            <ShoppingCart className="w-8 h-8 text-purple-500" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Warranty & Payment</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">
-                {logs.filter(l => l.entity === 'Warranty' || l.entity === 'Payment').length}
-              </p>
-            </div>
-            <Shield className="w-8 h-8 text-orange-500" />
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Logs Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-none border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Admin
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Entity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Action
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Details
-                </th>
+                {['Timestamp', 'Admin', 'Entity', 'Action', 'Details'].map(header => (
+                  <th key={header} className="px-6 py-3.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -354,12 +337,12 @@ const AdminLogs = () => {
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-500" />
-                    <p className="mt-2 text-gray-500">Loading logs...</p>
+                    <p className="mt-2 text-xs font-bold uppercase tracking-wider text-gray-450">Loading logs...</p>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 text-xs font-bold uppercase tracking-wider">
                     No logs found
                   </td>
                 </tr>
@@ -377,32 +360,32 @@ const AdminLogs = () => {
                   .map((log) => (
                     <tr 
                       key={log._id} 
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-slate-50 cursor-pointer transition-colors"
                       onClick={() => setSelectedLog(log)}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-gray-650">
                         {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-semibold text-gray-900">
                           {log.adminId?.name || log.adminName || 'Unknown'}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-gray-400 font-mono mt-0.5">
                           {log.adminId?.email || log.adminEmail || '-'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           {getEntityIcon(log.entity)}
-                          <span className="text-sm text-gray-900">{log.entity}</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-gray-900">{log.entity}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getActionColor(log.action)}`}>
+                        <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-none ${getActionColor(log.action)}`}>
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
+                      <td className="px-6 py-4 text-xs text-gray-500 font-medium">
                         {log.details?.name || log.details?.productName || log.entityId || 'N/A'}
                       </td>
                     </tr>
@@ -415,21 +398,21 @@ const AdminLogs = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-            <div className="text-sm text-gray-700">
+            <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">
               Page {page} of {totalPages}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 border border-gray-300 rounded-none hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 border border-gray-300 rounded-none hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -441,47 +424,45 @@ const AdminLogs = () => {
       {/* Log Details Modal */}
       {selectedLog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">Log Details</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {format(new Date(selectedLog.timestamp), 'MMMM dd, yyyy HH:mm:ss')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedLog(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <span className="text-2xl">&times;</span>
-                </button>
+          <div className="bg-white rounded-none border border-gray-300 shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center text-white z-10">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider">Log Details</h3>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">
+                  {format(new Date(selectedLog.timestamp), 'MMMM dd, yyyy HH:mm:ss')}
+                </p>
               </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-gray-400 hover:text-white p-1 rounded-none transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <p className="text-sm font-medium text-gray-500">Admin</p>
-                <p className="mt-1 text-gray-900">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Admin Partner</p>
+                <p className="text-sm font-bold text-gray-950 mt-1">
                   {selectedLog.adminId?.name || selectedLog.adminName || 'Unknown'}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-450 font-mono">
                   {selectedLog.adminId?.email || selectedLog.adminEmail || '-'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-4 border border-gray-100 rounded-none">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Entity</label>
-                  <p className="mt-1 text-gray-900 flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Entity Type</label>
+                  <p className="mt-1 text-xs font-bold text-gray-900 flex items-center gap-2">
                     {getEntityIcon(selectedLog.entity)}
                     {selectedLog.entity}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Action</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Action Type</label>
                   <p className="mt-1">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getActionColor(selectedLog.action)}`}>
+                    <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-none ${getActionColor(selectedLog.action)}`}>
                       {selectedLog.action}
                     </span>
                   </p>
@@ -490,15 +471,15 @@ const AdminLogs = () => {
 
               {selectedLog.entityId && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Entity ID</label>
-                  <p className="mt-1 text-gray-900 font-mono text-sm">{selectedLog.entityId}</p>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Entity ID Reference</label>
+                  <p className="mt-1 text-xs font-mono font-bold text-slate-800 bg-slate-50 border border-slate-100 p-2 rounded-none inline-block">{selectedLog.entityId}</p>
                 </div>
               )}
 
               {selectedLog.details && (
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Details</label>
-                  <pre className="mt-1 bg-gray-50 p-3 rounded-lg text-xs overflow-x-auto">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payload Details</label>
+                  <pre className="mt-1 bg-slate-900 text-slate-100 p-4 border border-slate-950 rounded-none text-xs overflow-x-auto font-mono leading-relaxed">
                     {JSON.stringify(selectedLog.details, null, 2)}
                   </pre>
                 </div>
@@ -508,9 +489,9 @@ const AdminLogs = () => {
             <div className="p-6 border-t border-gray-200">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-none hover:bg-slate-800 transition-colors text-xs font-bold uppercase tracking-wider border border-slate-950"
               >
-                Close
+                Close View
               </button>
             </div>
           </div>

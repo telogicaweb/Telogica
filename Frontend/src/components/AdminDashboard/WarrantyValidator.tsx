@@ -106,10 +106,10 @@ const WarrantyValidator = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white p-6 rounded-none border border-gray-200">
       <div className="flex items-center gap-2 mb-4">
-        <Search className="w-5 h-5 text-indigo-600" />
-        <h3 className="text-lg font-semibold text-gray-900">Warranty Validation Tool</h3>
+        <Search className="w-4 h-4 text-indigo-600" />
+        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Warranty Validation Tool</h3>
       </div>
       
       <form onSubmit={handleValidate} className="mb-4">
@@ -119,22 +119,22 @@ const WarrantyValidator = () => {
             value={serialNumber}
             onChange={(e) => setSerialNumber(e.target.value)}
             placeholder="Enter product serial number..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-4 py-2 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
             disabled={isChecking}
           />
           <button
             type="submit"
             disabled={isChecking || !serialNumber.trim()}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {isChecking ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 Checking...
               </>
             ) : (
               <>
-                <Search size={18} />
+                <Search size={14} />
                 Validate
               </>
             )}
@@ -143,33 +143,33 @@ const WarrantyValidator = () => {
       </form>
 
       {result && (
-        <div className={`border-2 rounded-lg p-6 ${getStatusColor()}`}>
+        <div className={`border-2 rounded-none p-6 ${getStatusColor()}`}>
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0">
               {getStatusIcon()}
             </div>
             
             <div className="flex-1">
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3">
                 {result.message}
               </h4>
 
               {result.productInfo && (
                 <div className="mb-4 pb-4 border-b border-gray-200">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Product Information:</p>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Product Information</p>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-gray-600">Product:</span>{' '}
-                      <span className="font-medium">{result.productInfo.name}</span>
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Product:</span>{' '}
+                      <span className="font-bold text-gray-900">{result.productInfo.name}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Category:</span>{' '}
-                      <span className="font-medium">{result.productInfo.category}</span>
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Category:</span>{' '}
+                      <span className="font-bold text-gray-900">{result.productInfo.category}</span>
                     </div>
                     {result.productInfo.manufacturingDate && (
                       <div>
-                        <span className="text-gray-600">Manufacturing Date:</span>{' '}
-                        <span className="font-medium">
+                        <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Mfg Date:</span>{' '}
+                        <span className="font-bold text-gray-900">
                           {new Date(result.productInfo.manufacturingDate).toLocaleDateString()}
                         </span>
                       </div>
@@ -180,38 +180,38 @@ const WarrantyValidator = () => {
 
               {result.warranty && (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">Warranty Details:</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Warranty Details</p>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                     <div>
-                      <span className="text-gray-600">Serial Number:</span>{' '}
-                      <span className="font-medium">{result.warranty.serialNumber}</span>
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Serial:</span>{' '}
+                      <span className="font-bold text-gray-900 uppercase">{result.warranty.serialNumber}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Model Number:</span>{' '}
-                      <span className="font-medium">{result.warranty.modelNumber}</span>
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Model:</span>{' '}
+                      <span className="font-bold text-gray-900 uppercase">{result.warranty.modelNumber}</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Purchase Date:</span>{' '}
-                      <span className="font-medium">
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Purchase Date:</span>{' '}
+                      <span className="font-bold text-gray-900">
                         {new Date(result.warranty.purchaseDate).toLocaleDateString()}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Purchase Type:</span>{' '}
-                      <span className="font-medium capitalize">
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Type:</span>{' '}
+                      <span className="font-bold text-gray-900 capitalize">
                         {result.warranty.purchaseType.replace(/_/g, ' ')}
                       </span>
                     </div>
                     {result.warranty.warrantyPeriodMonths && (
                       <div>
-                        <span className="text-gray-600">Warranty Period:</span>{' '}
-                        <span className="font-medium">{result.warranty.warrantyPeriodMonths} months</span>
+                        <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Period:</span>{' '}
+                        <span className="font-bold text-gray-900">{result.warranty.warrantyPeriodMonths} Months</span>
                       </div>
                     )}
                     <div>
-                      <span className="text-gray-600">Status:</span>{' '}
-                      <span className={`font-medium capitalize ${
+                      <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Status:</span>{' '}
+                      <span className={`font-bold uppercase ${
                         result.warranty.status === 'approved' ? 'text-green-700' :
                         result.warranty.status === 'pending' ? 'text-yellow-700' :
                         'text-red-700'
@@ -222,23 +222,23 @@ const WarrantyValidator = () => {
                   </div>
 
                   {result.warranty.warrantyStartDate && result.warranty.warrantyEndDate && (
-                    <div className="bg-white bg-opacity-50 p-3 rounded border border-gray-200">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-white bg-opacity-50 p-3 rounded-none border border-gray-200">
+                      <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                          <span className="text-gray-600">Start Date:</span>{' '}
-                          <span className="font-medium">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Start Date:</span>{' '}
+                          <span className="font-bold text-gray-900">
                             {new Date(result.warranty.warrantyStartDate).toLocaleDateString()}
                           </span>
                         </div>
                         <div>
-                          <span className="text-gray-600">End Date:</span>{' '}
-                          <span className="font-medium">
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">End Date:</span>{' '}
+                          <span className="font-bold text-gray-900">
                             {new Date(result.warranty.warrantyEndDate).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
                       {result.warranty.daysRemaining !== undefined && result.warranty.daysRemaining > 0 && (
-                        <p className="mt-2 text-sm font-medium text-green-700">
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-200/50 px-2 py-0.5 inline-block rounded-none">
                           {result.warranty.daysRemaining} days remaining
                         </p>
                       )}
@@ -246,25 +246,25 @@ const WarrantyValidator = () => {
                   )}
 
                   {result.warranty.customerName && (
-                    <div className="bg-white bg-opacity-50 p-3 rounded border border-gray-200">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Customer Information:</p>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="bg-white bg-opacity-50 p-3 rounded-none border border-gray-200">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Customer Information</p>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                          <span className="text-gray-600">Name:</span>{' '}
-                          <span className="font-medium">{result.warranty.customerName}</span>
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Name:</span>{' '}
+                          <span className="font-bold text-gray-900">{result.warranty.customerName}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Email:</span>{' '}
-                          <span className="font-medium">{result.warranty.customerEmail}</span>
+                          <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Email:</span>{' '}
+                          <span className="font-bold text-gray-900">{result.warranty.customerEmail}</span>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {result.warranty.rejectionReason && (
-                    <div className="bg-red-100 p-3 rounded border border-red-200">
-                      <p className="text-sm font-medium text-red-700 mb-1">Rejection Reason:</p>
-                      <p className="text-sm text-red-600">{result.warranty.rejectionReason}</p>
+                    <div className="bg-red-50 p-3 rounded-none border border-red-200">
+                      <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1">Rejection Reason</p>
+                      <p className="text-xs text-red-600 font-semibold">{result.warranty.rejectionReason}</p>
                     </div>
                   )}
 
@@ -274,15 +274,15 @@ const WarrantyValidator = () => {
                         href={result.warranty.certificateUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-none hover:bg-indigo-700 transition-colors text-xs font-bold uppercase tracking-wider"
                       >
-                        <FileText size={16} />
+                        <FileText size={14} />
                         View Warranty Certificate
                       </a>
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-500 mt-3">
+                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-3">
                     Registered: {new Date(result.warranty.registeredDate).toLocaleString()}
                   </div>
                 </div>

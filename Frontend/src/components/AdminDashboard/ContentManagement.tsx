@@ -68,9 +68,9 @@ const ContentManagement: React.FC<ContentManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-6 shadow-lg">
-        <h2 className="text-3xl font-bold mb-2">Content Management Hub</h2>
-        <p className="text-blue-100">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-none p-6 shadow-sm border border-blue-700">
+        <h2 className="text-xl font-black uppercase tracking-wider mb-2">Content Management Hub</h2>
+        <p className="text-xs text-blue-100 uppercase tracking-wider font-semibold">
           Manage all your website content from one central location
         </p>
       </div>
@@ -82,23 +82,23 @@ const ContentManagement: React.FC<ContentManagementProps> = ({
             <div
               key={section.id}
               onClick={section.action}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer border border-gray-100 hover:border-blue-300"
+              className="bg-white rounded-none border border-gray-200 shadow-sm hover:shadow-md transition-shadow p-6 cursor-pointer hover:border-slate-400"
             >
-              <div className={`${section.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}>
+              <div className={`${section.color} w-12 h-12 rounded-none flex items-center justify-center mb-4`}>
                 <Icon className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-1.5">
                 {section.title}
               </h3>
-              <p className="text-sm text-gray-600">{section.description}</p>
+              <p className="text-xs text-gray-400 font-semibold uppercase">{section.description}</p>
             </div>
           );
         })}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-semibold text-gray-800 mb-2">Quick Tips</h3>
-        <ul className="space-y-2 text-sm text-gray-700">
+      <div className="bg-blue-50 border border-blue-200 rounded-none p-6">
+        <h3 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-3">Quick Tips</h3>
+        <ul className="space-y-2 text-xs font-semibold text-blue-700 uppercase tracking-wider">
           <li>• Use Blog Management to publish news and updates</li>
           <li>• Keep your Team page current with member profiles</li>
           <li>• Schedule Events to keep customers informed</li>

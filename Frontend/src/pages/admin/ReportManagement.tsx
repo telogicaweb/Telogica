@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { Plus, Edit, Trash2, ArrowLeft, Save, FileText, Calendar, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Save, FileText, Calendar, Download, X } from 'lucide-react';
 
 interface Report {
   _id?: string;
@@ -15,7 +15,12 @@ interface Report {
   isPublished: boolean;
 }
 
-export default function ReportManagement() {
+interface ReportManagementProps {
+  isEmbedded?: boolean;
+  onBack?: () => void;
+}
+
+export default function ReportManagement({ isEmbedded = false, onBack }: ReportManagementProps = {}) {
   const navigate = useNavigate();
   const [reports, setReports] = useState<Report[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -110,100 +115,112 @@ export default function ReportManagement() {
     });
   };
 
-  const getReportIcon = () => {
-    return <FileText className="text-orange-600" size={24} />;
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 pt-20 md:pt-24 pb-8 md:pb-16">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
-          <div className="flex items-center gap-3 md:gap-4">
-            <button onClick={() => navigate('/admin')} className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={20} className="md:w-6 md:h-6" />
+    <div className={isEmbedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={isEmbedded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+        {/* Header with Back Navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onBack ? onBack() : navigate('/admin')}
+              className="p-2 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-colors"
+              title="Back to Admin Dashboard"
+            >
+              <ArrowLeft size={18} className="text-gray-600" />
             </button>
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Report Management</h1>
+            <div>
+              <h1 className="text-sm font-black text-gray-900 uppercase tracking-wider">Report Management</h1>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Content Management → Reports</p>
+            </div>
           </div>
           <button
             onClick={() => { resetForm(); setEditingReport(null); setShowForm(true); }}
-            className="bg-orange-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center gap-2 text-sm md:text-base w-full sm:w-auto justify-center"
+            className="px-5 py-2.5 bg-orange-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-orange-700 transition-colors flex items-center gap-2"
           >
-            <Plus size={18} className="md:w-5 md:h-5" /> New Report
+            <Plus size={16} /> New Report
           </button>
         </div>
 
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        {/* Filter & Export Row */}
+        <div className="bg-white border border-gray-200 rounded-none p-4 mb-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Date:</span>
               <input
                 type="date"
                 value={exportStartDate}
                 onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-gray-50"
               />
-              <span className="text-gray-400">-</span>
+              <span className="text-gray-300 text-xs">—</span>
               <input
                 type="date"
                 value={exportEndDate}
                 onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 bg-gray-50"
               />
               {(exportStartDate || exportEndDate) && (
                 <button
                   onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
                 >
-                  Clear
+                  <X size={12} /> Clear
                 </button>
               )}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleExport('pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors"
               >
-                <Download size={14} /> PDF
+                <Download size={12} /> PDF
               </button>
               <button
                 onClick={() => handleExport('csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors"
               >
-                <Download size={14} /> CSV
+                <Download size={12} /> CSV
               </button>
               <button
                 onClick={() => handleExport('excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors"
               >
-                <Download size={14} /> Excel
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
         </div>
 
+        {/* Form */}
         {showForm && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">{editingReport ? 'Edit Report' : 'New Report'}</h2>
+          <div className="bg-white rounded-none border border-gray-200 p-6 mb-5">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                {editingReport ? 'Edit Report' : 'New Report'}
+              </h2>
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1.5 text-gray-400 hover:text-gray-600 bg-gray-50 border border-gray-200 rounded-none">
+                <X size={16} />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Report Title</label>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Report Title</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                   required
                 />
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Report Type</label>
                   <select
                     value={formData.reportType}
                     onChange={(e) => setFormData({ ...formData, reportType: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                   >
                     <option value="Annual Report">Annual Report</option>
                     <option value="Quarterly Report">Quarterly Report</option>
@@ -214,21 +231,21 @@ export default function ReportManagement() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Report Date</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Report Date</label>
                   <input
                     type="date"
                     value={formData.reportDate}
                     onChange={(e) => setFormData({ ...formData, reportDate: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Quarter (Optional)</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Quarter (Optional)</label>
                   <select
                     value={formData.quarter}
                     onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                   >
                     <option value="">N/A</option>
                     <option value="Q1">Q1</option>
@@ -240,33 +257,33 @@ export default function ReportManagement() {
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">File URL</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">File URL</label>
                   <input
                     type="url"
                     value={formData.fileUrl}
                     onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">File Size</label>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">File Size</label>
                   <input
                     type="text"
                     value={formData.fileSize}
                     onChange={(e) => setFormData({ ...formData, fileSize: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                     placeholder="e.g., 2.5 MB"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                   rows={3}
                 />
               </div>
@@ -275,15 +292,15 @@ export default function ReportManagement() {
                   type="checkbox"
                   checked={formData.isPublished}
                   onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                  className="rounded"
+                  className="rounded-none"
                 />
-                <span className="text-sm text-gray-700">Published</span>
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Published</span>
               </label>
-              <div className="flex gap-4">
-                <button type="submit" className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 flex items-center gap-2">
-                  <Save size={20} /> Save
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="px-6 py-2.5 bg-orange-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-orange-700 transition-colors flex items-center gap-2">
+                  <Save size={16} /> Save
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-none font-bold uppercase tracking-wider text-xs hover:bg-gray-200 border border-gray-200 transition-colors">
                   Cancel
                 </button>
               </div>
@@ -291,46 +308,65 @@ export default function ReportManagement() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div key={report._id} className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-start gap-4 mb-4">
-                {getReportIcon()}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-lg">{report.title}</h3>
-                    {!report.isPublished && (
-                      <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Draft</span>
+        {/* Reports Grid */}
+        {reports.length === 0 ? (
+          <div className="bg-white rounded-none border border-gray-200 p-16 text-center">
+            <div className="bg-gray-100 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <FileText className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">No Reports Found</h3>
+            <p className="text-xs text-gray-500 mb-6">Create your first report to get started</p>
+            <button
+              onClick={() => { resetForm(); setEditingReport(null); setShowForm(true); }}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-orange-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-orange-700 transition-colors"
+            >
+              <Plus size={14} /> New Report
+            </button>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {reports.map((report) => (
+              <div key={report._id} className="bg-white rounded-none border border-gray-200 border-t-4 border-t-orange-500 p-5">
+                <div className="flex items-start gap-3 mb-4">
+                  <FileText className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-gray-900 truncate">{report.title}</h3>
+                      {!report.isPublished && (
+                        <span className="px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border bg-gray-50 text-gray-600 border-gray-200 flex-shrink-0">Draft</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">{report.reportType}</p>
+                    {report.quarter && (
+                      <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{report.quarter}</p>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">{report.reportType}</p>
-                  {report.quarter && (
-                    <p className="text-xs text-gray-500">{report.quarter}</p>
+                </div>
+                <div className="space-y-1.5 mb-4">
+                  <p className="text-xs text-gray-600">
+                    <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Date:</span>{' '}
+                    <span className="font-semibold">{new Date(report.reportDate).toLocaleDateString('en-IN')}</span>
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Size:</span>{' '}
+                    <span className="font-semibold">{report.fileSize}</span>
+                  </p>
+                  {report.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2 mt-2">{report.description}</p>
                   )}
                 </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(report)} className="flex-1 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors flex items-center justify-center gap-1.5">
+                    <Edit size={13} /> Edit
+                  </button>
+                  <button onClick={() => handleDelete(report._id!)} className="flex-1 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-none transition-colors flex items-center justify-center gap-1.5">
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
               </div>
-              <div className="space-y-2 mb-4">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Date:</span> {new Date(report.reportDate).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Size:</span> {report.fileSize}
-                </p>
-                {report.description && (
-                  <p className="text-sm text-gray-700 line-clamp-2">{report.description}</p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleEdit(report)} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 flex items-center justify-center gap-2">
-                  <Edit size={16} /> Edit
-                </button>
-                <button onClick={() => handleDelete(report._id!)} className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700 flex items-center justify-center gap-2">
-                  <Trash2 size={16} /> Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

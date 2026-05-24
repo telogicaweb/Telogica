@@ -53,5 +53,8 @@ const orderSchema = new mongoose.Schema({
 // Add indexes for performance
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ isDropship: 1 });
 
 module.exports = mongoose.model('Order', orderSchema);

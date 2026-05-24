@@ -36,5 +36,6 @@ const quoteSchema = new mongoose.Schema({
 // Add indexes for performance
 quoteSchema.index({ user: 1, createdAt: -1 });
 quoteSchema.index({ createdAt: -1 });
+quoteSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Quote', quoteSchema);

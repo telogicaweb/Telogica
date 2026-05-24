@@ -37,5 +37,7 @@ const retailerQuotedProductSchema = new mongoose.Schema({
 
 // Compound index to ensure unique product per retailer
 retailerQuotedProductSchema.index({ retailer: 1, product: 1 }, { unique: true });
+retailerQuotedProductSchema.index({ retailer: 1, isActive: 1, updatedAt: -1 });
+retailerQuotedProductSchema.index({ isActive: 1, updatedAt: -1 });
 
 module.exports = mongoose.model('RetailerQuotedProduct', retailerQuotedProductSchema);

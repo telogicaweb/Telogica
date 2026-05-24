@@ -148,81 +148,89 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Warranty Management</h2>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={exportWarranties}
-            className="bg-white border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-50 flex items-center gap-2 shadow-sm"
-          >
-            <Download className="w-4 h-4" /> CSV
-          </button>
-          <button
-            onClick={exportWarrantiesPDF}
-            disabled={exporting}
-            className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2 shadow-sm disabled:opacity-50"
-          >
-            <FileDown className="w-4 h-4" /> {exporting ? 'Exporting...' : 'PDF'}
-          </button>
+      {/* Header & Actions Card */}
+      <div className="bg-white border border-gray-200 rounded-none shadow-sm mb-6">
+        <div className="px-5 py-4 border-b border-gray-150 flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
+          <div>
+            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Warranty Management</h2>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Track, review, and validate customer product warranty registrations</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={exportWarranties}
+              className="bg-white border border-gray-200 px-4 py-2 rounded-none hover:bg-gray-50 flex items-center gap-2 text-xs font-bold uppercase tracking-wider border-gray-300 transition-colors"
+            >
+              <Download className="w-4 h-4" /> CSV
+            </button>
+            <button
+              onClick={exportWarrantiesPDF}
+              disabled={exporting}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-none hover:bg-emerald-700 flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+            >
+              <FileDown className="w-4 h-4" /> {exporting ? 'Exporting...' : 'PDF'}
+            </button>
+          </div>
+        </div>
+        <div className="p-5">
+          <DateFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            label="Filter Warranties by Registration Date"
+            showPresets={true}
+            className="border-0 shadow-none p-0"
+          />
         </div>
       </div>
-
-      {/* Date Filter */}
-      <DateFilter
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateFromChange={setDateFrom}
-        onDateToChange={setDateTo}
-        label="Filter Warranties by Registration Date"
-      />
 
       <div className="space-y-4">
         {filteredWarranties.map((warranty) => (
           <div
             key={warranty._id}
-            className="bg-white p-6 rounded-lg shadow border border-gray-200"
+            className="bg-white p-5 rounded-none border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-semibold text-lg">{warranty.productName}</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="font-bold text-sm text-gray-900">{warranty.productName}</h3>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">
                   Customer: {warranty.userId?.name} ({warranty.userId?.email})
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Registered: {new Date(warranty.createdAt).toLocaleString()}
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mt-1.5">
+                  Registered: {new Date(warranty.createdAt).toLocaleString('en-IN')}
                 </p>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                className={`px-2.5 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider border ${
                   warranty.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
+                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
                     : warranty.status === 'approved'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-red-50 text-red-700 border-red-200'
                 }`}
               >
                 {warranty.status}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 bg-gray-50/50 p-4 border border-gray-100 rounded-none">
               <div>
-                <p className="text-xs text-gray-600">Serial Number</p>
-                <p className="font-medium">{warranty.serialNumber}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Serial Number</p>
+                <p className="font-mono text-xs font-bold text-gray-950 mt-0.5">{warranty.serialNumber}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Model Number</p>
-                <p className="font-medium">{warranty.modelNumber}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Model Number</p>
+                <p className="font-mono text-xs font-bold text-gray-950 mt-0.5">{warranty.modelNumber}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Purchase Date</p>
-                <p className="font-medium">
-                  {new Date(warranty.purchaseDate).toLocaleDateString()}
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Purchase Date</p>
+                <p className="text-xs font-bold text-gray-900 mt-0.5">
+                  {new Date(warranty.purchaseDate).toLocaleDateString('en-IN')}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Purchase Type</p>
-                <p className="font-medium capitalize">{warranty.purchaseType}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Purchase Type</p>
+                <p className="text-xs font-bold text-gray-900 uppercase mt-0.5">{warranty.purchaseType}</p>
               </div>
             </div>
 
@@ -232,21 +240,21 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
                   href={warranty.invoiceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                  className="text-indigo-600 hover:text-indigo-800 text-xs font-bold uppercase tracking-wider hover:underline flex items-center gap-1"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-3.5 h-3.5" />
                   View Invoice
                 </a>
               </div>
             )}
 
             {warranty.status === 'pending' && (
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button
                   onClick={() =>
                     handleWarrantyAction(warranty._id, 'approved')
                   }
-                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-none flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Approve
@@ -255,7 +263,7 @@ const WarrantyManagement: React.FC<WarrantyManagementProps> = ({
                   onClick={() =>
                     handleWarrantyAction(warranty._id, 'rejected')
                   }
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
+                  className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-none flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors"
                 >
                   <X className="w-4 h-4" />
                   Reject

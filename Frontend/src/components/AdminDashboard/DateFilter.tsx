@@ -59,82 +59,84 @@ const DateFilter: React.FC<DateFilterProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-none shadow-none border border-gray-200 p-4 ${className}`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Calendar className="w-5 h-5 text-gray-600" />
-        <span className="text-sm font-semibold text-gray-700">{label}</span>
-      </div>
+    <div className={`bg-white rounded-none shadow-none border border-gray-250 p-4 ${className}`}>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Left Side: Title and Presets */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-700" />
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider whitespace-nowrap">{label}</span>
+          </div>
 
-      {showPresets && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          <button
-            onClick={() => handlePresetChange('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-none transition-all ${
-              !dateFrom && !dateTo
-                ? 'bg-blue-600 text-white shadow-none'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All Time
-          </button>
-          <button
-            onClick={() => handlePresetChange('today')}
-            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => handlePresetChange('week')}
-            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
-          >
-            Last 7 Days
-          </button>
-          <button
-            onClick={() => handlePresetChange('month')}
-            className="px-3 py-1.5 text-xs font-medium rounded-none bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
-          >
-            Last 30 Days
-          </button>
-          <button
-            onClick={() => handlePresetChange('custom')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-none transition-all ${
-              dateFrom || dateTo
-                ? 'bg-blue-600 text-white shadow-none'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Custom
-          </button>
+          {showPresets && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => handlePresetChange('all')}
+                className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none transition-all border ${
+                  !dateFrom && !dateTo
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                }`}
+              >
+                All Time
+              </button>
+              <button
+                onClick={() => handlePresetChange('today')}
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-all"
+              >
+                Today
+              </button>
+              <button
+                onClick={() => handlePresetChange('week')}
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-all"
+              >
+                Last 7 Days
+              </button>
+              <button
+                onClick={() => handlePresetChange('month')}
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-all"
+              >
+                Last 30 Days
+              </button>
+              <button
+                onClick={() => handlePresetChange('custom')}
+                className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none transition-all border ${
+                  dateFrom || dateTo
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            From Date
-          </label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => onDateFromChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            To Date
-          </label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => onDateToChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
+        {/* Right Side: From & To Date Inputs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">From</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateFromChange(e.target.value)}
+              className="px-2 py-1 bg-gray-50 border border-gray-300 rounded-none text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none w-[130px] font-semibold"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">To</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => onDateToChange(e.target.value)}
+              className="px-2 py-1 bg-gray-50 border border-gray-300 rounded-none text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none w-[130px] font-semibold"
+            />
+          </div>
         </div>
       </div>
 
       {(dateFrom || dateTo) && (
-        <div className="mt-3 text-xs text-gray-600">
+        <div className="mt-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
           {dateFrom && dateTo ? (
             <span>Showing data from {dateFrom} to {dateTo}</span>
           ) : dateFrom ? (

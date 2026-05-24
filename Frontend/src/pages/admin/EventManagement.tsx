@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
-import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, ArrowLeft, Save, Calendar, Download, X, Clock } from 'lucide-react';
 
 interface Event {
   _id?: string;
@@ -15,7 +15,12 @@ interface Event {
   isUpcoming: boolean;
 }
 
-export default function EventManagement() {
+interface EventManagementProps {
+  isEmbedded?: boolean;
+  onBack?: () => void;
+}
+
+export default function EventManagement({ isEmbedded = false, onBack }: EventManagementProps = {}) {
   const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -111,116 +116,101 @@ export default function EventManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pt-20 md:pt-24 pb-8 md:pb-16">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
-          <div className="flex items-center gap-3 md:gap-4">
-            <button onClick={() => navigate('/admin')} className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft size={20} className="md:w-6 md:h-6" />
+    <div className={isEmbedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={isEmbedded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
+        {/* Header with Back Navigation */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onBack ? onBack() : navigate('/admin')}
+              className="p-2 bg-white border border-gray-200 rounded-none hover:bg-gray-50 transition-colors"
+              title="Back to Admin Dashboard"
+            >
+              <ArrowLeft size={18} className="text-gray-600" />
             </button>
-            <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Event Management</h1>
+            <div>
+              <h1 className="text-sm font-black text-gray-900 uppercase tracking-wider">Event Management</h1>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mt-0.5">Content Management → Events</p>
+            </div>
           </div>
           <button
             onClick={() => { resetForm(); setEditingEvent(null); setShowForm(true); }}
-            className="bg-purple-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm md:text-base w-full sm:w-auto justify-center"
+            className="px-5 py-2.5 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-colors flex items-center gap-2"
           >
-            <Plus size={18} className="md:w-5 md:h-5" /> New Event
+            <Plus size={16} /> New Event
           </button>
         </div>
 
-        {/* Export Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        {/* Filter & Export Row */}
+        <div className="bg-white border border-gray-200 rounded-none p-4 mb-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by Date:</span>
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Filter by Date:</span>
               <input
                 type="date"
                 value={exportStartDate}
                 onChange={(e) => setExportStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-gray-50"
               />
-              <span className="text-gray-400">-</span>
+              <span className="text-gray-300 text-xs">—</span>
               <input
                 type="date"
                 value={exportEndDate}
                 onChange={(e) => setExportEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-1.5 border border-gray-200 rounded-none text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 bg-gray-50"
               />
               {(exportStartDate || exportEndDate) && (
                 <button
                   onClick={() => { setExportStartDate(''); setExportEndDate(''); }}
-                  className="text-sm text-red-600 hover:text-red-800 underline ml-2"
+                  className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors flex items-center gap-1"
                 >
-                  Clear
+                  <X size={12} /> Clear
                 </button>
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => handleExport('pdf')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
-              >
-                <Download size={14} /> PDF
+              <button onClick={() => handleExport('pdf')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 hover:bg-red-100 rounded-none border border-red-200 transition-colors">
+                <Download size={12} /> PDF
               </button>
-              <button
-                onClick={() => handleExport('csv')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded border border-green-200 transition-colors"
-              >
-                <Download size={14} /> CSV
+              <button onClick={() => handleExport('csv')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-50 hover:bg-green-100 rounded-none border border-green-200 transition-colors">
+                <Download size={12} /> CSV
               </button>
-              <button
-                onClick={() => handleExport('excel')}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
-              >
-                <Download size={14} /> Excel
+              <button onClick={() => handleExport('excel')} className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-none border border-blue-200 transition-colors">
+                <Download size={12} /> Excel
               </button>
             </div>
           </div>
         </div>
 
+        {/* Form */}
         {showForm && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">{editingEvent ? 'Edit Event' : 'New Event'}</h2>
+          <div className="bg-white rounded-none border border-gray-200 p-6 mb-5">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900">
+                {editingEvent ? 'Edit Event' : 'New Event'}
+              </h2>
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="p-1.5 text-gray-400 hover:text-gray-600 bg-gray-50 border border-gray-200 rounded-none">
+                <X size={16} />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  required
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Event Title</label>
+                <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" required />
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Date</label>
-                  <input
-                    type="date"
-                    value={formData.eventDate}
-                    onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Event Date</label>
+                  <input type="date" value={formData.eventDate} onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Time</label>
-                  <input
-                    type="time"
-                    value={formData.eventTime}
-                    onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Event Time</label>
+                  <input type="time" value={formData.eventTime} onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  >
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Event Type</label>
+                  <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500">
                     <option value="AGM">Annual General Meeting</option>
                     <option value="Earnings Call">Earnings Call</option>
                     <option value="Investor Meet">Investor Meet</option>
@@ -231,47 +221,26 @@ export default function EventManagement() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  required
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Location</label>
+                <input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                  rows={3}
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+                <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" rows={3} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Link</label>
-                <input
-                  type="url"
-                  value={formData.registrationLink}
-                  onChange={(e) => setFormData({ ...formData, registrationLink: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Registration Link</label>
+                <input type="url" value={formData.registrationLink} onChange={(e) => setFormData({ ...formData, registrationLink: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-none bg-gray-50 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500" />
               </div>
               <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.isUpcoming}
-                  onChange={(e) => setFormData({ ...formData, isUpcoming: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-700">Mark as Upcoming</span>
+                <input type="checkbox" checked={formData.isUpcoming} onChange={(e) => setFormData({ ...formData, isUpcoming: e.target.checked })} className="rounded-none" />
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Mark as Upcoming</span>
               </label>
-              <div className="flex gap-4">
-                <button type="submit" className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2">
-                  <Save size={20} /> Save
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="px-6 py-2.5 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-colors flex items-center gap-2">
+                  <Save size={16} /> Save
                 </button>
-                <button type="button" onClick={() => setShowForm(false)} className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                <button type="button" onClick={() => { setShowForm(false); resetForm(); }} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-none font-bold uppercase tracking-wider text-xs hover:bg-gray-200 border border-gray-200 transition-colors">
                   Cancel
                 </button>
               </div>
@@ -279,48 +248,69 @@ export default function EventManagement() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {events.map((event) => (
-            <div key={event._id} className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="text-purple-600" size={20} />
-                    <h3 className="text-xl font-bold">{event.title}</h3>
-                    {event.isUpcoming && (
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Upcoming</span>
+        {/* Events List */}
+        {events.length === 0 ? (
+          <div className="bg-white rounded-none border border-gray-200 p-16 text-center">
+            <div className="bg-gray-100 rounded-none p-5 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">No Events Found</h3>
+            <p className="text-xs text-gray-500 mb-6">Create your first event to get started</p>
+            <button
+              onClick={() => { resetForm(); setEditingEvent(null); setShowForm(true); }}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-none font-bold uppercase tracking-wider text-xs hover:bg-purple-700 transition-colors"
+            >
+              <Plus size={14} /> New Event
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event) => (
+              <div key={event._id} className="bg-white rounded-none border border-gray-200 border-l-4 border-l-purple-500 p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="text-purple-500 flex-shrink-0" size={16} />
+                      <h3 className="text-sm font-bold text-gray-900">{event.title}</h3>
+                      {event.isUpcoming && (
+                        <span className="px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200">Upcoming</span>
+                      )}
+                    </div>
+                    <div className="grid md:grid-cols-4 gap-3 mb-2">
+                      <p className="text-xs text-gray-600">
+                        <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Date:</span>{' '}
+                        <span className="font-semibold">{new Date(event.eventDate).toLocaleDateString('en-IN')}</span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Time:</span>{' '}
+                        <span className="font-semibold">{event.eventTime}</span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Type:</span>{' '}
+                        <span className="font-semibold">{event.type}</span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        <span className="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Location:</span>{' '}
+                        <span className="font-semibold">{event.location}</span>
+                      </p>
+                    </div>
+                    {event.description && (
+                      <p className="text-xs text-gray-500 mt-1">{event.description}</p>
                     )}
                   </div>
-                  <div className="grid md:grid-cols-3 gap-4 mb-3">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Date:</span> {new Date(event.eventDate).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Time:</span> {event.eventTime}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Type:</span> {event.type}
-                    </p>
+                  <div className="flex gap-2 ml-4 flex-shrink-0">
+                    <button onClick={() => handleEdit(event)} className="p-2 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors" title="Edit">
+                      <Edit size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(event._id!)} className="p-2 text-[10px] font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-none transition-colors" title="Delete">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-medium">Location:</span> {event.location}
-                  </p>
-                  {event.description && (
-                    <p className="text-sm text-gray-700 mb-2">{event.description}</p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(event)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
-                    <Edit size={16} /> Edit
-                  </button>
-                  <button onClick={() => handleDelete(event._id!)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2">
-                    <Trash2 size={16} /> Delete
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

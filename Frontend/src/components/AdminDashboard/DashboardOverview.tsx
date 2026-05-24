@@ -97,19 +97,20 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics, onDate
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-          Dashboard Overview
-        </h2>
+    <div className="space-y-6">
+      {/* Header & Export Summary Card */}
+      <div className="bg-white border border-gray-200 p-5 rounded-none shadow-sm flex flex-wrap items-center justify-between gap-4 bg-gray-50/50">
+        <div>
+          <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Dashboard Overview</h2>
+          <p className="text-[10px] text-gray-400 font-semibold uppercase mt-0.5">Global metrics and quick statistics overview</p>
+        </div>
         <button
           onClick={exportSummaryPDF}
           disabled={exporting}
-          className="bg-white border border-gray-300 px-4 py-2 rounded-xl shadow-sm hover:bg-gray-100 transition-all flex items-center gap-2 disabled:opacity-50"
+          className="bg-emerald-600 border border-emerald-700 text-white px-4 py-2 rounded-none hover:bg-emerald-700 transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
         >
-          <FileDown className="w-5 h-5" />
-          {exporting ? 'Exporting…' : 'Export PDF'}
+          <FileDown className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export Summary'}
         </button>
       </div>
 
@@ -120,90 +121,95 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics, onDate
         onDateFromChange={handleDateFromChange}
         onDateToChange={handleDateToChange}
         label="Dashboard Date Filter"
+        className="border border-gray-200"
       />
 
       {/* Primary Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[{
           label: 'Total Sales',
           value: formatCurrency(analytics.sales.total),
           icon: DollarSign,
-          colors: 'from-blue-500 to-blue-600'
+          colors: 'from-blue-600 to-blue-700 border-blue-700'
         }, {
           label: 'Total Orders',
           value: formatNumber(analytics.orders.total),
           icon: ShoppingCart,
-          colors: 'from-green-500 to-green-600'
+          colors: 'from-green-600 to-green-700 border-green-700'
         }, {
           label: 'Pending Quotes',
           value: formatNumber(analytics.quotes.pending),
           sub: `Conversion: ${conversionRate}%`,
           icon: FileText,
-          colors: 'from-yellow-500 to-yellow-600'
+          colors: 'from-yellow-500 to-yellow-600 border-yellow-600'
         }, {
           label: 'Pending Warranties',
           value: formatNumber(analytics.warranties.pending),
           icon: Shield,
-          colors: 'from-purple-500 to-purple-600'
+          colors: 'from-purple-600 to-purple-700 border-purple-700'
         }].map((card, idx) => (
           <div
             key={idx}
-            className={`bg-gradient-to-br ${card.colors} p-6 rounded-xl text-white shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all`}
+            className={`bg-gradient-to-br ${card.colors} p-5 rounded-none text-white shadow-sm border hover:shadow-md transition-shadow`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-80">{card.label}</p>
-                <p className="text-3xl font-bold mt-1">{card.value}</p>
+                <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">{card.label}</p>
+                <p className="text-2xl font-black mt-1">{card.value}</p>
                 {card.sub && (
-                  <p className="text-xs mt-2 opacity-90">{card.sub}</p>
+                  <p className="text-[10px] font-bold mt-1 text-white/95 uppercase tracking-wider">{card.sub}</p>
                 )}
               </div>
-              <card.icon className="w-12 h-12 opacity-80" />
+              <card.icon className="w-10 h-10 text-white/40" />
             </div>
           </div>
         ))}
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[{
           label: 'Direct Sales',
           value: formatCurrency(analytics.sales.direct),
           icon: TrendingUp,
-          color: 'text-blue-500'
+          color: 'text-blue-600',
+          accent: 'border-t-blue-600'
         }, {
           label: 'Quote Sales',
           value: formatCurrency(analytics.sales.quote),
           icon: BarChart3,
-          color: 'text-green-500'
+          color: 'text-green-600',
+          accent: 'border-t-green-600'
         }, {
           label: 'Total Users',
           value: formatNumber(analytics.users.total),
           icon: Users,
-          color: 'text-purple-500'
+          color: 'text-purple-600',
+          accent: 'border-t-purple-600'
         }, {
           label: 'Retailers Waiting Approval',
           value: formatNumber(analytics.users.pendingRetailers),
           icon: AlertCircle,
-          color: 'text-red-500'
+          color: 'text-red-600',
+          accent: 'border-t-red-600'
         }].map((card, idx) => (
           <div
             key={idx}
-            className="bg-white p-6 rounded-xl shadow border border-gray-200 hover:shadow-lg transition-all"
+            className={`bg-white p-5 rounded-none shadow-sm border border-gray-200 border-t-4 ${card.accent} hover:shadow-md transition-shadow`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">{card.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{card.label}</p>
+                <p className="text-xl font-black text-gray-950 mt-1">{card.value}</p>
               </div>
-              <card.icon className={`w-10 h-10 ${card.color}`} />
+              <card.icon className={`w-8 h-8 ${card.color}`} />
             </div>
           </div>
         ))}
       </div>
 
       {/* Inventory Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[{
           label: 'Inventory - Total',
           value: analytics.inventory.total,
@@ -216,19 +222,27 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ analytics, onDate
           label: 'Inventory Offline',
           value: analytics.inventory.offline,
           color: 'yellow'
-        }].map((box, idx) => (
-          <div
-            key={idx}
-            className={`bg-${box.color}-50 border border-${box.color}-200 rounded-xl p-6 hover:shadow-lg transition-all`}
-          >
-            <p className={`text-sm uppercase tracking-wide text-${box.color}-700`}>
-              {box.label}
-            </p>
-            <p className={`text-3xl font-bold text-${box.color}-900 mt-1`}>
-              {formatNumber(box.value)}
-            </p>
-          </div>
-        ))}
+        }].map((box, idx) => {
+          const isBlue = box.color === 'blue';
+          const isGreen = box.color === 'green';
+          const bg = isBlue ? 'bg-blue-50/70 border-blue-200' : isGreen ? 'bg-green-50/70 border-green-200' : 'bg-yellow-50/70 border-yellow-200';
+          const textLabel = isBlue ? 'text-blue-600' : isGreen ? 'text-green-600' : 'text-yellow-750';
+          const textVal = isBlue ? 'text-blue-900' : isGreen ? 'text-green-900' : 'text-yellow-950';
+
+          return (
+            <div
+              key={idx}
+              className={`${bg} border rounded-none p-5 shadow-sm hover:shadow-md transition-shadow`}
+            >
+              <p className={`text-[10px] font-bold uppercase tracking-wider ${textLabel}`}>
+                {box.label}
+              </p>
+              <p className={`text-2xl font-black ${textVal} mt-1`}>
+                {formatNumber(box.value)}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

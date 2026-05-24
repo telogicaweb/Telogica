@@ -27,5 +27,7 @@ const retailerInventorySchema = new mongoose.Schema({
 
 // Index for retailer queries
 retailerInventorySchema.index({ retailer: 1, status: 1 });
+retailerInventorySchema.index({ productUnit: 1 });
+retailerInventorySchema.index({ product: 1 });
 
 module.exports = mongoose.model('RetailerInventory', retailerInventorySchema);
