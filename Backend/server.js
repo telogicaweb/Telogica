@@ -47,7 +47,8 @@ const corsOptions = {
       'http://127.0.0.1:3000',
       'https://telogica-p7tf.vercel.app',
       'https://telogica.onrender.com',
-      'https://telogica-lac.vercel.app'
+      'https://telogica-lac.vercel.app',
+      'https://telogica.com'
     ];
 
     // Allow requests with no origin (like mobile apps, curl requests, or server-to-server)
