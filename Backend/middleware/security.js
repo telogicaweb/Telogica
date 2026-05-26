@@ -249,11 +249,18 @@ const securityLogger = (req, res, next) => {
  */
 const requestTimeout = (timeoutMs = 30000) => {
   return (req, res, next) => {
-    req.setTimeout(timeoutMs, () => {
-      res.status(408).json({
-        message: 'Request timeout. Please try again.',
-      });
-    });
+    // Use JS setTimeout instead of socket-level timeout so the response is
+    // always sent before the socket can be destroyed by Node's socketOnTimeout.
+    const timer = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(408).json({
+          message: 'Request timeout. Please try again.',
+        });
+      }
+    }, timeoutMs);
+
+    res.on('finish', () => clearTimeout(timer));
+    res.on('close', () => clearTimeout(timer));
     next();
   };
 };
@@ -331,8 +338,8 @@ const applySecurityMiddleware = (app) => {
   // Security logging
   app.use(securityLogger);
 
-  // Request timeout
-  app.use(requestTimeout(30000)); // 30 seconds
+  // Request timeout — 90 s to accommodate Atlas free-tier cold starts (45–60 s wake-up)
+  app.use(requestTimeout(90000));
 
   // Trust proxy (for rate limiting behind reverse proxies)
   app.set('trust proxy', 1);

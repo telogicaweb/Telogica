@@ -57,22 +57,42 @@ const getProducts = async (req, res) => {
       filter.$text = { $search: search.trim() };
     }
 
-    let query = Product.find(filter);
+    // Use aggregation to strip large binary fields at the database level.
+    // Some products store raw base64 images or PDF brochures directly in MongoDB,
+    // making individual documents 2-10 MB — causing Atlas cursor batching to hang.
+    const sortStage = search && search.trim()
+      ? { $sort: { score: { $meta: 'textScore' } } }
+      : { $sort: { createdAt: -1 } };
+
+    const pipeline = [
+      { $match: filter },
+      sortStage,
+      ...(limit > 0 ? [{ $limit: limit }] : []),
+      // Remove brochureUrl (may contain raw PDF base64 data — not a URL)
+      { $unset: 'brochureUrl' },
+      // Strip base64-encoded image blobs from the images array; keep only URLs
+      {
+        $addFields: {
+          images: {
+            $filter: {
+              input: { $ifNull: ['$images', []] },
+              cond: { $not: { $regexMatch: { input: '$$this', regex: '^data:' } } },
+            },
+          },
+        },
+      },
+    ];
 
     if (search && search.trim()) {
-      query = query.select({ score: { $meta: 'textScore' } }).sort({ score: { $meta: 'textScore' } });
-    } else {
-      query = query.sort({ createdAt: -1 });
+      pipeline[0] = { $match: { ...filter, $text: { $search: search.trim() } } };
     }
 
-    if (limit > 0) {
-      query = query.limit(limit);
-    }
-
-    const products = await query.lean();
+    const products = await Product.aggregate(pipeline);
     res.json(products);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: error.message });
+    }
   }
 };
 
