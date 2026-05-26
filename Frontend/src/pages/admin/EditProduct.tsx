@@ -136,29 +136,7 @@ export default function EditProduct() {
 
     setSubmitting(true);
     try {
-      let images = productForm.images;
-      if (images.some((i) => i.startsWith('data:image'))) {
-        const migrated: string[] = [];
-        for (const img of images) {
-          if (!img.startsWith('data:image')) {
-            migrated.push(img);
-            continue;
-          }
-          const blob = await fetch(img).then((r) => r.blob());
-          let upload: File | Blob = blob;
-          if (blob.size > MAX_IMAGE_BYTES) {
-            upload = await compressImage(new File([blob], 'legacy.jpg', { type: blob.type }), { maxBytes: MAX_IMAGE_BYTES });
-          }
-          const formData = new FormData();
-          formData.append('image', upload, 'legacy.jpg');
-          const res = await api.post('/api/products/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-          if (res.data?.url) migrated.push(res.data.url);
-        }
-        images = migrated;
-        setProductForm((prev) => ({ ...prev, images: migrated }));
-      }
+      const images = productForm.images;
 
       const isDefence = productForm.category.trim().toLowerCase() === 'defence';
       const payload: any = {
@@ -173,7 +151,7 @@ export default function EditProduct() {
         recommendedProductIds: productForm.recommendedProductIds,
       };
 
-      if (productForm.brochureUrl) payload.brochureUrl = productForm.brochureUrl;
+      payload.brochureUrl = productForm.brochureUrl || null;
 
       if (productForm.normalPrice) payload.price = parseFloat(productForm.normalPrice);
       if (productForm.retailerPrice) payload.retailerPrice = parseFloat(productForm.retailerPrice);
@@ -330,43 +308,20 @@ export default function EditProduct() {
                 <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-sm font-bold">3</span>
                 Product Brochure (PDF)
               </h2>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-                <label className="cursor-pointer">
-                  <div className="flex flex-col items-center gap-2">
-                    <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Click to upload PDF brochure</span>
-                    <span className="text-xs text-gray-500">or drag and drop</span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setProductForm((prev) => ({
-                          ...prev,
-                          brochureUrl: reader.result as string
-                        }));
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">Upload product brochure (PDF only). Will be visible to buyers in their dashboard after purchase.</p>
-              
-              {productForm.brochureUrl && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+              {productForm.brochureUrl && !productForm.brochureUrl.startsWith('data:') ? (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="text-sm font-medium text-green-800">Brochure uploaded successfully</span>
+                    <a
+                      href={productForm.brochureUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-green-800 underline"
+                    >
+                      Brochure uploaded — click to preview
+                    </a>
                   </div>
                   <button
                     type="button"
@@ -376,7 +331,42 @@ export default function EditProduct() {
                     Remove
                   </button>
                 </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+                  <label className="cursor-pointer">
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Click to upload PDF brochure</span>
+                      <span className="text-xs text-gray-500">Max 20 MB</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append('brochure', file);
+                        try {
+                          const res = await api.post('/api/products/upload-brochure', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                          });
+                          if (res.data?.url) {
+                            setProductForm((prev) => ({ ...prev, brochureUrl: res.data.url }));
+                          }
+                        } catch (err) {
+                          alert('Failed to upload brochure. Please try again.');
+                        }
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               )}
+              <p className="text-xs text-gray-500 mt-2">PDF only. Will be visible to buyers in their dashboard after purchase.</p>
             </div>
 
             {/* Product Images */}

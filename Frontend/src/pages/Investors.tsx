@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Calendar, Download, Building2, ChevronRight, Mail, Phone } from 'lucide-react';
+import { FileText, Calendar, ExternalLink, Building2, ChevronRight, Mail, Phone } from 'lucide-react';
 import api from '../api';
 
 interface InvestorDocument {
@@ -55,8 +55,13 @@ export default function Investors() {
     }
   };
 
-  const handleDownload = (url: string) => {
-    window.open(url, '_blank');
+  const handleOpen = (url: string) => {
+    // Cloudinary raw resources are served with Content-Disposition: attachment by default.
+    // fl_attachment:false forces inline serving so the browser opens the PDF instead of downloading it.
+    const viewUrl = url.includes('cloudinary.com') && url.includes('/raw/upload/')
+      ? url.replace('/raw/upload/', '/raw/upload/fl_attachment:false/')
+      : url;
+    window.open(viewUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -131,7 +136,7 @@ export default function Investors() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.35 }}
                       className="group bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all duration-300 p-5 flex flex-col justify-between border border-gray-100 hover:border-indigo-100 bg-gradient-to-b from-indigo-50/5 to-white"
-                      onClick={() => handleDownload(doc.documentUrl)}
+                      onClick={() => handleOpen(doc.documentUrl)}
                     >
                       <div>
                         <div className="flex items-start justify-between mb-4">
@@ -169,8 +174,8 @@ export default function Investors() {
                         </div>
 
                         <button className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors duration-200 mt-4">
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download Document</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>View Document</span>
                         </button>
                       </div>
                     </motion.div>

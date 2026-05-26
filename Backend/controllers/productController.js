@@ -229,7 +229,7 @@ const updateProduct = async (req, res) => {
       product.modelNumberPrefix = modelNumberPrefix !== undefined ? modelNumberPrefix : product.modelNumberPrefix;
       product.features = features || product.features;
       product.technicalSpecs = technicalSpecs || product.technicalSpecs;
-      product.brochureUrl = brochureUrl !== undefined ? brochureUrl : product.brochureUrl;
+      product.brochureUrl = brochureUrl !== undefined ? (brochureUrl || undefined) : product.brochureUrl;
 
       const updatedProduct = await product.save();
 
@@ -340,4 +340,32 @@ const updateRecommendations = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, uploadProductImage, updateRecommendations };
+const uploadProductBrochure = async (req, res) => {
+  if (!req.file || !req.file.buffer) {
+    return res.status(400).json({ message: 'No PDF file provided' });
+  }
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'product_brochures',
+          resource_type: 'raw',
+          format: 'pdf',
+        },
+        (error, response) => {
+          if (error) return reject(error);
+          resolve(response);
+        }
+      );
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+    });
+
+    res.status(201).json({ url: result.secure_url, public_id: result.public_id });
+  } catch (error) {
+    console.error('Cloudinary brochure upload failed', error);
+    res.status(500).json({ message: 'Failed to upload brochure' });
+  }
+};
+
+module.exports = { getProducts, getProductById, createProduct, updateProduct, deleteProduct, uploadProductImage, uploadProductBrochure, updateRecommendations };
