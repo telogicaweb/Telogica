@@ -52,9 +52,24 @@ const getInvestorDocuments = async (req, res) => {
       filter.category = category;
     }
 
-    const documents = await InvestorDocument.find(filter)
-      .sort({ category: 1, displayOrder: 1, publishDate: -1 })
-      .lean();
+    const documents = await InvestorDocument.find(filter).lean();
+
+    // Custom sorting: configured displayOrders (> 0) sorted ascending at the top, unconfigured (0) sorted by createdAt descending
+    documents.sort((a, b) => {
+      const catCompare = a.category.localeCompare(b.category);
+      if (catCompare !== 0) return catCompare;
+
+      const orderA = a.displayOrder || 0;
+      const orderB = b.displayOrder || 0;
+
+      if (orderA > 0 && orderB === 0) return -1;
+      if (orderA === 0 && orderB > 0) return 1;
+      if (orderA > 0 && orderB > 0 && orderA !== orderB) return orderA - orderB;
+
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
 
     // Group documents by category
     const groupedDocuments = documents.reduce((acc, doc) => {
@@ -77,9 +92,24 @@ const getInvestorDocuments = async (req, res) => {
 // @access  Private/Admin
 const getAdminInvestorDocuments = async (req, res) => {
   try {
-    const documents = await InvestorDocument.find()
-      .sort({ category: 1, displayOrder: 1, publishDate: -1 })
-      .lean();
+    const documents = await InvestorDocument.find().lean();
+
+    // Custom sorting: configured displayOrders (> 0) sorted ascending at the top, unconfigured (0) sorted by createdAt descending
+    documents.sort((a, b) => {
+      const catCompare = a.category.localeCompare(b.category);
+      if (catCompare !== 0) return catCompare;
+
+      const orderA = a.displayOrder || 0;
+      const orderB = b.displayOrder || 0;
+
+      if (orderA > 0 && orderB === 0) return -1;
+      if (orderA === 0 && orderB > 0) return 1;
+      if (orderA > 0 && orderB > 0 && orderA !== orderB) return orderA - orderB;
+
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
 
     res.json(documents);
   } catch (error) {
