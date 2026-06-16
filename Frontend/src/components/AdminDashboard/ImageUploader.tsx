@@ -238,7 +238,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 setDragIndex(null);
                 setHoverIndex(null);
               }}
-              className={`relative group rounded-xl overflow-hidden border-2 transition-all ${
+              className={`relative group rounded-xl overflow-hidden border-2 transition-all cursor-grab active:cursor-grabbing ${
                 hoverIndex === idx && dragIndex !== null && dragIndex !== idx
                   ? 'border-indigo-500 ring-2 ring-indigo-200'
                   : idx === 0
@@ -246,7 +246,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                     : 'border-gray-200'
               } ${dragIndex === idx ? 'opacity-50' : ''}`}
             >
-              <img src={url} alt={`Product image ${idx + 1}`} className="w-full h-32 object-cover" />
+              <img src={url} alt={`Product image ${idx + 1}`} className="w-full h-32 object-cover" draggable={false} />
 
               <div className="absolute top-1 left-1 flex items-center gap-1">
                 {idx === 0 ? (

@@ -211,19 +211,31 @@ const ProductDetails = () => {
 
   const isDefence = product.category?.toLowerCase() === 'defence';
 
-  const handleDownloadDatasheet = () => {
+  const handleDownloadDatasheet = async () => {
     if (!product.brochureUrl) {
       toast.error('Datasheet not available for this product');
       return;
     }
-    const link = document.createElement('a');
-    link.href = product.brochureUrl;
-    link.download = `${product.name}-datasheet.pdf`;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      window.open(product.brochureUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    newWindow.document.write('<p style="font-family: sans-serif; text-align: center; margin-top: 50px; color: #4b5563;">Loading datasheet...</p>');
+    
+    try {
+      const response = await fetch(product.brochureUrl);
+      if (!response.ok) throw new Error('Failed to fetch file');
+      const blob = await response.blob();
+      const newBlob = new Blob([blob], { type: 'application/pdf' });
+      const blobUrl = window.URL.createObjectURL(newBlob);
+      newWindow.location.href = blobUrl;
+    } catch (error) {
+      console.error('Failed to preview datasheet:', error);
+      newWindow.close();
+      window.open(product.brochureUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleShare = async (platform: string) => {

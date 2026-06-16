@@ -19,6 +19,7 @@ import api from '../../api';
 import { Product, ProductUnit } from './types';
 import { compressImage } from '../../utils/compressImage';
 import SubcategoryPicker from './SubcategoryPicker';
+import ImageUploader from './ImageUploader';
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
@@ -74,7 +75,6 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
   const [unitDraftSaving, setUnitDraftSaving] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>(product.recommendedProductIds || []);
   const [recommendationSaving, setRecommendationSaving] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingBrochure, setUploadingBrochure] = useState(false);
 
   const defenceSubcategories = useMemo(() => {
@@ -122,6 +122,21 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
       brochureUrl: product.brochureUrl || '',
     });
     setRecommendations(product.recommendedProductIds || []);
+
+    const fetchFullProductDetails = async () => {
+      try {
+        const { data } = await api.get(`/api/products/${product._id}`);
+        if (data?.brochureUrl) {
+          setForm((prev) => ({
+            ...prev,
+            brochureUrl: data.brochureUrl,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load full product brochure:', err);
+      }
+    };
+    fetchFullProductDetails();
   }, [product]);
 
   useEffect(() => {
@@ -222,56 +237,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     }
   };
 
-  const handleRemoveImage = (idx: number) => {
-    setForm((prev) => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== idx)
-    }));
-  };
 
-  const handleImageUpload: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
-    const input = event.target;
-    const files = input.files;
-    if (!files?.length) return;
-
-    setUploadingImages(true);
-    try {
-      const uploaded: string[] = [];
-      const stillTooLarge: string[] = [];
-      for (const original of Array.from(files)) {
-        let toUpload = original;
-        if (original.size > MAX_IMAGE_BYTES) {
-          toUpload = await compressImage(original, { maxBytes: MAX_IMAGE_BYTES });
-        }
-        if (toUpload.size > MAX_IMAGE_BYTES) {
-          stillTooLarge.push(original.name);
-          continue;
-        }
-        const formData = new FormData();
-        formData.append('image', toUpload, toUpload.name);
-        const uploadResponse = await api.post('/api/products/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        if (uploadResponse.data?.url) uploaded.push(uploadResponse.data.url);
-      }
-
-      if (uploaded.length) {
-        setForm((prev) => ({
-          ...prev,
-          images: [...prev.images, ...uploaded]
-        }));
-      }
-      if (stillTooLarge.length) {
-        alert(`Could not compress below ${Math.floor(MAX_IMAGE_BYTES / (1024 * 1024))}MB: ${stillTooLarge.join(', ')}`);
-      }
-    } catch (error: any) {
-      console.error('Error uploading images', error);
-      alert(error.response?.data?.message || 'Failed to upload image');
-    } finally {
-      setUploadingImages(false);
-      input.value = '';
-    }
-  };
 
   const startEditUnit = (unit: ProductUnit) => {
     setUnitEditingId(unit._id);
@@ -654,22 +620,11 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
 
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">Images</label>
-                <p className="text-xs text-gray-500 mb-2">Add or remove product images. First image is used as thumbnail.</p>
-                <div className="flex flex-wrap gap-3">
-                  {form.images.map((img, idx) => (
-                    <div key={idx} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200">
-                      <img src={img} alt={`Product ${idx}`} className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <label className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-blue-400">
-                    <Plus className="w-5 h-5" />
-                    <span className="text-xs mt-1">Add</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-                  </label>
-                </div>
+                <ImageUploader
+                  images={form.images}
+                  onChange={(imgs) => setForm((prev) => ({ ...prev, images: imgs }))}
+                  disabled={detailsSaving}
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -678,7 +633,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                 </button>
                 <button
                   type="submit"
-                  disabled={detailsSaving || uploadingImages}
+                  disabled={detailsSaving}
                   className="px-5 py-2 rounded-lg bg-blue-600 text-white flex items-center gap-2 disabled:opacity-60"
                 >
                   {detailsSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
