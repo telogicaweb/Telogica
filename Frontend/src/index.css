@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  button,
+  .btn,
+  input[type="button"],
+  input[type="submit"] {
+    border-radius: 0.375rem; /* Default rounded-md */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    transition: all 0.2s ease-in-out;
+  }
+  
+  /* Active states & focus indicators */
+  button:active {
+    transform: translateY(1px);
+  }
+}
+
+
 @layer utilities {
 
   /* Hide scrollbar for Chrome, Safari and Opera */

@@ -47,11 +47,17 @@ const Products = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<{ value: string; label: string; count: number }[]>([]);
   const [activeCategory, setActiveCategory] = useState(categoryFromUrl || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalProducts, setTotalProducts] = useState(0);
+
   const { addToCart, addToQuote } = useContext(CartContext)!;
   const { user } = useContext(AuthContext)!;
 
@@ -61,37 +67,96 @@ const Products = () => {
     }
   }, [categoryFromUrl]);
 
-  // Single fetch — loads all products once, then filters client-side
+  // Load categories and counts once on mount to populate the filters sidebar/pills
   useEffect(() => {
-    const load = async () => {
+    const fetchCategories = async () => {
       try {
-        setLoading(true);
         const { data } = await api.get('/api/products');
-        setAllProducts(data);
-        setFilteredProducts(data);
-      } catch (error) {
-        console.error('Error fetching products', error);
-      } finally {
-        setLoading(false);
+        const uniqueCategories = Array.from(new Set(data.map((p: any) => p.category)))
+          .filter(Boolean)
+          .sort();
+        
+        const categoryMap = [
+          { value: 'all', label: 'All Products', count: data.length },
+          ...uniqueCategories.map((cat: any) => ({
+            value: cat,
+            label: cat.charAt(0).toUpperCase() + cat.slice(1),
+            count: data.filter((p: any) => p.category?.toLowerCase() === cat.toLowerCase()).length
+          }))
+        ];
+        setCategories(categoryMap);
+      } catch (err) {
+        console.error('Error fetching categories', err);
       }
     };
-    load();
+    fetchCategories();
   }, []);
 
-  // Client-side filtering (instant, no extra API calls)
+  const fetchProducts = async (currentPage: number, isInitial: boolean = false) => {
+    try {
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const params: any = {
+        page: currentPage,
+        limit: 12,
+      };
+      
+      if (activeCategory !== 'all') {
+        params.category = activeCategory;
+      }
+      
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      const { data } = await api.get('/api/products', { params });
+      
+      if (isInitial) {
+        setProducts(data.products || []);
+      } else {
+        setProducts((prev) => [...prev, ...(data.products || [])]);
+      }
+      setTotalProducts(data.totalProducts || 0);
+      setHasMore(data.hasMore ?? false);
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Trigger paginated load when filters or search change
   useEffect(() => {
-    let filtered = allProducts;
-    if (activeCategory !== 'all') {
-      filtered = filtered.filter(p => p.category?.toLowerCase() === activeCategory.toLowerCase());
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
-      );
-    }
-    setFilteredProducts(filtered);
-  }, [allProducts, activeCategory, searchQuery]);
+    setPage(1);
+    fetchProducts(1, true);
+  }, [activeCategory, searchQuery]);
+
+  // Scroll listener for infinite scroll pagination
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || loadingMore || !hasMore) return;
+
+      const threshold = 300; // Load next page when within 300px from the bottom
+      const totalHeight = document.documentElement.scrollHeight;
+      const scrollPosition = window.innerHeight + window.scrollY;
+
+      if (totalHeight - scrollPosition < threshold) {
+        setPage((prevPage) => {
+          const nextPage = prevPage + 1;
+          fetchProducts(nextPage, false);
+          return nextPage;
+        });
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, loadingMore, hasMore, activeCategory, searchQuery]);
 
   const handleAddToCart = (product: Product, useRetailerPrice?: boolean) => {
     if (user?.role !== 'retailer') {
@@ -134,45 +199,46 @@ const Products = () => {
 
   const isDefenceCategory = (cat?: string) => cat?.toLowerCase() === 'defence';
 
-  const categories = [
-    { value: 'all', label: 'All Products' },
-    ...Array.from(new Set(allProducts.map(p => p.category)))
-      .filter(Boolean)
-      .sort()
-      .map(category => ({
-        value: category,
-        label: category.charAt(0).toUpperCase() + category.slice(1)
-      }))
-  ];
-
-  const getCategoryCount = (catValue: string) => {
-    if (catValue === 'all') return allProducts.length;
-    return allProducts.filter(p => p.category?.toLowerCase() === catValue.toLowerCase()).length;
-  };
-
   const renderCard = (product: Product, index: number) => {
     const isDefence = isDefenceCategory(product.category);
     return (
       <motion.div
         key={product._id}
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: index * 0.04 }}
-        className="group bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col"
+        transition={{ duration: 0.25, delay: (index % 12) * 0.02 }}
+        className="group bg-white rounded-2xl border border-gray-200/60 overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col"
       >
         {/* Image */}
         <Link to={`/product/${product._id}`} className="relative block aspect-[4/3] bg-gradient-to-b from-gray-50 to-white overflow-hidden">
           <img
-            src={product.images[0] || '/placeholder.jpg'}
+            src={product.images[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'}
             alt={product.name}
             className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110"
           />
-          {/* Category tag */}
-          <span className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/95 text-gray-600 shadow-sm backdrop-blur-sm">
-            {product.category}
-          </span>
+          {/* Category tag - flush with top-left corner of the card */}
+          {(() => {
+            const cat = product.category?.toLowerCase() || '';
+            let bgClass = 'bg-gray-700 text-white';
+            let label = product.category;
+            
+            if (cat.includes('telecom')) {
+              bgClass = 'bg-[#2a3f8f] text-white'; // Logo Blue
+              label = 'TELECOM';
+            } else if (cat.includes('railway') || cat.includes('rail')) {
+              bgClass = 'bg-[#ff5a00] text-white'; // Logo Orange
+            } else if (cat.includes('defence') || cat.includes('defense')) {
+              bgClass = 'bg-emerald-600 text-white'; // Green
+            }
+            
+            return (
+              <span className={`absolute top-0 left-0 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-br-lg shadow-sm ${bgClass}`}>
+                {label}
+              </span>
+            );
+          })()}
           {product.subcategory && (
-            <span className="absolute top-3 right-3 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-indigo-600 text-white">
+            <span className="absolute top-2 right-2 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-indigo-600 text-white rounded">
               {product.subcategory}
             </span>
           )}
@@ -228,7 +294,7 @@ const Products = () => {
                 <>
                   <Link
                     to={`/product/${product._id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold hover:bg-gray-800 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Details
@@ -236,7 +302,7 @@ const Products = () => {
                   <button
                     onClick={() => handleDownloadDatasheet(product)}
                     disabled={!product.brochureUrl}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[13px] font-semibold transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[13px] font-semibold rounded-lg shadow-sm transition-colors ${
                       product.brochureUrl
                         ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         : 'bg-gray-50 text-gray-300 cursor-not-allowed'
@@ -253,14 +319,14 @@ const Products = () => {
                       <>
                         <button
                           onClick={() => handleAddToCart(product, true)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold hover:bg-gray-800 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           Buy Now
                         </button>
                         <button
                           onClick={() => handleAddToQuote(product)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 text-[13px] font-semibold hover:bg-gray-200 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-200 transition-colors"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           Bulk Quote
@@ -269,7 +335,7 @@ const Products = () => {
                     ) : (
                       <button
                         onClick={() => handleAddToQuote(product)}
-                        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold hover:bg-gray-800 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#2a3f8f] text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-[#1e2e6b] transition-colors"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         Request Quote
@@ -280,7 +346,7 @@ const Products = () => {
                       {product.isTelecom && (
                         <button
                           onClick={() => handleAddToCart(product)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold hover:bg-gray-800 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           Add to Cart
@@ -288,7 +354,7 @@ const Products = () => {
                       )}
                       <button
                         onClick={() => handleAddToQuote(product)}
-                        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 text-[13px] font-semibold hover:bg-gray-200 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#2a3f8f] text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-[#1e2e6b] transition-colors"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         Request Quote
@@ -343,7 +409,7 @@ const Products = () => {
 
             {/* Category tabs */}
             <div className="flex-1 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-0.5">
+              <div className="flex gap-2">
                 {categories.map((category) => {
                   const isActive = activeCategory.toLowerCase() === category.value.toLowerCase();
                   return (
@@ -352,13 +418,13 @@ const Products = () => {
                       onClick={() => setActiveCategory(category.value)}
                       className={`relative px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors rounded-md ${
                         isActive
-                          ? 'text-gray-900 bg-gray-100'
-                          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                          ? 'text-white bg-[#2a3f8f] shadow-sm'
+                          : 'text-gray-600 hover:text-[#2a3f8f] hover:bg-blue-50/50 bg-gray-50/50'
                       }`}
                     >
                       {category.label}
-                      <span className={`ml-1 text-[10px] tabular-nums ${isActive ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {getCategoryCount(category.value)}
+                      <span className={`ml-1 text-[10px] tabular-nums ${isActive ? 'text-white/80' : 'text-gray-400'}`}>
+                        {category.count}
                       </span>
                     </button>
                   );
@@ -368,7 +434,7 @@ const Products = () => {
 
             {/* Count */}
             <span className="hidden md:block text-xs text-gray-400 shrink-0 tabular-nums">
-              {filteredProducts.length} result{filteredProducts.length !== 1 ? 's' : ''}
+              {totalProducts} result{totalProducts !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -389,7 +455,7 @@ const Products = () => {
                 <ProductSkeleton key={i} />
               ))}
             </motion.div>
-          ) : filteredProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -416,7 +482,7 @@ const Products = () => {
             <motion.div key="products" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {activeCategory.toLowerCase() === 'defence' ? (
                 (() => {
-                  const defenceProducts = filteredProducts.filter(p => isDefenceCategory(p.category));
+                  const defenceProducts = products.filter(p => isDefenceCategory(p.category));
                   const groups = new Map<string, Product[]>();
                   defenceProducts.forEach(p => {
                     const key = (p.subcategory && p.subcategory.trim()) || 'General';
@@ -447,7 +513,12 @@ const Products = () => {
                 })()
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredProducts.map((p, i) => renderCard(p, i))}
+                  {products.map((p, i) => renderCard(p, i))}
+                </div>
+              )}
+              {loadingMore && (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-2 border-gray-200 border-t-gray-900 rounded-full"></div>
                 </div>
               )}
             </motion.div>

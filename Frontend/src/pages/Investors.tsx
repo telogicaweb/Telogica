@@ -92,10 +92,10 @@ export default function Investors() {
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       {/* Combined Header (Breadcrumbs + Hero Banner) */}
-      <section className="bg-slate-900 text-white pt-24 pb-12 border-b border-slate-800">
+      <section className="bg-slate-900 text-white pt-10 pb-8 border-b border-slate-800">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col">
           {/* Integrated Breadcrumbs */}
-          <div className="flex items-center gap-2 text-[11px] mb-8">
+          <div className="flex items-center gap-2 text-[11px] mb-4">
             <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
             <ChevronRight className="w-3 h-3 text-gray-600" />
             <span className="text-white font-medium">Investor Relations</span>
@@ -123,8 +123,8 @@ export default function Investors() {
       </section>
 
       {/* Documents Section */}
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-10">
+      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
+        <div className="text-center mb-6">
           <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Investor Documents</h2>
           <p className="text-xs text-gray-500 mt-1 max-w-xl mx-auto">
             Download our latest financial reports, regulatory filings, and investor presentations

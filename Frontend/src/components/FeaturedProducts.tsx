@@ -251,7 +251,7 @@ function CategorySection({
               <div className="relative h-[600px] rounded-3xl overflow-hidden shadow-2xl group">
                 <VerticalMarquee
                   products={products}
-                  showPricingActions={catKey === 'telecommunication'}
+                  showPricingActions={true}
                 />
               </div>
             </div>
@@ -315,7 +315,7 @@ function VerticalMarquee({
   products: Product[];
   showPricingActions: boolean;
 }) {
-  const { addToCart } = useContext(CartContext)!;
+  const { addToQuote } = useContext(CartContext)!;
   const scrollItems = products.length > 0 ? [...products, ...products] : [];
 
   if (scrollItems.length === 0) {
@@ -332,39 +332,39 @@ function VerticalMarquee({
   return (
     <div className="marquee-container h-full overflow-hidden bg-gray-50">
       <div
-        className="marquee-track flex flex-col gap-3 p-4 will-change-transform"
+        className="marquee-track flex flex-col gap-5 p-4 will-change-transform"
         style={{ ['--marquee-duration' as string]: `${Math.max(28, products.length * 5)}s` }}
       >
         {scrollItems.map((product, index) => (
           <div
             key={`${product._id}-${index}`}
-            className="group relative rounded-xl overflow-hidden flex-shrink-0 bg-white"
+            className="group relative rounded-3xl border border-gray-200/80 overflow-hidden flex-shrink-0 bg-white shadow-[0_10px_25px_rgba(0,0,0,0.15)] hover:shadow-[0_20px_35px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 hover:border-gray-300 transition-all duration-300"
           >
             <Link to={`/product/${product._id}`} className="block">
-              <div className="aspect-[4/3] bg-gray-100">
+              <div className="aspect-[4/3] bg-gradient-to-b from-gray-50 to-white border-b border-gray-100 flex items-center justify-center p-3">
                 <img
-                  src={product.images?.[0] || '/placeholder.jpg'}
+                  src={product.images?.[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
                 />
               </div>
             </Link>
-            <div className="p-3 border-t border-gray-100">
-              <Link to={`/product/${product._id}`} className="text-sm font-semibold text-gray-900 hover:underline line-clamp-1 block">
+            <div className="p-4 bg-white">
+              <Link to={`/product/${product._id}`} className="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition-colors line-clamp-1 block">
                 {product.name}
               </Link>
               {showPricingActions && (
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-xs text-gray-600">
-                    {product.price ? `Rs ${product.price.toLocaleString('en-IN')}` : 'Quote'}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-gray-600">
+                    {product.price ? `₹${product.price.toLocaleString('en-IN')}` : 'Quote'}
                   </span>
                   <button
                     type="button"
-                    onClick={() => addToCart(product, 1)}
-                    className="text-xs px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-gray-800"
+                    onClick={() => addToQuote(product, 1)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-[#2a3f8f] hover:bg-[#1e2e6b] text-white font-semibold shadow-sm transition-all duration-200"
                   >
-                    Add to Cart
+                    Request Quote
                   </button>
                 </div>
               )}

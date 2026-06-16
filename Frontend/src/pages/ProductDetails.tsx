@@ -150,6 +150,14 @@ const ProductDetails = () => {
 
   // Scroll active thumbnail into view
   useEffect(() => {
+    if (isZoomOpen) {
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+    }
+  }, [isZoomOpen]);
+
+  useEffect(() => {
     if (thumbnailRef.current && activeIndex >= 0) {
       const btn = thumbnailRef.current.children[activeIndex] as HTMLElement;
       if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -357,7 +365,7 @@ const ProductDetails = () => {
                             return (
                               <button
                                 key={`${img}-${idx}`}
-                                onClick={() => { setActiveImage(img); setIsPlaying(false); }}
+                                onClick={() => setActiveImage(img)}
                                 className={`shrink-0 h-14 w-14 border-2 transition-all overflow-hidden ${isActive ? 'border-gray-900' : 'border-gray-200 hover:border-gray-400'}`}
                               >
                                 <img
@@ -376,7 +384,7 @@ const ProductDetails = () => {
                           {allImages.map((_, idx) => (
                             <button
                               key={idx}
-                              onClick={() => { setActiveImage(allImages[idx]); setIsPlaying(false); }}
+                              onClick={() => setActiveImage(allImages[idx])}
                               className={`h-1 transition-all duration-300 ${idx === activeIndex ? 'w-4 bg-gray-900' : 'w-1 bg-gray-300 hover:bg-gray-400'}`}
                             />
                           ))}
@@ -637,21 +645,52 @@ const ProductDetails = () => {
         {/* Image Zoom Modal */}
         {isZoomOpen && selectedImage && (
           <div 
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 select-none"
             onClick={() => setIsZoomOpen(false)}
           >
             <button
               onClick={() => setIsZoomOpen(false)}
-              className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
+              className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-10"
+              title="Close modal"
             >
               <X className="w-6 h-6 text-white" />
             </button>
+            
+            {/* Previous Image Button */}
+            {allImages.length > 1 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); goToPrev(); }} 
+                className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors hover:scale-105 active:scale-95"
+                title="Previous image"
+              >
+                <ChevronLeft className="w-8 h-8 text-white" />
+              </button>
+            )}
+
             <img
               src={selectedImage}
               alt={product.name}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-[85vh] object-contain transition-all duration-300"
               onClick={(e) => e.stopPropagation()}
             />
+
+            {/* Next Image Button */}
+            {allImages.length > 1 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); goToNext(); }} 
+                className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors hover:scale-105 active:scale-95"
+                title="Next image"
+              >
+                <ChevronRight className="w-8 h-8 text-white" />
+              </button>
+            )}
+
+            {/* Image index counter */}
+            {allImages.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs font-semibold px-4 py-1.5 rounded-full backdrop-blur-sm shadow-md">
+                {activeIndex + 1} / {allImages.length}
+              </div>
+            )}
           </div>
         )}
 

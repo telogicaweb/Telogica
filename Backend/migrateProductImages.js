@@ -1,7 +1,7 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Product = require('./models/Product');
 const cloudinary = require('./utils/cloudinary');
-require('dotenv').config();
 
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 60000 })
   .then(() => console.log('MongoDB connected'))

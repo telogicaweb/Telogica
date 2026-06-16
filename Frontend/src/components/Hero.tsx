@@ -4,7 +4,7 @@ export const industries = [
   {
     id: 'telecommunication',
     name: 'Telecommunication',
-    image: '/hero-slide-3.jpg',
+    image: '/hero-slide-2.jpg',
     link: '/products?category=telecommunication',
     category: 'telecommunication',
   },
@@ -32,6 +32,7 @@ interface HeroProps {
 export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) {
   const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [telecomBgIndex, setTelecomBgIndex] = useState(0);
 
   // Auto-rotate backgrounds when no industry is hovered
   useEffect(() => {
@@ -44,15 +45,35 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
     return () => clearInterval(interval);
   }, [activeIndustry]);
 
+  // Round-robin cycle for telecommunication when hovered
+  useEffect(() => {
+    if (activeIndustry !== 'telecommunication') {
+      setTelecomBgIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTelecomBgIndex((prev) => (prev + 1) % 2);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [activeIndustry]);
+
   useEffect(() => {
     const currentIndustryId = activeIndustry || industries[currentBgIndex].id;
     onIndustryChange?.(currentIndustryId);
   }, [activeIndustry, currentBgIndex, onIndustryChange]);
 
   const getCurrentBgImage = () => {
+    if (activeIndustry === 'telecommunication') {
+      return telecomBgIndex === 0 ? '/hero-slide-2.jpg' : '/hero-slide-1.jpg';
+    }
     if (activeIndustry) {
       const industry = industries.find(i => i.id === activeIndustry);
-      return industry?.image || industries[0].image;
+      return industry?.image || '/hero-slide-2.jpg';
+    }
+    if (industries[currentBgIndex].id === 'telecommunication') {
+      return '/hero-slide-2.jpg';
     }
     return industries[currentBgIndex].image;
   };
@@ -73,10 +94,10 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
     <div className="relative min-h-screen overflow-hidden bg-[#2a3f8f]">
       {/* Background Images Layer - Clear and Vibrant */}
       <div className="absolute inset-0">
-        {industries.map((industry) => (
+        {['/hero-slide-2.jpg', '/hero-slide-1.jpg'].map((imgUrl) => (
           <div
-            key={industry.id}
-            className={`absolute inset-0 transition-all duration-[1500ms] ease-in-out ${getCurrentBgImage() === industry.image
+            key={imgUrl}
+            className={`absolute inset-0 transition-all duration-[1500ms] ease-in-out ${getCurrentBgImage() === imgUrl
               ? 'opacity-100 scale-100'
               : 'opacity-0 scale-110'
               }`}
@@ -84,7 +105,7 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
-                backgroundImage: `url(${industry.image})`,
+                backgroundImage: `url(${imgUrl})`,
                 filter: 'brightness(0.9) contrast(1.1)'
               }}
             />
@@ -110,11 +131,11 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
             </h1>
 
             {/* Industry Navigation */}
-            <div className="space-y-2">
+            <div className="space-y-2 w-full max-w-full">
               {industries.map((industry, index) => (
                 <div
                   key={industry.id}
-                  className="group animate-slideIn"
+                  className="group animate-slideIn w-full"
                   style={{ animationDelay: `${0.3 + index * 0.1}s` }}
                   onMouseEnter={() => handleIndustryHover(industry.id)}
                   onMouseLeave={handleIndustryLeave}
@@ -122,13 +143,13 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
                   <button
                     type="button"
                     onClick={() => handleIndustryClick(industry.id)}
-                    className="flex items-center gap-4 py-4 transition-all duration-300"
+                    className="flex items-center w-full gap-2 sm:gap-3 py-3 sm:py-4 transition-all duration-300 text-left"
                   >
-                    {/* "for" text that appears on hover */}
+                    {/* "for" text that appears on hover - hidden on mobile to save space */}
                     <span
-                      className={`text-white/80 text-lg font-light transition-all duration-300 ${activeIndustry === industry.id
-                        ? 'opacity-100 w-12'
-                        : 'opacity-0 w-0'
+                      className={`hidden sm:inline-block text-white/80 text-base sm:text-lg font-light transition-all duration-300 whitespace-nowrap ${activeIndustry === industry.id
+                        ? 'opacity-100 max-w-[3rem]'
+                        : 'opacity-0 max-w-0'
                         }`}
                       style={{ overflow: 'hidden' }}
                     >
@@ -137,33 +158,33 @@ export default function Hero({ onIndustryChange, onIndustrySelect }: HeroProps) 
 
                     {/* Industry Name */}
                     <span
-                      className={`text-xl md:text-2xl font-medium transition-all duration-300 ${activeIndustry === industry.id
-                        ? 'text-amber-500 translate-x-2'
+                      className={`text-base sm:text-xl md:text-2xl font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 ${activeIndustry === industry.id
+                        ? 'text-amber-500 translate-x-1 sm:translate-x-2'
                         : 'text-white group-hover:text-white/90'
                         }`}
                     >
                       {industry.name}
                     </span>
 
-                    {/* Connector Line */}
+                    {/* Connector Line - flexibly fills remaining space */}
                     <div
-                      className={`h-[2px] bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500 ${activeIndustry === industry.id ? 'opacity-100' : 'opacity-0'
-                        }`}
+                      className={`h-[2px] bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500 flex-1 min-w-[16px] ${
+                        activeIndustry === industry.id ? 'opacity-100' : 'opacity-0'
+                      }`}
                       style={{
-                        width: activeIndustry === industry.id ? '120px' : '0px',
                         boxShadow: activeIndustry === industry.id ? '0 0 10px rgba(245, 158, 11, 0.5)' : 'none'
                       }}
                     />
 
                     {/* Action Button */}
-                    <div className="flex items-center ml-auto">
+                    <div className="flex items-center flex-shrink-0">
                       {activeIndustry === industry.id ? (
-                        <span className="flex items-center gap-2 bg-amber-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg hover:bg-amber-600 transition-all duration-300 animate-scaleIn">
-                          GO <ChevronRight className="w-4 h-4" />
+                        <span className="flex items-center gap-1 sm:gap-2 bg-amber-500 text-white px-3 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold shadow-lg hover:bg-amber-600 transition-all duration-300 animate-scaleIn whitespace-nowrap">
+                          GO <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                         </span>
                       ) : (
-                        <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center text-white/60 group-hover:border-white/70 group-hover:text-white group-hover:bg-white/10 transition-all duration-300">
-                          <ChevronRight className="w-5 h-5" />
+                        <span className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white/40 flex items-center justify-center text-white/60 group-hover:border-white/70 group-hover:text-white group-hover:bg-white/10 transition-all duration-300">
+                          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                         </span>
                       )}
                     </div>

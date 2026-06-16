@@ -44,6 +44,8 @@ const normalizeRecommendationIds = async (ids, currentProductId = null) => {
 // @access  Public
 const getProducts = async (req, res) => {
   try {
+    const page = parseInt(req.query?.page);
+    const hasPagination = !isNaN(page) && page > 0;
     const limit = parseInt(req.query?.limit) || 0;
     const { category, search } = req.query || {};
 
@@ -57,6 +59,14 @@ const getProducts = async (req, res) => {
       filter.$text = { $search: search.trim() };
     }
 
+    let totalProducts = 0;
+    if (hasPagination) {
+      totalProducts = await Product.countDocuments(filter);
+    }
+
+    const pageLimit = limit || 12;
+    const skip = hasPagination ? (page - 1) * pageLimit : 0;
+
     // Use aggregation to strip large binary fields at the database level.
     // Some products store raw base64 images or PDF brochures directly in MongoDB,
     // making individual documents 2-10 MB — causing Atlas cursor batching to hang.
@@ -67,7 +77,6 @@ const getProducts = async (req, res) => {
     const pipeline = [
       { $match: filter },
       sortStage,
-      ...(limit > 0 ? [{ $limit: limit }] : []),
       // Remove brochureUrl (may contain raw PDF base64 data — not a URL)
       { $unset: 'brochureUrl' },
       // Strip base64-encoded image blobs from the images array; keep only URLs
@@ -87,8 +96,27 @@ const getProducts = async (req, res) => {
       pipeline[0] = { $match: { ...filter, $text: { $search: search.trim() } } };
     }
 
+    if (hasPagination) {
+      pipeline.push({ $skip: skip });
+      pipeline.push({ $limit: pageLimit });
+    } else if (limit > 0) {
+      pipeline.push({ $limit: limit });
+    }
+
     const products = await Product.aggregate(pipeline);
-    res.json(products);
+
+    if (hasPagination) {
+      const totalPages = Math.ceil(totalProducts / pageLimit);
+      res.json({
+        products,
+        totalProducts,
+        page,
+        totalPages,
+        hasMore: page < totalPages
+      });
+    } else {
+      res.json(products);
+    }
   } catch (error) {
     if (!res.headersSent) {
       res.status(500).json({ message: error.message });
