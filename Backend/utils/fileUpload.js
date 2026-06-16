@@ -33,13 +33,18 @@ const upload = multer({
 });
 
 // Upload file to Cloudinary
-const uploadToCloudinary = (fileBuffer, folder = 'investor-documents') => {
+const uploadToCloudinary = (fileBuffer, folder = 'investor-documents', originalName = '') => {
   return new Promise((resolve, reject) => {
+    const extIndex = originalName.lastIndexOf('.');
+    const ext = extIndex !== -1 ? originalName.substring(extIndex + 1).toLowerCase() : '';
+    const uniqueFilename = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: folder,
-        resource_type: 'raw', // For non-image files
-        allowed_formats: ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx'],
+        resource_type: 'raw', // Critical: Cloudinary needs this to treat PDF/Word/Excel as documents
+        public_id: uniqueFilename,
+        format: ext || undefined, // Cloudinary uses format to append file extensions to raw resources
       },
       (error, result) => {
         if (error) {

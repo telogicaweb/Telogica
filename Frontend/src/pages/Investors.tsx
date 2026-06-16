@@ -55,13 +55,38 @@ export default function Investors() {
     }
   };
 
-  const handleOpen = (url: string) => {
-    // Cloudinary raw resources are served with Content-Disposition: attachment by default.
-    // fl_attachment:false forces inline serving so the browser opens the PDF instead of downloading it.
-    const viewUrl = url.includes('cloudinary.com') && url.includes('/raw/upload/')
-      ? url.replace('/raw/upload/', '/raw/upload/fl_attachment:false/')
-      : url;
-    window.open(viewUrl, '_blank', 'noopener,noreferrer');
+  const handleDownload = async (doc: InvestorDocument) => {
+    // Open a new tab immediately to prevent popup blockers from blocking it
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      // Fallback if popups are completely blocked
+      window.open(doc.documentUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
+    newWindow.document.write('<p style="font-family: sans-serif; text-align: center; margin-top: 50px; color: #4b5563;">Loading document...</p>');
+
+    try {
+      const response = await fetch(doc.documentUrl);
+      if (!response.ok) throw new Error('Failed to fetch file');
+      const blob = await response.blob();
+      
+      const fileTypeLower = (doc.fileType || '').toLowerCase();
+      const mimeType = fileTypeLower === 'pdf' ? 'application/pdf' : 
+                       fileTypeLower === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 
+                       fileTypeLower === 'word' ? 'application/msword' : 
+                       fileTypeLower === 'powerpoint' ? 'application/vnd.ms-powerpoint' : 'application/octet-stream';
+                       
+      const newBlob = new Blob([blob], { type: mimeType });
+      const blobUrl = window.URL.createObjectURL(newBlob);
+      
+      newWindow.location.href = blobUrl;
+    } catch (error) {
+      console.error('Failed to preview document:', error);
+      newWindow.close();
+      // Fallback: open direct URL
+      window.open(doc.documentUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -136,7 +161,7 @@ export default function Investors() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.35 }}
                       className="group bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all duration-300 p-5 flex flex-col justify-between border border-gray-100 hover:border-indigo-100 bg-gradient-to-b from-indigo-50/5 to-white"
-                      onClick={() => handleOpen(doc.documentUrl)}
+                      onClick={() => handleDownload(doc)}
                     >
                       <div>
                         <div className="flex items-start justify-between mb-4">
@@ -173,7 +198,9 @@ export default function Investors() {
                           )}
                         </div>
 
-                        <button className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors duration-200 mt-4">
+                        <button
+                          className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors duration-200 mt-4"
+                        >
                           <ExternalLink className="w-3.5 h-3.5" />
                           <span>View Document</span>
                         </button>

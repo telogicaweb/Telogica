@@ -4294,6 +4294,34 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleViewInvestorDocument = async (url: string, fileType: string) => {
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    newWindow.document.write('<p style="font-family: sans-serif; text-align: center; margin-top: 50px; color: #4b5563;">Loading document...</p>');
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch file');
+      const blob = await response.blob();
+      
+      const fileTypeLower = (fileType || '').toLowerCase();
+      const mimeType = fileTypeLower === 'pdf' ? 'application/pdf' : 
+                       fileTypeLower === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 
+                       fileTypeLower === 'word' ? 'application/msword' : 
+                       fileTypeLower === 'powerpoint' ? 'application/vnd.ms-powerpoint' : 'application/octet-stream';
+                       
+      const newBlob = new Blob([blob], { type: mimeType });
+      const blobUrl = window.URL.createObjectURL(newBlob);
+      newWindow.location.href = blobUrl;
+    } catch (error) {
+      console.error('Failed to preview document:', error);
+      newWindow.close();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleEditInvestorDocument = (doc: InvestorDocument) => {
     setEditingInvestorDoc(doc);
     setSelectedFile(null);
@@ -4467,15 +4495,13 @@ const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <a
-                            href={doc.documentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => handleViewInvestorDocument(doc.documentUrl, doc.fileType)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="View Document"
                           >
                             <Eye className="w-4 h-4" />
-                          </a>
+                          </button>
                           <button
                             onClick={() => handleEditInvestorDocument(doc)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -4593,9 +4619,13 @@ const AdminDashboard: React.FC = () => {
                         <div className="flex items-center gap-2 text-sm text-green-600">
                           <CheckCircle className="w-4 h-4" />
                           <span>Document uploaded successfully</span>
-                          <a href={investorDocForm.documentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <button
+                            type="button"
+                            onClick={() => handleViewInvestorDocument(investorDocForm.documentUrl, investorDocForm.fileType)}
+                            className="text-blue-600 hover:underline focus:outline-none"
+                          >
                             View
-                          </a>
+                          </button>
                         </div>
                       )}
                       <p className="text-xs text-gray-500">

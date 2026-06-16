@@ -11,7 +11,7 @@ const uploadDocument = async (req, res) => {
     }
 
     // Upload to Cloudinary
-    const result = await uploadToCloudinary(req.file.buffer, 'investor-documents');
+    const result = await uploadToCloudinary(req.file.buffer, 'investor-documents', req.file.originalname);
 
     // Get file size in MB
     const fileSizeInMB = (req.file.size / (1024 * 1024)).toFixed(2);
