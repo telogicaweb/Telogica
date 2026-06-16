@@ -12,11 +12,13 @@ import {
   Package,
   Shield,
   Tag,
-  ClipboardCheck
+  ClipboardCheck,
+  FileText
 } from 'lucide-react';
 import api from '../../api';
 import { Product, ProductUnit } from './types';
 import { compressImage } from '../../utils/compressImage';
+import SubcategoryPicker from './SubcategoryPicker';
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
@@ -30,6 +32,7 @@ interface ProductEditorProps {
 interface ProductDetailsForm {
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   price: string;
   retailerPrice: string;
@@ -42,6 +45,7 @@ interface ProductDetailsForm {
   taxPercentage: string;
   specifications: Record<string, string>;
   images: string[];
+  brochureUrl?: string;
 }
 
 interface UnitDraft {
@@ -71,10 +75,18 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
   const [recommendations, setRecommendations] = useState<string[]>(product.recommendedProductIds || []);
   const [recommendationSaving, setRecommendationSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingBrochure, setUploadingBrochure] = useState(false);
+
+  const defenceSubcategories = useMemo(() => {
+    return products
+      .filter((p) => p.category?.toLowerCase() === 'defence' && p.subcategory)
+      .map((p) => p.subcategory as string);
+  }, [products]);
 
   const [form, setForm] = useState<ProductDetailsForm>(() => ({
     name: product.name,
     category: product.category,
+    subcategory: product.subcategory || '',
     description: product.description || '',
     price: product.price?.toString() || product.normalPrice?.toString() || '',
     retailerPrice: product.retailerPrice?.toString() || '',
@@ -86,13 +98,15 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
     extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
     taxPercentage: product.taxPercentage?.toString() || '18',
     specifications: product.specifications || {},
-    images: product.images ? [...product.images] : []
+    images: product.images ? [...product.images] : [],
+    brochureUrl: product.brochureUrl || '',
   }));
 
   useEffect(() => {
     setForm({
       name: product.name,
       category: product.category,
+      subcategory: product.subcategory || '',
       description: product.description || '',
       price: product.price?.toString() || product.normalPrice?.toString() || '',
       retailerPrice: product.retailerPrice?.toString() || '',
@@ -104,7 +118,8 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
       extendedWarrantyPrice: product.extendedWarrantyPrice?.toString() || '',
       taxPercentage: product.taxPercentage?.toString() || '18',
       specifications: product.specifications || {},
-      images: product.images ? [...product.images] : []
+      images: product.images ? [...product.images] : [],
+      brochureUrl: product.brochureUrl || '',
     });
     setRecommendations(product.recommendedProductIds || []);
   }, [product]);
@@ -164,6 +179,8 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
       const payload: Record<string, unknown> = {
         name: form.name,
         category: form.category,
+        subcategory: form.category.trim().toLowerCase() === 'defence' && form.subcategory?.trim() ? form.subcategory.trim() : '',
+        brochureUrl: form.brochureUrl || null,
         description: form.description,
         images: normalizedImages,
         requiresQuote: form.requiresQuote,
@@ -410,6 +427,19 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                 </div>
               </div>
 
+              {form.category.trim().toLowerCase() === 'defence' && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">
+                    Sub-category <span className="text-gray-400 text-xs">(optional)</span>
+                  </label>
+                  <SubcategoryPicker
+                    value={form.subcategory || ''}
+                    onChange={(v) => setForm((prev) => ({ ...prev, subcategory: v }))}
+                    suggestions={defenceSubcategories}
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-1 block">Description</label>
                 <textarea
@@ -548,6 +578,78 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ product, products, onClos
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Product Brochure (PDF) */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block font-semibold">Product Brochure (PDF)</label>
+                {form.brochureUrl && !form.brochureUrl.startsWith('data:') ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-green-600" />
+                      <a
+                        href={form.brochureUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-green-800 underline"
+                      >
+                        Brochure uploaded — click to preview
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, brochureUrl: '' }))}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+                    <label className="cursor-pointer">
+                      <div className="flex flex-col items-center gap-2">
+                        {uploadingBrochure ? (
+                          <RefreshCw className="w-10 h-10 text-blue-500 animate-spin" />
+                        ) : (
+                          <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        )}
+                        <span className="text-sm font-medium text-gray-700">
+                          {uploadingBrochure ? 'Uploading brochure...' : 'Click to upload PDF brochure'}
+                        </span>
+                        <span className="text-xs text-gray-500">Max 20 MB</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        disabled={uploadingBrochure}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingBrochure(true);
+                          const formData = new FormData();
+                          formData.append('brochure', file);
+                          try {
+                            const res = await api.post('/api/products/upload-brochure', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' },
+                            });
+                            if (res.data?.url) {
+                              setForm((prev) => ({ ...prev, brochureUrl: res.data.url }));
+                            }
+                          } catch (err) {
+                            alert('Failed to upload brochure. Please try again.');
+                          } finally {
+                            setUploadingBrochure(false);
+                          }
+                          e.target.value = '';
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-2">PDF only. Will be visible to buyers in their dashboard after purchase.</p>
               </div>
 
               <div>

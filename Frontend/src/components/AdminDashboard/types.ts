@@ -34,6 +34,8 @@ export interface Product {
   updatedAt?: string;
   // Optional list of recommended product ids (related products selected by admin)
   recommendedProductIds?: string[];
+  subcategory?: string;
+  brochureUrl?: string;
 }
 
 export interface ProductFormState {
