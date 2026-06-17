@@ -214,7 +214,7 @@ const Products = () => {
           <img
             src={product.images[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'}
             alt={product.name}
-            className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-110 product-image-enhance"
           />
           {/* Category tag - flush with top-left corner of the card */}
           {(() => {
@@ -261,9 +261,7 @@ const Products = () => {
           <div className="mt-4 pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <div>
-                {isDefence ? (
-                  <span className="text-sm font-semibold text-indigo-600">Datasheet Available</span>
-                ) : user?.role === 'retailer' ? (
+                {isDefence ? null : user?.role === 'retailer' ? (
                   product.retailerPrice ? (
                     <div className="flex items-baseline gap-1">
                       <span className="text-lg font-bold text-gray-900">₹{product.retailerPrice.toLocaleString()}</span>
@@ -316,22 +314,13 @@ const Products = () => {
                 <>
                   {user?.role === 'retailer' ? (
                     product.retailerPrice ? (
-                      <>
-                        <button
-                          onClick={() => handleAddToCart(product, true)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          Buy Now
-                        </button>
-                        <button
-                          onClick={() => handleAddToQuote(product)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-200 transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          Bulk Quote
-                        </button>
-                      </>
+                      <button
+                        onClick={() => handleAddToCart(product, true)}
+                        className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        Buy Now
+                      </button>
                     ) : (
                       <button
                         onClick={() => handleAddToQuote(product)}
@@ -342,25 +331,27 @@ const Products = () => {
                       </button>
                     )
                   ) : (
-                    <>
-                      {product.isTelecom && (
-                        <button
-                          onClick={() => handleAddToCart(product)}
-                          className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-gray-800 transition-colors"
-                        >
-                          <ShoppingCart className="w-3.5 h-3.5" />
-                          Add to Cart
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleAddToQuote(product)}
-                        className="flex-1 flex items-center justify-center gap-1.5 bg-[#2a3f8f] text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-[#1e2e6b] transition-colors"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        Request Quote
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleAddToQuote(product)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-[#2a3f8f] text-white py-2.5 text-[13px] font-semibold rounded-lg shadow-sm hover:bg-[#1e2e6b] transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Request Quote
+                    </button>
                   )}
+
+                  <button
+                    onClick={() => handleDownloadDatasheet(product)}
+                    disabled={!product.brochureUrl}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[13px] font-semibold rounded-lg shadow-sm transition-colors ${
+                      product.brochureUrl
+                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Datasheet
+                  </button>
                 </>
               )}
             </div>
@@ -384,32 +375,33 @@ const Products = () => {
       </div>
 
       {/* Sticky toolbar */}
-      <div className="sticky top-20 z-30 bg-white border-b border-gray-200">
+      <div className="sticky top-20 z-30 bg-white border-b border-gray-200 py-3">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 h-12">
-            {/* Search */}
-            <div className="relative w-56 shrink-0">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Left: Search & Category tabs */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:gap-4 flex-grow">
+              {/* Search */}
+              <div className="relative w-full sm:w-56 shrink-0">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-all"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
 
-            {/* Separator */}
-            <div className="w-px h-5 bg-gray-200" />
+              {/* Separator */}
+              <div className="hidden sm:block w-px h-5 bg-gray-200" />
 
-            {/* Category tabs */}
-            <div className="flex-1 overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2">
+              {/* Category tabs */}
+              <div className="flex flex-wrap gap-2">
                 {categories.map((category) => {
                   const isActive = activeCategory.toLowerCase() === category.value.toLowerCase();
                   return (
@@ -433,7 +425,7 @@ const Products = () => {
             </div>
 
             {/* Count */}
-            <span className="hidden md:block text-xs text-gray-400 shrink-0 tabular-nums">
+            <span className="text-xs text-gray-400 shrink-0 tabular-nums self-start md:self-auto">
               {totalProducts} result{totalProducts !== 1 ? 's' : ''}
             </span>
           </div>

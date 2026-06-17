@@ -345,7 +345,7 @@ function VerticalMarquee({
                 <img
                   src={product.images?.[0] || 'https://via.placeholder.com/400x300?text=Telogica+Product'}
                   alt={product.name}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 product-image-enhance"
                   loading="lazy"
                 />
               </div>

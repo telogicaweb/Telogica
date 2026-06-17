@@ -1,6 +1,6 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, User, LogOut, Menu, X } from 'lucide-react';
+import { Home, User, LogOut, Menu, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { CartContext } from '../context/CartContext';
 
@@ -12,6 +12,26 @@ export default function Header() {
   const currentPath = location.pathname;
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Auto-close mobile menu when navigating to a new page
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  // Close mobile menu when clicking outside of the header
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isMenuOpen && headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -34,7 +54,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Mobile Menu Button */}
@@ -82,9 +102,9 @@ export default function Header() {
 
             {/* Icons */}
             <div className="flex items-center gap-4">
-              <button className="hidden sm:block text-gray-600 hover:text-gray-900" aria-label="Search">
+              {/* <button className="hidden sm:block text-gray-600 hover:text-gray-900" aria-label="Search">
                 <Search size={20} />
-              </button>
+              </button> */}
 
               {user ? (
                 <div className="flex items-center gap-3">

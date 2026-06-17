@@ -77,8 +77,18 @@ const getProducts = async (req, res) => {
     const pipeline = [
       { $match: filter },
       sortStage,
-      // Remove brochureUrl (may contain raw PDF base64 data — not a URL)
-      { $unset: 'brochureUrl' },
+      // Keep brochureUrl only if it is a real URL (does not start with 'data:')
+      {
+        $addFields: {
+          brochureUrl: {
+            $cond: {
+              if: { $regexMatch: { input: { $ifNull: ['$brochureUrl', ''] }, regex: '^data:' } },
+              then: null,
+              else: '$brochureUrl'
+            }
+          }
+        }
+      },
       // Strip base64-encoded image blobs from the images array; keep only URLs
       {
         $addFields: {

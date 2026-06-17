@@ -33,6 +33,33 @@ interface Product extends RecommendedProductSummary {
   brochureUrl?: string;
 }
 
+const renderDescription = (desc?: string) => {
+  if (!desc) return null;
+  const lines = desc.split('\n');
+  return (
+    <div className="text-[13px] text-gray-600 leading-relaxed mb-5 space-y-1.5 whitespace-pre-line">
+      {lines.map((line, lineIdx) => {
+        if (line.includes('•')) {
+          const parts = line.split('•').map(p => p.trim());
+          const firstPart = parts[0];
+          const bulletItems = parts.slice(1);
+          return (
+            <div key={lineIdx} className="space-y-1">
+              {firstPart && <p className="text-gray-800">{firstPart}</p>}
+              <ul className="list-disc pl-5 space-y-1">
+                {bulletItems.map((item, itemIdx) => (
+                  item ? <li key={itemIdx} className="text-gray-600">{item}</li> : null
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        return <p key={lineIdx}>{line}</p>;
+      })}
+    </div>
+  );
+};
+
 const ProductDetails = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -309,7 +336,7 @@ const ProductDetails = () => {
                           <img
                             src={selectedImage}
                             alt={product.name}
-                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+                            className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105 product-image-enhance"
                           />
                           <button
                             onClick={(e) => { e.stopPropagation(); setIsZoomOpen(true); }}
@@ -371,7 +398,7 @@ const ProductDetails = () => {
                                 <img
                                   src={img}
                                   alt={`Thumbnail ${idx + 1}`}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover product-image-enhance"
                                 />
                               </button>
                             );
@@ -428,7 +455,7 @@ const ProductDetails = () => {
 
                   <div className="flex-grow">
                     {/* Description */}
-                    <p className="text-[13px] text-gray-600 leading-relaxed mb-5">{product.description}</p>
+                    {renderDescription(product.description)}
 
                     {/* Warranty Info */}
                     {(product.warrantyPeriodMonths || product.extendedWarrantyAvailable) && (
@@ -456,73 +483,77 @@ const ProductDetails = () => {
                     )}
 
                     {/* Pricing */}
-                    <div className="mb-5 pb-5 border-b border-gray-100">
-                    {isRetailer ? (
-                      hasRetailerPrice ? (
-                        <div>
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-2xl font-bold text-gray-900">₹{product.retailerPrice?.toLocaleString()}</p>
-                            <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5">Retailer Price</span>
+                    {!isDefence && (
+                      <div className="mb-5 pb-5 border-b border-gray-100">
+                      {isRetailer ? (
+                        hasRetailerPrice ? (
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <p className="text-2xl font-bold text-gray-900">₹{product.retailerPrice?.toLocaleString()}</p>
+                              <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5">Retailer Price</span>
+                            </div>
+                            {product.price && (
+                              <p className="text-sm text-gray-400 line-through mt-0.5">₹{product.price.toLocaleString()}</p>
+                            )}
+                            <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
+                              {product.taxPercentage || 18}% GST
+                            </span>
                           </div>
-                          {product.price && (
-                            <p className="text-sm text-gray-400 line-through mt-0.5">₹{product.price.toLocaleString()}</p>
-                          )}
-                          <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            {product.taxPercentage || 18}% GST
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-xl font-bold text-gray-900">Request Quote</p>
-                      )
-                    ) : (
-                      isTelecom && product.price && !product.requiresQuote ? (
-                        <div>
-                          <p className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
-                          <p className="text-xs text-green-600 font-medium mt-0.5">Direct Purchase Available</p>
-                          <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            {product.taxPercentage || 18}% GST applicable
-                          </span>
-                        </div>
-                      ) : (
-                        <div>
+                        ) : (
                           <p className="text-xl font-bold text-gray-900">Request Quote</p>
-                          {!isTelecom && (
-                            <p className="text-xs text-gray-500 mt-0.5">Custom pricing available</p>
-                          )}
-                        </div>
-                      )
+                        )
+                      ) : (
+                        isTelecom && product.price && !product.requiresQuote ? (
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">₹{product.price.toLocaleString()}</p>
+                            <p className="text-xs text-green-600 font-medium mt-0.5">Direct Purchase Available</p>
+                            <span className="inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold bg-gray-100 text-gray-600">
+                              {product.taxPercentage || 18}% GST applicable
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-xl font-bold text-gray-900">Request Quote</p>
+                            {!isTelecom && (
+                              <p className="text-xs text-gray-500 mt-0.5">Custom pricing available</p>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
                     )}
-                  </div>
                   </div>
 
                   {/* Quantity & Actions */}
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quantity</label>
-                      <div className="flex items-center gap-0 w-fit border border-gray-200">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1}
-                          className="p-2.5 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed border-r border-gray-200 transition-colors"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-sm font-bold text-gray-900 w-12 text-center">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(quantity + 1)}
-                          className="p-2.5 hover:bg-gray-50 border-l border-gray-200 transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                    {!isDefence && (
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quantity</label>
+                        <div className="flex items-center gap-0 w-fit border border-gray-200">
+                          <button
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            disabled={quantity <= 1}
+                            className="p-2.5 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed border-r border-gray-200 transition-colors"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-sm font-bold text-gray-900 w-12 text-center">{quantity}</span>
+                          <button
+                            onClick={() => setQuantity(quantity + 1)}
+                            className="p-2.5 hover:bg-gray-50 border-l border-gray-200 transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {isTelecom && !isRetailer && maxDirectPurchase !== null && (
+                          <p className="mt-1.5 text-[11px] text-gray-500">
+                            {quantity > maxDirectPurchase 
+                              ? `Quote required for ${maxDirectPurchase + 1}+ units` 
+                              : `Max ${maxDirectPurchase} for direct purchase`}
+                          </p>
+                        )}
                       </div>
-                      {isTelecom && !isRetailer && maxDirectPurchase !== null && (
-                        <p className="mt-1.5 text-[11px] text-gray-500">
-                          {quantity > maxDirectPurchase 
-                            ? `Quote required for ${maxDirectPurchase + 1}+ units` 
-                            : `Max ${maxDirectPurchase} for direct purchase`}
-                        </p>
-                      )}
-                    </div>
+                    )}
 
                     {/* Action Buttons */}
                     <div className="space-y-2">
@@ -541,52 +572,88 @@ const ProductDetails = () => {
                           {product.brochureUrl ? 'Download Datasheet' : 'Datasheet Unavailable'}
                         </button>
                       ) : isRetailer && hasRetailerPrice ? (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAddToCart(true)}
-                            className="flex-1 bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            Add to Cart
-                          </button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAddToCart(true)}
+                              className="flex-1 bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                              Add to Cart
+                            </button>
+                            <button
+                              onClick={handleAddToQuote}
+                              className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Request Quote
+                            </button>
+                          </div>
+                          {product.brochureUrl && (
+                            <button
+                              onClick={handleDownloadDatasheet}
+                              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors border border-gray-200"
+                              title="Download Datasheet (PDF)"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Datasheet
+                            </button>
+                          )}
+                        </div>
+                      ) : isTelecom && product.price && !product.requiresQuote ? (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAddToCart(false)}
+                              disabled={maxDirectPurchase !== null && quantity > maxDirectPurchase}
+                              className={`flex-1 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                                maxDirectPurchase !== null && quantity > maxDirectPurchase
+                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  : 'bg-gray-900 text-white hover:bg-gray-800'
+                              }`}
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                              Add to Cart
+                            </button>
+                            <button
+                              onClick={handleAddToQuote}
+                              className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 flex items-center justify-center gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Get Quote
+                            </button>
+                          </div>
+                          {product.brochureUrl && (
+                            <button
+                              onClick={handleDownloadDatasheet}
+                              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors border border-gray-200"
+                              title="Download Datasheet (PDF)"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Datasheet
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
                           <button
                             onClick={handleAddToQuote}
-                            className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                           >
                             <FileText className="w-4 h-4" />
                             Request Quote
                           </button>
+                          {product.brochureUrl && (
+                            <button
+                              onClick={handleDownloadDatasheet}
+                              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors border border-gray-200"
+                              title="Download Datasheet (PDF)"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download Datasheet
+                            </button>
+                          )}
                         </div>
-                      ) : isTelecom && product.price && !product.requiresQuote ? (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleAddToCart(false)}
-                            disabled={maxDirectPurchase !== null && quantity > maxDirectPurchase}
-                            className={`flex-1 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                              maxDirectPurchase !== null && quantity > maxDirectPurchase
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-gray-900 text-white hover:bg-gray-800'
-                            }`}
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                            Add to Cart
-                          </button>
-                          <button
-                            onClick={handleAddToQuote}
-                            className="flex-1 border-2 border-gray-900 text-gray-900 py-3 font-semibold text-sm hover:bg-gray-50 flex items-center justify-center gap-2"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Get Quote
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={handleAddToQuote}
-                          className="w-full bg-gray-900 text-white py-3 font-semibold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Request Quote
-                        </button>
                       )}
                     </div>
                   </div>
@@ -618,7 +685,7 @@ const ProductDetails = () => {
                         <img
                           src={thumbnail}
                           alt={recProduct.name}
-                          className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform duration-300 product-image-enhance"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -670,7 +737,7 @@ const ProductDetails = () => {
             <img
               src={selectedImage}
               alt={product.name}
-              className="max-w-full max-h-[85vh] object-contain transition-all duration-300"
+              className="max-w-full max-h-[85vh] object-contain transition-all duration-300 product-image-enhance"
               onClick={(e) => e.stopPropagation()}
             />
 
