@@ -183,7 +183,7 @@ const createProduct = async (req, res) => {
     const product = new Product({
       name,
       description,
-      images,
+      images: [], // populated below
       price,
       retailerPrice,
       category,
@@ -197,9 +197,50 @@ const createProduct = async (req, res) => {
       modelNumberPrefix,
       features,
       technicalSpecs,
-      recommendedProductIds: sanitizedRecommendations,
-      brochureUrl: brochureUrl || undefined
+      recommendedProductIds: sanitizedRecommendations
     });
+
+    // Handle base64 images upload to Cloudinary
+    const uploadedImages = [];
+    if (Array.isArray(images)) {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (img && img.startsWith('data:')) {
+          try {
+            const result = await cloudinary.uploader.upload(img, {
+              folder: 'products',
+              resource_type: 'image',
+              public_id: `product_${product._id}_${i}_${Date.now()}`
+            });
+            uploadedImages.push(result.secure_url);
+          } catch (uploadError) {
+            console.error(`Failed to upload base64 image ${i} during create:`, uploadError);
+            uploadedImages.push(img); // fallback to original
+          }
+        } else {
+          uploadedImages.push(img);
+        }
+      }
+    }
+    product.images = uploadedImages;
+
+    // Handle base64 brochure upload to Cloudinary
+    if (brochureUrl && brochureUrl.startsWith('data:')) {
+      try {
+        const result = await cloudinary.uploader.upload(brochureUrl, {
+          folder: 'product_brochures',
+          resource_type: 'raw',
+          format: 'pdf',
+          public_id: `brochure_${product._id}_${Date.now()}`
+        });
+        product.brochureUrl = result.secure_url;
+      } catch (uploadError) {
+        console.error('Failed to upload base64 brochure during create:', uploadError);
+        product.brochureUrl = brochureUrl; // fallback
+      }
+    } else {
+      product.brochureUrl = brochureUrl || undefined;
+    }
 
     const createdProduct = await product.save();
 
@@ -250,7 +291,33 @@ const updateProduct = async (req, res) => {
       }
       product.name = name || product.name;
       product.description = description || product.description;
-      product.images = images || product.images;
+
+      // Automatically handle base64 images upload during update
+      if (images) {
+        const uploadedImages = [];
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i];
+          if (img && img.startsWith('data:')) {
+            try {
+              const result = await cloudinary.uploader.upload(img, {
+                folder: 'products',
+                resource_type: 'image',
+                public_id: `product_${product._id}_${i}_${Date.now()}`
+              });
+              uploadedImages.push(result.secure_url);
+            } catch (uploadError) {
+              console.error(`Failed to upload base64 image ${i} during update:`, uploadError);
+              uploadedImages.push(img); // fallback
+            }
+          } else {
+            uploadedImages.push(img);
+          }
+        }
+        product.images = uploadedImages;
+      } else {
+        product.images = images || product.images;
+      }
+
       product.price = price !== undefined ? price : product.price;
       product.retailerPrice = retailerPrice !== undefined ? retailerPrice : product.retailerPrice;
       product.category = category || product.category;
@@ -267,7 +334,26 @@ const updateProduct = async (req, res) => {
       product.modelNumberPrefix = modelNumberPrefix !== undefined ? modelNumberPrefix : product.modelNumberPrefix;
       product.features = features || product.features;
       product.technicalSpecs = technicalSpecs || product.technicalSpecs;
-      product.brochureUrl = brochureUrl !== undefined ? (brochureUrl || undefined) : product.brochureUrl;
+
+      // Automatically handle base64 brochure upload during update
+      if (brochureUrl !== undefined) {
+        if (brochureUrl && brochureUrl.startsWith('data:')) {
+          try {
+            const result = await cloudinary.uploader.upload(brochureUrl, {
+              folder: 'product_brochures',
+              resource_type: 'raw',
+              format: 'pdf',
+              public_id: `brochure_${product._id}_${Date.now()}`
+            });
+            product.brochureUrl = result.secure_url;
+          } catch (uploadError) {
+            console.error('Failed to upload base64 brochure during update:', uploadError);
+            product.brochureUrl = brochureUrl; // fallback
+          }
+        } else {
+          product.brochureUrl = brochureUrl || undefined;
+        }
+      }
 
       const updatedProduct = await product.save();
 

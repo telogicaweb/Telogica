@@ -383,14 +383,22 @@ export default function AddProduct() {
                   <input
                     type="file"
                     accept="application/pdf"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setProductForm((prev) => ({ ...prev, brochureUrl: reader.result as string }));
-                      };
-                      reader.readAsDataURL(file);
+                      const formData = new FormData();
+                      formData.append('brochure', file);
+                      try {
+                        const res = await api.post('/api/products/upload-brochure', formData, {
+                          headers: { 'Content-Type': 'multipart/form-data' },
+                        });
+                        if (res.data?.url) {
+                          setProductForm((prev) => ({ ...prev, brochureUrl: res.data.url }));
+                        }
+                      } catch (err) {
+                        alert('Failed to upload brochure. Please try again.');
+                      }
+                      e.target.value = '';
                     }}
                     className="hidden"
                   />
