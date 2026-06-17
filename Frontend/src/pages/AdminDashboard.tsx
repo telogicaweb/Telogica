@@ -37,6 +37,7 @@ import {
   Calendar,
   ClipboardList,
   Info,
+  Building2,
   Truck,
   Link as LinkIcon,
   Send,
@@ -53,6 +54,7 @@ import RetailerManagement from './admin/RetailerManagement';
 import AdminLogs from './admin/AdminLogs';
 import BlogManagement from './admin/BlogManagement';
 import TeamManagement from './admin/TeamManagement';
+import ClientManagement from './admin/ClientManagement';
 import EventManagement from './admin/EventManagement';
 import ReportManagement from './admin/ReportManagement';
 import PageContent from './admin/PageContent';
@@ -333,7 +335,7 @@ const AdminDashboard: React.FC = () => {
   const user = authContext?.user;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [contentSubPage, setContentSubPage] = useState<'blogs' | 'team' | 'events' | 'reports' | 'pages' | 'stats' | null>(null);
+  const [contentSubPage, setContentSubPage] = useState<'blogs' | 'team' | 'events' | 'reports' | 'pages' | 'stats' | 'clients' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -5309,6 +5311,12 @@ const AdminDashboard: React.FC = () => {
           >
             <TrendingUp size={14} /> Stats
           </button>
+          <button
+            onClick={() => setContentSubPage('clients')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0891b2] text-white text-xs font-semibold rounded-lg hover:bg-[#087f98] transition-colors shadow-sm"
+          >
+            <Building2 size={14} /> Clients
+          </button>
         </div>
       </div>
 
@@ -5412,6 +5420,23 @@ const AdminDashboard: React.FC = () => {
             className="w-full py-2.5 bg-[#dc2626] text-white rounded-xl font-semibold text-sm hover:bg-[#b91c1c] transition-colors"
           >
             Update Stats
+          </button>
+        </div>
+
+        {/* Clients */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900">Clients Showcase</h3>
+              <Building2 size={18} className="text-cyan-600" />
+            </div>
+            <p className="text-sm text-gray-500 mb-6">Manage client logos and priority orders</p>
+          </div>
+          <button
+            onClick={() => setContentSubPage('clients')}
+            className="w-full py-2.5 bg-cyan-600 text-white rounded-xl font-semibold text-sm hover:bg-cyan-700 transition-colors"
+          >
+            Manage Clients
           </button>
         </div>
       </div>
@@ -5732,6 +5757,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'shipments', name: 'Retailer-Customer Shipments', pageName: 'Retailer Shipments', icon: Package },
     { id: 'warranties', name: 'Warranties', pageName: 'Warranty Management', icon: Shield },
     { id: 'investors', name: 'Investor Documents', pageName: 'Investor Documents', icon: FileText },
+    { id: 'clients', name: 'Clients', pageName: 'Client Management', icon: Building2 },
     { id: 'messages', name: 'Messages', pageName: 'Contact Messages', icon: MessageSquare },
     { id: 'content', name: 'Content', pageName: 'Content Management', icon: Edit },
     { id: 'emails', name: 'Email Logs', pageName: 'Email Logs', icon: Mail },
@@ -6314,6 +6340,9 @@ const AdminDashboard: React.FC = () => {
               {activeTab === 'shipments' && renderDropshipOrders()}
               {activeTab === 'warranties' && renderWarranties()}
               {activeTab === 'investors' && renderInvestorDocuments()}
+              {activeTab === 'clients' && (
+                <ClientManagement isEmbedded={true} />
+              )}
               {activeTab === 'messages' && renderContacts()}
               {activeTab === 'content' && (
                 contentSubPage === 'blogs' ? (
@@ -6328,6 +6357,8 @@ const AdminDashboard: React.FC = () => {
                   <PageContent isEmbedded={true} onBack={() => setContentSubPage(null)} />
                 ) : contentSubPage === 'stats' ? (
                   <StatsManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
+                ) : contentSubPage === 'clients' ? (
+                  <ClientManagement isEmbedded={true} onBack={() => setContentSubPage(null)} />
                 ) : (
                   renderContentManagement()
                 )

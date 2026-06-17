@@ -54,6 +54,9 @@ export default function Footer() {
               </a>
             </div>
             <nav className="flex flex-col text-sm gap-2">
+              <Link to="/clients" className="text-gray-400 hover:text-white transition-colors">
+                Our Clients
+              </Link>
               <Link to="/privacy-policy" className="text-gray-400 hover:text-white transition-colors">
                 Privacy Policy
               </Link>

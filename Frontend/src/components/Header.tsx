@@ -98,6 +98,7 @@ export default function Header() {
               <Link to="/contact" className={getNavLinkClass('/contact')}>Contact</Link>
               <Link to="/about" className={getNavLinkClass('/about')}>About Us</Link>
               <Link to="/investors" className={getNavLinkClass('/investors')}>Investors</Link>
+              <Link to="/clients" className={getNavLinkClass('/clients')}>Clients</Link>
             </nav>
 
             {/* Icons */}
@@ -145,6 +146,7 @@ export default function Header() {
               <Link to="/contact" className={getMobileNavLinkClass('/contact')}>Contact</Link>
               <Link to="/about" className={getMobileNavLinkClass('/about')}>About Us</Link>
               <Link to="/investors" className={getMobileNavLinkClass('/investors')}>Investors</Link>
+              <Link to="/clients" className={getMobileNavLinkClass('/clients')}>Clients</Link>
               <Link to="/quote" className={getMobileNavLinkClass('/quote')}>
                 Quote Request ({quoteItems.length})
               </Link>

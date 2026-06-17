@@ -26,6 +26,8 @@ import WarrantyRegistration from './pages/WarrantyRegistration';
 import RetailerInventory from './pages/RetailerInventory';
 import BlogManagement from './pages/admin/BlogManagement';
 import TeamManagement from './pages/admin/TeamManagement';
+import Clients from './pages/Clients';
+import ClientManagement from './pages/admin/ClientManagement';
 import EventManagement from './pages/admin/EventManagement';
 import ReportManagement from './pages/admin/ReportManagement';
 import PageContent from './pages/admin/PageContent';
@@ -87,6 +89,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/investors" element={<Investors />} />
+        <Route path="/clients" element={<Clients />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
@@ -101,6 +104,7 @@ function AppContent() {
         <Route path="/admin/edit-product/:id" element={<ProtectedRoute role="admin"><EditProduct /></ProtectedRoute>} />
         <Route path="/admin/blog-management" element={<ProtectedRoute role="admin"><BlogManagement /></ProtectedRoute>} />
         <Route path="/admin/team-management" element={<ProtectedRoute role="admin"><TeamManagement /></ProtectedRoute>} />
+        <Route path="/admin/client-management" element={<ProtectedRoute role="admin"><ClientManagement /></ProtectedRoute>} />
         <Route path="/admin/event-management" element={<ProtectedRoute role="admin"><EventManagement /></ProtectedRoute>} />
         <Route path="/admin/report-management" element={<ProtectedRoute role="admin"><ReportManagement /></ProtectedRoute>} />
         <Route path="/admin/page-content" element={<ProtectedRoute role="admin"><PageContent /></ProtectedRoute>} />

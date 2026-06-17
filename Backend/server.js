@@ -113,6 +113,7 @@ const retailerQuotedProductRoutes = require('./routes/retailerQuotedProductRoute
 const notificationRoutes = require('./routes/notificationRoutes');
 const investorDocumentRoutes = require('./routes/investorDocumentRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const clientRoutes = require('./routes/clientRoutes');
 
 // Apply rate limiting to routes
 // app.use('/api/auth/login', authLimiter);
@@ -143,6 +144,7 @@ app.use('/api/quoted-products', retailerQuotedProductRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/investor-documents', investorDocumentRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/clients', clientRoutes);
 
 app.get('/', (req, res) => {
   res.json({
