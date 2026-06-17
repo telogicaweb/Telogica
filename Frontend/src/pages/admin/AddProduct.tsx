@@ -386,6 +386,11 @@ export default function AddProduct() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
+                      if (file.size > 10 * 1024 * 1024) {
+                        alert('File size exceeds the 10MB limit.');
+                        e.target.value = '';
+                        return;
+                      }
                       const formData = new FormData();
                       formData.append('brochure', file);
                       try {

@@ -4219,7 +4219,14 @@ const AdminDashboard: React.FC = () => {
   // Investor Documents CRUD Handlers
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size exceeds the 10MB limit.');
+        e.target.value = ''; // Reset file input
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -4629,7 +4636,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       )}
                       <p className="text-xs text-gray-500">
-                        Accepted formats: PDF, Excel (.xls, .xlsx), Word (.doc, .docx), PowerPoint (.ppt, .pptx). Max size: 50MB
+                        Accepted formats: PDF, Excel (.xls, .xlsx), Word (.doc, .docx), PowerPoint (.ppt, .pptx). Max size: 10MB
                       </p>
                     </div>
                   </div>
