@@ -31,6 +31,8 @@ interface Product extends RecommendedProductSummary {
   extendedWarrantyMonths?: number;
   extendedWarrantyPrice?: number;
   brochureUrl?: string;
+  features?: string[];
+  applications?: string[];
 }
 
 const renderDescription = (desc?: string) => {
@@ -100,6 +102,8 @@ const ProductDetails = () => {
           recommendedProductIds: productData.recommendedProductIds,
           isTelecom: productData.isTelecom,
           brochureUrl: productData.brochureUrl,
+          features: Array.isArray(productData.features) ? productData.features : [],
+          applications: Array.isArray(productData.applications) ? productData.applications : [],
         };
 
         setProduct(normalizedProduct);
@@ -456,6 +460,29 @@ const ProductDetails = () => {
                   <div className="flex-grow">
                     {/* Description */}
                     {renderDescription(product.description)}
+
+                    {/* Features & Applications */}
+                    {product.features && product.features.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2.5">Key Features</h3>
+                        <ul className="list-disc pl-5 space-y-1.5 text-[13px] text-gray-600">
+                          {product.features.map((feat, idx) => (
+                            <li key={idx}>{feat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {product.applications && product.applications.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2.5">Applications</h3>
+                        <ul className="list-disc pl-5 space-y-1.5 text-[13px] text-gray-600">
+                          {product.applications.map((app, idx) => (
+                            <li key={idx}>{app}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Warranty Info */}
                     {(product.warrantyPeriodMonths || product.extendedWarrantyAvailable) && (

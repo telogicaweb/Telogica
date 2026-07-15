@@ -28,6 +28,8 @@ interface Product {
   isRecommended?: boolean;
   recommendedProductIds?: Array<string | { _id: string }>;
   brochureUrl?: string;
+  features?: string[];
+  applications?: string[];
 }
 
 interface ProductFormState {
@@ -45,6 +47,8 @@ interface ProductFormState {
   images: string[];
   recommendedProductIds: string[];
   brochureUrl: string;
+  features: string;
+  applications: string;
 }
 
 export default function EditProduct() {
@@ -68,6 +72,8 @@ export default function EditProduct() {
     images: [],
     recommendedProductIds: [],
     brochureUrl: '',
+    features: '',
+    applications: '',
   });
 
   const uniqueCategories = ['Telecommunication', 'Defence', 'Railway', 'Industrial'];
@@ -106,6 +112,8 @@ export default function EditProduct() {
             .filter((id: any): id is string => Boolean(id))
           : [],
         brochureUrl: product.brochureUrl || '',
+        features: Array.isArray(product.features) ? product.features.join('\n') : '',
+        applications: Array.isArray(product.applications) ? product.applications.join('\n') : '',
       });
       setLoading(false);
     } catch (error) {
@@ -149,6 +157,8 @@ export default function EditProduct() {
         warrantyPeriodMonths: productForm.warrantyPeriodMonths,
         extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
         recommendedProductIds: productForm.recommendedProductIds,
+        features: productForm.features.split('\n').map(x => x.trim()).filter(Boolean),
+        applications: productForm.applications.split('\n').map(x => x.trim()).filter(Boolean),
       };
 
       payload.brochureUrl = productForm.brochureUrl || null;
@@ -267,6 +277,32 @@ export default function EditProduct() {
                   rows={4}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter detailed product description"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Key Features <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={productForm.features}
+                  onChange={(e) => setProductForm({ ...productForm, features: e.target.value })}
+                  required
+                  rows={4}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter key features (one per line)"
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Applications <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={productForm.applications}
+                  onChange={(e) => setProductForm({ ...productForm, applications: e.target.value })}
+                  required
+                  rows={4}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter target applications (one per line)"
                 />
               </div>
             </div>

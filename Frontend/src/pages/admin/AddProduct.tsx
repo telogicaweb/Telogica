@@ -46,6 +46,8 @@ interface ProductFormState {
   images: string[];
   recommendedProductIds: string[];
   brochureUrl: string;
+  features: string;
+  applications: string;
 }
 
 type StepKey = 'basics' | 'pricing' | 'images' | 'warranty';
@@ -86,6 +88,8 @@ export default function AddProduct() {
     images: [],
     recommendedProductIds: [],
     brochureUrl: '',
+    features: '',
+    applications: '',
   });
 
   useEffect(() => {
@@ -124,6 +128,8 @@ export default function AddProduct() {
     const basics: string[] = [];
     if (!productForm.name.trim()) basics.push('Product name is required');
     if (!productForm.category.trim()) basics.push('Pick or create a category');
+    if (!productForm.features.trim()) basics.push('Features are required (at least one line)');
+    if (!productForm.applications.trim()) basics.push('Applications are required (at least one line)');
 
     const pricing: string[] = [];
     if (productForm.normalPrice && Number.isNaN(parseFloat(productForm.normalPrice))) {
@@ -211,6 +217,8 @@ export default function AddProduct() {
         warrantyPeriodMonths: productForm.warrantyPeriodMonths,
         extendedWarrantyAvailable: productForm.extendedWarrantyAvailable,
         recommendedProductIds: productForm.recommendedProductIds,
+        features: productForm.features.split('\n').map(x => x.trim()).filter(Boolean),
+        applications: productForm.applications.split('\n').map(x => x.trim()).filter(Boolean),
       };
 
       if (productForm.brochureUrl) payload.brochureUrl = productForm.brochureUrl;
@@ -338,6 +346,28 @@ export default function AddProduct() {
                   onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                   rows={4}
                   placeholder="Highlight key use-cases, target customers, and notable specs."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </Field>
+
+              <Field label="Key Features" required hint="Enter each feature on a new line.">
+                <textarea
+                  value={productForm.features}
+                  onChange={(e) => setProductForm({ ...productForm, features: e.target.value })}
+                  onBlur={() => markTouched('basics')}
+                  rows={4}
+                  placeholder="e.g. High gain dual-antenna design&#10;IP67 Weatherproof rating&#10;Low power consumption"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </Field>
+
+              <Field label="Applications" required hint="Enter each application on a new line.">
+                <textarea
+                  value={productForm.applications}
+                  onChange={(e) => setProductForm({ ...productForm, applications: e.target.value })}
+                  onBlur={() => markTouched('basics')}
+                  rows={4}
+                  placeholder="e.g. Tactical communications&#10;Emergency responder systems&#10;Remote telemetry"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </Field>

@@ -172,6 +172,7 @@ const createProduct = async (req, res) => {
     requiresQuote,
     modelNumberPrefix,
     features,
+    applications,
     technicalSpecs,
     recommendedProductIds,
     brochureUrl
@@ -196,6 +197,7 @@ const createProduct = async (req, res) => {
       requiresQuote: requiresQuote || !price, // Auto-set if price missing
       modelNumberPrefix,
       features,
+      applications,
       technicalSpecs,
       recommendedProductIds: sanitizedRecommendations
     });
@@ -276,6 +278,7 @@ const updateProduct = async (req, res) => {
     requiresQuote,
     modelNumberPrefix,
     features,
+    applications,
     technicalSpecs,
     recommendedProductIds,
     brochureUrl
@@ -333,6 +336,7 @@ const updateProduct = async (req, res) => {
       product.requiresQuote = requiresQuote !== undefined ? requiresQuote : (!product.price);
       product.modelNumberPrefix = modelNumberPrefix !== undefined ? modelNumberPrefix : product.modelNumberPrefix;
       product.features = features || product.features;
+      product.applications = applications || product.applications;
       product.technicalSpecs = technicalSpecs || product.technicalSpecs;
 
       // Automatically handle base64 brochure upload during update
