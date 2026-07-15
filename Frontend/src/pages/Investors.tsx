@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FileText, Calendar, ExternalLink, Building2, ChevronRight, Mail, Phone } from 'lucide-react';
 import api from '../api';
 
 interface InvestorDocument {
@@ -17,25 +15,56 @@ interface InvestorDocument {
   displayOrder: number;
 }
 
-const DocumentSkeleton = () => (
-  <div className="bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] p-5 space-y-4 animate-pulse">
-    <div className="flex items-start justify-between">
-      <div className="w-8 h-8 bg-gray-200 rounded-lg" />
-      <div className="w-12 h-5 bg-gray-100 rounded-full" />
-    </div>
-    <div className="h-4 bg-gray-200 rounded w-4/5 mt-3" />
-    <div className="h-3 bg-gray-100 rounded w-full" />
-    <div className="pt-4 border-t border-gray-100 flex items-center justify-between mt-4">
-      <div className="h-3 bg-gray-100 rounded w-24" />
-      <div className="h-3 bg-gray-100 rounded w-10" />
-    </div>
-    <div className="h-9 bg-gray-200 rounded w-full mt-4" />
-  </div>
-);
+// Utility to format database category names into standard elegant text matching the reference styles
+const formatCategoryName = (name: string) => {
+  if (!name) return '';
+  const lower = name.toLowerCase().trim();
+  
+  if (lower === 'other information') {
+    return 'Other Information';
+  }
+  if (lower === 'closure of trading window') {
+    return 'Closure Of Trading Window';
+  }
+  if (lower === 'integrated governance') {
+    return 'Integrated Governance';
+  }
+  if (lower === 'corporate announcement') {
+    return 'Corporate Announcement';
+  }
+  if (lower.includes('new name and old name') || lower.includes('new name')) {
+    return 'new name and old name of the listed entity';
+  }
+  if (lower.includes('terms & conditions') || lower.includes('terms and conditions')) {
+    return 'Terms and conditions of appointment of Independent directors';
+  }
+  if (lower.includes('related party') || lower.includes('related-party')) {
+    return 'Policy on dealing with related party transactions';
+  }
+  if (lower.includes('grievance') || lower.includes('email address')) {
+    return 'email address for grievance redresal and other relevant details';
+  }
+  if (lower.includes('committee') || lower.includes('committes') || lower.includes('various committes')) {
+    return 'Composition of various committes of Board of Directors';
+  }
+  if (lower.includes('egm') || lower.includes('extraordinary')) {
+    return 'EGM Notices';
+  }
+  if (lower.includes('secretarial') || lower.includes('compliance report')) {
+    return 'Secretarial Compliance Reports';
+  }
+  if (lower.includes('annual report') || lower.includes('annual reports')) {
+    return 'Annual Reports';
+  }
+
+  // General fallback
+  return name;
+};
 
 export default function Investors() {
   const [documents, setDocuments] = useState<Record<string, InvestorDocument[]>>({});
   const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +76,44 @@ export default function Investors() {
       setLoading(true);
       const { data } = await api.get('/api/investor-documents');
       setDocuments(data);
-      setCategories(Object.keys(data).sort());
+      
+      const fetchedCats = Object.keys(data);
+      
+      // Fixed list of categories to match the ordering in the sidebar
+      const sidebarOrder = [
+        'Other Information',
+        'Closure Of Trading Window',
+        'Integrated Governance',
+        'Corporate Announcement',
+        'New Name And Old Name Of The Listed Entity',
+        'Terms & Conditions of Independent Directors',
+        'policy on dealing with related party transactions',
+        'Email Address For Grievance Redresal And Other Relevant Details',
+        'Composition Of Various Committes Of Board Of Directors',
+        'Egm Notices',
+        'Secretarial Compliance Reports',
+        'Annual Reports',
+        'Quarterly Financial Results'
+      ];
+
+      // Sort categories: follow sidebarOrder if present, then sort the rest alphabetically
+      const sorted = fetchedCats.sort((a, b) => {
+        const indexA = sidebarOrder.findIndex(cat => cat.toLowerCase() === a.toLowerCase());
+        const indexB = sidebarOrder.findIndex(cat => cat.toLowerCase() === b.toLowerCase());
+        
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return a.localeCompare(b);
+      });
+      
+      setCategories(sorted);
+
+      // Default select "Annual Reports" if available, otherwise first category
+      if (sorted.length > 0) {
+        const defaultCat = sorted.find(c => c.toLowerCase() === 'annual reports') || sorted[0];
+        setSelectedCategory(defaultCat);
+      }
     } catch (error) {
       console.error('Error fetching investor documents:', error);
     } finally {
@@ -56,10 +122,8 @@ export default function Investors() {
   };
 
   const handleDownload = async (doc: InvestorDocument) => {
-    // Open a new tab immediately to prevent popup blockers from blocking it
     const newWindow = window.open('', '_blank');
     if (!newWindow) {
-      // Fallback if popups are completely blocked
       window.open(doc.documentUrl, '_blank', 'noopener,noreferrer');
       return;
     }
@@ -84,170 +148,142 @@ export default function Investors() {
     } catch (error) {
       console.error('Failed to preview document:', error);
       newWindow.close();
-      // Fallback: open direct URL
       window.open(doc.documentUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7]">
-      {/* Combined Header (Breadcrumbs + Hero Banner) */}
-      <section className="bg-slate-900 text-white pt-10 pb-8 border-b border-slate-800">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col">
-          {/* Integrated Breadcrumbs */}
-          <div className="flex items-center gap-2 text-[11px] mb-4">
-            <Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3 text-gray-600" />
-            <span className="text-white font-medium">Investor Relations</span>
+    <div className="min-h-screen bg-[#ffffff]">
+      {/* Page Header Banner */}
+      <section className="bg-black text-white py-8 border-b border-[#222222] relative overflow-hidden">
+        {/* Geometric patterns on the right to match the original style */}
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 pointer-events-none hidden md:block">
+          <div className="w-full h-full bg-[linear-gradient(45deg,#000_25%,transparent_25%),linear-gradient(-45deg,#000_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#0055bb_75%),linear-gradient(-45deg,transparent_75%,#0055bb_75%)] bg-[length:20px_20px]" />
+        </div>
+        
+        <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 mx-auto relative z-10 flex flex-row items-center justify-between">
+          <h1 className="text-3xl font-normal tracking-wide">
+            Investors
+          </h1>
+          
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-300 font-normal">
+            <Link to="/" className="hover:underline">Home</Link>
+            <span className="text-gray-500">/</span>
+            <span className="font-semibold text-white">Investors</span>
           </div>
-
-          {/* Hero Content */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="text-center"
-          >
-            <div className="inline-flex items-center gap-1.2 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider bg-white/10 text-blue-200 rounded-full border border-white/5 backdrop-blur-md">
-              <Building2 className="w-3 h-3 text-blue-400 mr-1.5" />
-              <span>Financial Transparency</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-4 leading-tight">
-              Investor Relations
-            </h1>
-            <p className="text-xs sm:text-sm lg:text-base text-indigo-200/80 mt-3 max-w-2xl mx-auto leading-relaxed font-light">
-              Access comprehensive financial reports, presentations, and shareholder information
-            </p>
-          </motion.div>
         </div>
       </section>
 
-      {/* Documents Section */}
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Investor Documents</h2>
-          <p className="text-xs text-gray-500 mt-1 max-w-xl mx-auto">
-            Download our latest financial reports, regulatory filings, and investor presentations
-          </p>
-        </div>
+      {/* Main Layout Container - Uses fluid flex for maximizing space */}
+      <section className="w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 mx-auto py-10">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          
+          {/* Left Column (Categories Menu) - Fixed Width on Desktop */}
+          <div className="w-full lg:w-80 flex-shrink-0">
+            {/* Mobile Category Dropdown Selector */}
+            <div className="block lg:hidden mb-6">
+              <label htmlFor="category-select" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Select Category
+              </label>
+              <select
+                id="category-select"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-slate-200 text-slate-800 rounded-none shadow-sm font-semibold focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent transition-all"
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {formatCategoryName(cat)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <DocumentSkeleton key={i} />
-            ))}
-          </div>
-        ) : categories.length === 0 ? (
-          <div className="text-center py-20 bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] max-w-xl mx-auto p-8">
-            <FileText className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-sm font-bold text-gray-900 mb-1">No documents found</h3>
-            <p className="text-xs text-gray-500 leading-relaxed">No investor documents are available at the moment. Please check back later for updates.</p>
-          </div>
-        ) : (
-          <div className="space-y-12">
-            {categories.map((category) => (
-              <div key={category}>
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="h-1 w-8 bg-indigo-600 rounded"></span>
-                  <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">{category}</h3>
-                  <div className="flex-grow h-px bg-gray-200" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {documents[category]?.map((doc) => (
-                    <motion.div
-                      key={doc._id}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.35 }}
-                      className="group bg-white overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.14),0_14px_32px_rgba(0,0,0,0.08)] hover:scale-[1.01] transition-all duration-300 p-5 flex flex-col justify-between border border-gray-100 hover:border-indigo-100 bg-gradient-to-b from-indigo-50/5 to-white"
-                      onClick={() => handleDownload(doc)}
+            {/* Desktop Category Sidebar */}
+            <div className="hidden lg:block bg-[#7d0575] rounded-none border border-[#680261]">
+              <nav className="divide-y divide-[#680261]">
+                {categories.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`w-full text-left px-5 py-4 text-[13px] font-normal leading-tight transition-all duration-150 flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#5c0256] text-white font-semibold'
+                          : 'text-white hover:bg-[#6f0368]'
+                      }`}
                     >
-                      <div>
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="bg-indigo-50 text-indigo-600 w-8 h-8 rounded-lg flex items-center justify-center mb-1 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-200">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[9px] font-bold uppercase rounded-full">
-                            {doc.fileType}
-                          </span>
-                        </div>
+                      <span className="pr-2">{formatCategoryName(cat)}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
 
-                        <h4 className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors duration-200">
-                          {doc.title}
-                        </h4>
-
-                        {doc.description && (
-
-                          <p className="text-[11px] text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{doc.description}</p>
-                        )}
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col">
-                        <div className="flex items-center justify-between text-[10px] text-gray-400">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{new Date(doc.publishDate).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })}</span>
-                          </div>
-                          {doc.fileSize && (
-                            <span className="font-mono bg-indigo-50/30 text-indigo-600 py-0.5 px-1.5 rounded border border-indigo-100/30 font-bold">{doc.fileSize}</span>
-                          )}
-                        </div>
-
-                        <button
-                          className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors duration-200 mt-4"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>View Document</span>
-                        </button>
-                      </div>
-                    </motion.div>
+          {/* Right Column (Documents Details Pane) - Stretches to fill available width */}
+          <div className="flex-1 min-w-0 w-full pl-0 lg:pl-4">
+            {loading ? (
+              <div className="space-y-4">
+                <div className="h-12 bg-gray-200 animate-pulse w-full mb-6" />
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-12 bg-white flex items-center gap-3 animate-pulse">
+                      <div className="w-8 h-8 rounded-full bg-gray-200" />
+                      <div className="h-4 bg-gray-200 rounded w-2/3" />
+                    </div>
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Contact IR Section */}
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_14px_rgba(0,0,0,0.06)] border border-gray-100 p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 mt-8">
-          <div>
-            <h2 className="text-base font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-600" />
-              Investor Relations Contact
-            </h2>
-            <p className="text-xs text-gray-500 mt-1 max-w-md leading-relaxed">
-              For any investor-related queries, financial filings, or shareholder services, please reach out directly to our support team.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-            {/* Email split box */}
-            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl flex gap-3 items-center w-full lg:w-80 shadow-sm">
-              <Mail className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-green-700 font-bold uppercase tracking-wider">Email IR Directory</span>
-                <a href="mailto:investors@telogica.com" className="font-bold text-gray-900 text-xs hover:text-green-600 transition-colors">
-                  investors@telogica.com
-                </a>
+            ) : !selectedCategory ? (
+              <div className="text-center py-20">
+                <p className="text-sm text-gray-500">Please select a category from the sidebar menu.</p>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col w-full">
+                
+                {/* Header panel for selected category (matching grey bar structure from reference) */}
+                <div className="bg-[#efefef] px-5 py-3.5 mb-6 w-full">
+                  <h2 className="text-[26px] font-normal text-[#333333] leading-tight">
+                    {formatCategoryName(selectedCategory)}
+                  </h2>
+                </div>
 
-            {/* Phone split box */}
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex gap-3 items-center w-full lg:w-80 shadow-sm">
-              <Phone className="w-5 h-5 text-blue-600 flex-shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-blue-700 font-bold uppercase tracking-wider">Phone Hotline</span>
-                <a href="tel:+912212345678" className="font-bold text-gray-900 text-xs hover:text-blue-600 transition-colors">
-                  +91-22-1234-5678
-                </a>
+                {/* List of files with Red circular PDF icons */}
+                <div className="space-y-5 w-full">
+                  {(!documents[selectedCategory] || documents[selectedCategory].length === 0) ? (
+                    <div className="py-10 text-center">
+                      <p className="text-sm text-gray-400">No documents found under this category.</p>
+                    </div>
+                  ) : (
+                    documents[selectedCategory].map((doc) => (
+                      <div
+                        key={doc._id}
+                        onClick={() => handleDownload(doc)}
+                        className="flex items-center cursor-pointer group py-2 hover:bg-slate-50 transition-colors px-2 -mx-2"
+                      >
+                        {/* Circular Red File/PDF Icon wrapper */}
+                        <div className="flex-shrink-0 w-11 h-11 rounded-full bg-[#bd0000] flex items-center justify-center text-white mr-4 shadow-sm">
+                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <path d="M8 13h2" />
+                            <path d="M8 17h8" />
+                            <path d="M10 9H8" />
+                          </svg>
+                        </div>
+                        
+                        <span className="text-[15px] font-normal text-[#333333] group-hover:text-red-700 group-hover:underline transition-all duration-150">
+                          {doc.title}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
